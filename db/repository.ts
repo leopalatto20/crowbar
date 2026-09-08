@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, lt } from 'drizzle-orm';
+import { and, count, desc, eq, gte, lt, sql } from 'drizzle-orm';
 
 import { EQUIPMENT_CLASSES, MUSCLE_GROUPS, type EquipmentClass, type RecordingScale, type Unit } from './constants';
 import {
@@ -73,6 +73,62 @@ export async function listMuscleGroups(db: DB) {
 	const groups = await db.select().from(muscleGroups);
 	const order = new Map(MUSCLE_GROUPS.map((name, index) => [name, index]));
 	return groups.sort((a, b) => (order.get(a.name) ?? Infinity) - (order.get(b.name) ?? Infinity));
+}
+
+/** One row of the browsable catalog: a movement plus its primary muscle-group name. */
+export type CatalogMovement = {
+	id: number;
+	name: string;
+	muscleGroup: string;
+	unit: Unit;
+	instructions: string | null;
+	archived: boolean;
+};
+
+export type BrowseCatalogOptions = {
+	/** Narrow to one muscle group by name (omitted = all groups). */
+	muscleGroup?: string;
+	/** Case-insensitive substring match on the movement name. */
+	query?: string;
+	/** Include archived movements (default: excluded entirely). */
+	includeArchived?: boolean;
+};
+
+/**
+ * Flat A–Z browse of the movement catalog (issue #7). One row per movement with
+ * its primary muscle-group name; ordering is case-insensitive A–Z; an optional
+ * muscle-group filter and a case-insensitive name search combine; archived
+ * movements are gated out entirely unless `includeArchived` is set — the catalog
+ * screen's "show archived" toggle drives that flag, so archived rows only
+ * participate in search and filters once revealed. No volume-landmark numbers
+ * are returned: this is the identity list, not the measurement one.
+ */
+export async function listMovements(db: DB, opts: BrowseCatalogOptions = {}): Promise<CatalogMovement[]> {
+	const conditions = [];
+	if (opts.muscleGroup) {
+		conditions.push(eq(muscleGroups.name, opts.muscleGroup));
+	}
+	if (opts.query) {
+		// instr() is a literal substring match — user input like '%' or '_' can never act as a wildcard.
+		conditions.push(sql`instr(lower(${movements.name}), ${opts.query.toLowerCase()}) > 0`);
+	}
+	if (!opts.includeArchived) {
+		conditions.push(eq(movements.archived, 0));
+	}
+	const rows = await db
+		.select({
+			id: movements.id,
+			name: movements.name,
+			muscleGroup: muscleGroups.name,
+			unit: movements.unit,
+			instructions: movements.instructions,
+			archived: movements.archived,
+		})
+		.from(movements)
+		.innerJoin(muscleGroups, eq(muscleGroups.id, movements.primaryMuscleGroupId))
+		.where(and(...conditions))
+		.orderBy(sql`lower(${movements.name})`, movements.id);
+	return rows.map((r) => ({ ...r, archived: r.archived === 1 }));
 }
 
 /* --------------------------- Sessions & sets --------------------------- */
