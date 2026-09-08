@@ -8,7 +8,7 @@ import AppTabs from '@/components/app-tabs';
 
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import { getDb, migrateDb } from '@/db';
-import '@/src/global.css';
+import '@/global.css';
 
 SplashScreen.preventAutoHideAsync();
 

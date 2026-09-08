@@ -10,8 +10,13 @@ module.exports = function (api) {
         {
           root: ['./'],
 
+          // Mirror tsconfig.json `paths`: `@/x` prefers `src/x`, falling back to
+          // the project root (`db`, `assets`, `components/ui/gluestack-ui-provider`).
+          extensions: ['.js', '.jsx', '.es', '.es6', '.mjs', '.ts', '.tsx'],
+
           alias: {
-            '@': './',
+            '@/assets': './assets',
+            '@': ['./src', './'],
             'tailwind.config': './tailwind.config.js',
           },
         },
