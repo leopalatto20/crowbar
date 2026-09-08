@@ -1,13 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useEffect, useState } from 'react';
+import { FlatList, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { Box } from '@/components/ui/box';
+import { Button, ButtonText } from '@/components/ui/button';
+import { Input, InputField } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Text } from '@/components/ui/text';
 import { getDb, listMovements, listMuscleGroups, type CatalogMovement } from '@/db';
 import type { MuscleGroupName } from '@/db/constants';
-import { useTheme } from '@/hooks/use-theme';
 
 const ALL = 'All' as const;
 type Filter = typeof ALL | MuscleGroupName;
@@ -22,9 +23,6 @@ type Filter = typeof ALL | MuscleGroupName;
  * is the identity list, not the measurement one.
  */
 export default function CatalogScreen() {
-	const insets = useSafeAreaInsets();
-	const theme = useTheme();
-
 	const [groups, setGroups] = useState<MuscleGroupName[]>([]);
 	const [filter, setFilter] = useState<Filter>(ALL);
 	const [query, setQuery] = useState('');
@@ -65,215 +63,90 @@ export default function CatalogScreen() {
 
 	const empty = loaded && rows.length === 0;
 
-	const chipStyle = useCallback(
-		(selected: boolean) => ({
-			backgroundColor: selected ? theme.text : theme.backgroundElement,
-		}),
-		[theme],
-	);
-	const chipTextStyle = useCallback(
-		(selected: boolean) => ({ color: selected ? theme.background : theme.textSecondary }),
-		[theme],
-	);
-
-	const contentContainer = useMemo(
-		() => [
-			styles.content,
-			{
-				paddingTop: insets.top + Spacing.three,
-				paddingBottom: insets.bottom + BottomTabInset + Spacing.four,
-				paddingLeft: insets.left + Spacing.three,
-				paddingRight: insets.right + Spacing.three,
-			},
-		],
-		[insets],
-	);
-
 	return (
-		<ThemedView style={styles.container}>
+		<SafeAreaView className="flex-1" edges={['top', 'left', 'right', 'bottom']}>
 			<FlatList
-				style={styles.list}
-				contentContainerStyle={contentContainer}
+				className="w-full max-w-3xl flex-1 self-center"
+				contentContainerClassName="gap-4 px-4 pb-28 pt-4 ios:pb-20"
 				data={rows}
 				keyExtractor={(r) => String(r.id)}
 				keyboardShouldPersistTaps="handled"
 				ListHeaderComponent={
-					<ThemedView style={styles.header}>
-						<ThemedText type="title" style={styles.title}>
+					<Box className="mb-2 gap-4">
+						<Text size="5xl" bold>
 							Catalog
-						</ThemedText>
+						</Text>
 
-						<ThemedView type="backgroundElement" style={styles.searchBox}>
-							<TextInput
+						<Input className="rounded-xl border-0 bg-card">
+							<InputField
 								value={query}
 								onChangeText={setQuery}
 								placeholder="Search movements"
-								placeholderTextColor={theme.textSecondary}
-								style={[styles.searchInput, { color: theme.text }]}
+								accessibilityLabel="Search movements"
 								autoCorrect={false}
 								autoCapitalize="none"
 								clearButtonMode="while-editing"
 							/>
-						</ThemedView>
+						</Input>
 
 						<ScrollView
 							horizontal
 							showsHorizontalScrollIndicator={false}
-							contentContainerStyle={styles.chips}>
+							contentContainerClassName="gap-2 py-1">
 							{([ALL, ...groups] as Filter[]).map((group) => {
 								const selected = filter === group;
 								return (
-									<Pressable
+									<Button
 										key={group}
 										onPress={() => setFilter(group)}
-										style={[styles.chip, chipStyle(selected)]}>
-										<ThemedText type="small" style={chipTextStyle(selected)}>
-											{group}
-										</ThemedText>
-									</Pressable>
+										variant={selected ? 'default' : 'outline'}
+										size="sm"
+										className="rounded-full">
+										<ButtonText>{group}</ButtonText>
+									</Button>
 								);
 							})}
 						</ScrollView>
 
-						<Pressable style={styles.toggleRow} onPress={() => setShowArchived((v) => !v)}>
-							<ThemedView
-								type="backgroundSelected"
-								style={[styles.toggleTrack, showArchived && { backgroundColor: theme.text }]}>
-								<ThemedView
-									style={[
-										styles.toggleThumb,
-										showArchived && { backgroundColor: theme.background, alignSelf: 'flex-end' },
-									]}
-								/>
-							</ThemedView>
-							<ThemedText type="small" themeColor="textSecondary">
+						<Box className="flex-row items-center gap-2">
+							<Switch
+								value={showArchived}
+								onToggle={() => setShowArchived((value) => !value)}
+								accessibilityLabel="Show archived"
+							/>
+							<Text size="sm" className="text-muted-foreground">
 								Show archived
-							</ThemedText>
-						</Pressable>
-					</ThemedView>
+							</Text>
+						</Box>
+					</Box>
 				}
 				ListEmptyComponent={
 					empty ? (
-						<ThemedView type="backgroundElement" style={styles.empty}>
-							<ThemedText themeColor="textSecondary">No movements match</ThemedText>
-						</ThemedView>
+						<Box className="items-center rounded-xl bg-card py-8">
+							<Text className="text-muted-foreground">No movements match</Text>
+						</Box>
 					) : null
 				}
 				renderItem={({ item }) => <MovementRow movement={item} muted={item.archived} />}
 			/>
-		</ThemedView>
+		</SafeAreaView>
 	);
 }
 
 function MovementRow({ movement, muted }: { movement: CatalogMovement; muted: boolean }) {
 	return (
-		<ThemedView
-			type="backgroundElement"
-			style={[styles.row, muted && styles.rowMuted]}>
-			<ThemedText type="default">{movement.name}</ThemedText>
-			<ThemedView style={[styles.tag, muted && styles.tagMuted]}>
-				<ThemedText type="small" themeColor={muted ? 'textSecondary' : 'text'} style={styles.tagText}>
+		<Box className={`mb-2 flex-row items-center gap-2 rounded-xl bg-card px-4 py-4 ${muted ? 'opacity-50' : ''}`}>
+			<Text>{movement.name}</Text>
+			<Box className="rounded-full bg-background/0 px-2 py-1">
+				<Text size="sm" bold className={muted ? 'text-muted-foreground' : 'text-foreground'}>
 					{movement.muscleGroup}
-				</ThemedText>
-			</ThemedView>
+				</Text>
+			</Box>
 			{muted && (
-				<ThemedText type="small" themeColor="textSecondary" style={styles.archivedTag}>
+				<Text size="sm" bold className="ml-auto text-muted-foreground uppercase">
 					Archived
-				</ThemedText>
+				</Text>
 			)}
-		</ThemedView>
+		</Box>
 	);
 }
-
-const styles = StyleSheet.create({
-	container: {
-		flex: 1,
-		alignItems: 'center',
-	},
-	list: {
-		flex: 1,
-		width: '100%',
-		maxWidth: MaxContentWidth,
-	},
-	content: {
-		gap: Spacing.three,
-	},
-	header: {
-		gap: Spacing.three,
-		marginBottom: Spacing.two,
-	},
-	title: {
-		fontSize: 40,
-		lineHeight: 44,
-	},
-	searchBox: {
-		borderRadius: Spacing.three,
-		paddingHorizontal: Spacing.three,
-	},
-	searchInput: {
-		height: 44,
-		fontSize: 16,
-	},
-	chips: {
-		flexDirection: 'row',
-		gap: Spacing.two,
-		paddingVertical: Spacing.one,
-	},
-	chip: {
-		paddingHorizontal: Spacing.three,
-		paddingVertical: Spacing.two,
-		borderRadius: Spacing.five,
-	},
-	toggleRow: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: Spacing.two,
-	},
-	toggleTrack: {
-		width: 44,
-		height: 26,
-		borderRadius: 13,
-		justifyContent: 'center',
-		padding: 3,
-	},
-	toggleThumb: {
-		width: 20,
-		height: 20,
-		borderRadius: 10,
-		alignSelf: 'flex-start',
-	},
-	row: {
-		flexDirection: 'row',
-		alignItems: 'center',
-		gap: Spacing.two,
-		paddingHorizontal: Spacing.three,
-		paddingVertical: Spacing.three,
-		borderRadius: Spacing.three,
-		marginBottom: Spacing.two,
-	},
-	rowMuted: {
-		opacity: 0.55,
-	},
-	tag: {
-		paddingHorizontal: Spacing.two,
-		paddingVertical: Spacing.half,
-		borderRadius: Spacing.three,
-		backgroundColor: 'transparent',
-	},
-	tagMuted: {
-		opacity: 0.7,
-	},
-	tagText: {
-		fontWeight: 600,
-	},
-	archivedTag: {
-		marginLeft: 'auto',
-		fontWeight: 600,
-		textTransform: 'uppercase',
-	},
-	empty: {
-		paddingVertical: Spacing.five,
-		borderRadius: Spacing.three,
-		alignItems: 'center',
-	},
-});

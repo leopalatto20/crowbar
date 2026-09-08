@@ -21,6 +21,7 @@
     --muted: 245 245 245;
     --muted-foreground: 115 115 115;
     --destructive: 231 0 11;
+    --destructive-foreground: 250 250 250;
     --foreground: 10 10 10;
     --border: 229 229 229;
     --input: 229 229 229;
@@ -42,6 +43,7 @@
       --muted: 38 38 38;
       --muted-foreground: 161 161 161;
       --destructive: 255 100 103;
+      --destructive-foreground: 23 23 23;
       --foreground: 250 250 250;
       --border: 46 46 46;
       --input: 46 46 46;
@@ -63,6 +65,7 @@
     --muted: 38 38 38;
     --muted-foreground: 161 161 161;
     --destructive: 255 100 103;
+    --destructive-foreground: 23 23 23;
     --foreground: 250 250 250;
     --border: 46 46 46;
     --input: 46 46 46;
@@ -83,6 +86,7 @@
     --muted: 245 245 245;
     --muted-foreground: 115 115 115;
     --destructive: 231 0 11;
+    --destructive-foreground: 250 250 250;
     --foreground: 10 10 10;
     --border: 229 229 229;
     --input: 229 229 229;
@@ -104,6 +108,7 @@
   --color-muted: rgb(var(--muted));
   --color-muted-foreground: rgb(var(--muted-foreground));
   --color-destructive: rgb(var(--destructive));
+  --color-destructive-foreground: rgb(var(--destructive-foreground));
   --color-foreground: rgb(var(--foreground));
   --color-border: rgb(var(--border));
   --color-input: rgb(var(--input));
