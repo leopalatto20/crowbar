@@ -1,16 +1,12 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useColorScheme } from 'react-native';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import AppTabs from '@/components/app-tabs';
 
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import { getDb, migrateDb } from '@/db';
 import '@/global.css';
-
-SplashScreen.preventAutoHideAsync();
 
 /**
  * Opens the on-device database and applies pending migrations before the app
@@ -46,7 +42,6 @@ export default function TabLayout() {
   return (
     <GluestackUIProvider mode="dark">
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <AnimatedSplashOverlay />
         <DbBootstrap>
           <AppTabs />
         </DbBootstrap>
