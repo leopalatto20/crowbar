@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite';
-import { drizzle, type ExpoSQLiteDatabase } from 'drizzle-orm/expo-sqlite';
+import { drizzle } from 'drizzle-orm/expo-sqlite';
+import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 
 import * as schema from './schema';
 
@@ -7,12 +8,12 @@ import * as schema from './schema';
  * The app's typed Drizzle connection. The schema is the single source of truth
  * (ADR 0005); this seam selects the *driver* only.
  *
- * Production uses the expo-sqlite driver on a persistent on-device file. Tests
- * (ticket #3) swap in a dev-only driver (better-sqlite3) through
- * `setDbFactory` — one schema, two drivers. Ticket #3 may widen `DB` to a shared
- * `BaseSQLiteDatabase` shape when it introduces the test driver.
+ * `DB` is the shared `BaseSQLiteDatabase` shape: production fulfills it with the
+ * expo-sqlite driver on a persistent on-device file, tests with the dev-only
+ * better-sqlite3 driver installed through `setDbFactory` — one schema, two
+ * drivers, same migrations (ticket #3).
  */
-export type DB = ExpoSQLiteDatabase<typeof schema>;
+export type DB = BaseSQLiteDatabase<'sync', unknown, typeof schema>;
 
 type DbFactory = () => DB;
 

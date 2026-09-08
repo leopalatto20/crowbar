@@ -16,6 +16,20 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npx expo start
    ```
 
+## Tests
+
+The domain is spec-tested against real SQLite through the `getDb()` seam — tests
+never touch the on-device database (ticket #3).
+
+```bash
+npm test        # one-shot
+npm run test:watch
+```
+
+`jest-expo` provides the runner and preset; `better-sqlite3` is the dev-only
+test driver over the same schema and migrations the app uses (see `db/get-db.ts`
+and `test/helpers/`).
+
 In the output, you'll find options to open the app in a
 
 - [development build](https://docs.expo.dev/develop/development-builds/introduction/)
