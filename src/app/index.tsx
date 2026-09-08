@@ -66,8 +66,7 @@ export default function CatalogScreen() {
 	return (
 		<SafeAreaView className="flex-1" edges={['top', 'left', 'right', 'bottom']}>
 			<FlatList
-				className="w-full max-w-3xl flex-1 self-center"
-				contentContainerClassName="gap-4 px-4 pb-28 pt-4 ios:pb-20"
+				contentContainerClassName="gap-4 px-4 pb-28 pt-4"
 				data={rows}
 				keyExtractor={(r) => String(r.id)}
 				keyboardShouldPersistTaps="handled"
@@ -111,7 +110,7 @@ export default function CatalogScreen() {
 						<Box className="flex-row items-center gap-2">
 							<Switch
 								value={showArchived}
-								onToggle={() => setShowArchived((value) => !value)}
+								onValueChange={setShowArchived}
 								accessibilityLabel="Show archived"
 							/>
 							<Text size="sm" className="text-muted-foreground">
