@@ -1,6 +1,6 @@
 import { and, count, desc, eq, gte, lt } from 'drizzle-orm';
 
-import { EQUIPMENT_CLASSES, type EquipmentClass, type RecordingScale, type Unit } from './constants';
+import { EQUIPMENT_CLASSES, MUSCLE_GROUPS, type EquipmentClass, type RecordingScale, type Unit } from './constants';
 import {
 	gyms,
 	movements,
@@ -61,18 +61,18 @@ export async function listGyms(db: DB, { includeArchived = false } = {}) {
 export type NewMovement = {
 	name: string;
 	primaryMuscleGroupId: number;
-	defaultEquipmentClass: EquipmentClass;
 	unit: Unit;
 	instructions?: string | null;
 };
 
 export async function createMovement(db: DB, movement: NewMovement) {
-	equipmentIn(movement.defaultEquipmentClass);
 	return (await db.insert(movements).values(movement).returning())[0];
 }
 
 export async function listMuscleGroups(db: DB) {
-	return db.select().from(muscleGroups).orderBy(muscleGroups.name);
+	const groups = await db.select().from(muscleGroups);
+	const order = new Map(MUSCLE_GROUPS.map((name, index) => [name, index]));
+	return groups.sort((a, b) => (order.get(a.name) ?? Infinity) - (order.get(b.name) ?? Infinity));
 }
 
 /* --------------------------- Sessions & sets --------------------------- */

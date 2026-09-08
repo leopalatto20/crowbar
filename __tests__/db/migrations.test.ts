@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { eq } from 'drizzle-orm';
 
 import { constants, getHomeGym, listGyms, listMuscleGroups, migrateDb, schema, setsByIsland } from '@/db';
-import { movements } from '@/db/schema';
+import { movements, muscleGroups } from '@/db/schema';
 
 import { closeDb, freshDb, freshFileDb } from '../../test/helpers/db';
 import { logSet, makeGym, makeMovement, startSession } from '../../test/helpers/fixtures';
@@ -21,6 +21,64 @@ describe('migration bootstrap', () => {
 			expect(group.volumeMin).toBe(constants.DEFAULT_VOLUME_MIN);
 			expect(group.volumeMax).toBe(constants.DEFAULT_VOLUME_MAX);
 		}
+
+		const seededMovements = await db
+			.select({
+				name: movements.name,
+				muscleGroup: muscleGroups.name,
+				unit: movements.unit,
+				instructions: movements.instructions,
+				archived: movements.archived,
+			})
+			.from(movements)
+			.innerJoin(muscleGroups, eq(muscleGroups.id, movements.primaryMuscleGroupId));
+		const expectedMovements = {
+			Chest: ['Bench Press', 'Dips', 'Fly', 'Push-Up'],
+			Back: ['Bent-Over Row', 'Chin-Up', 'Lat Pulldown', 'One-Arm Row', 'Pull-Up', 'Seated Row'],
+			Shoulders: ['Front Raise', 'Lateral Raise', 'Overhead Press', 'Rear Delt Fly'],
+			Biceps: ['Curl', 'Hammer Curl'],
+			Triceps: ['Overhead Triceps Extension', 'Triceps Pushdown'],
+			Forearms: ['Reverse Curl', 'Wrist Curl', 'Wrist Extension'],
+			Core: ['Crunch', 'Leg Raise', 'Plank', 'Russian Twist'],
+			Obliques: ['Side Plank', 'Wood Chop'],
+			Traps: ['Shrug', 'Upright Row'],
+			Quads: ['Bulgarian Split Squat', 'Leg Extension', 'Leg Press', 'Squat', 'Walking Lunge'],
+			Adductors: ['Copenhagen Plank', 'Hip Adduction'],
+			Hamstrings: ['Deadlift', 'Good Morning', 'Leg Curl', 'Romanian Deadlift'],
+			Glutes: ['Glute Bridge', 'Glute Kickback', 'Hip Thrust'],
+			Calves: ['Seated Calf Raise', 'Single-Leg Calf Raise', 'Standing Calf Raise'],
+		} as const;
+		expect(seededMovements).toHaveLength(46);
+		expect(
+			Object.entries(expectedMovements)
+				.flatMap(([muscleGroup, names]) => names.map((name) => ({ name, muscleGroup })))
+				.sort((a, b) => a.name.localeCompare(b.name)),
+		).toEqual(
+			seededMovements
+				.map(({ name, muscleGroup }) => ({ name, muscleGroup }))
+				.sort((a, b) => a.name.localeCompare(b.name)),
+		);
+		for (const movement of seededMovements) {
+			expect(movement.unit).toBe('kg');
+			expect(movement.instructions).toBeNull();
+			expect(movement.archived).toBe(0);
+		}
+		expect(constants.MUSCLE_GROUPS).toEqual([
+			'Chest',
+			'Back',
+			'Shoulders',
+			'Biceps',
+			'Triceps',
+			'Forearms',
+			'Core',
+			'Obliques',
+			'Traps',
+			'Quads',
+			'Adductors',
+			'Hamstrings',
+			'Glutes',
+			'Calves',
+		]);
 
 		// Home gym exists by default, flagged.
 		const home = await getHomeGym(db);
@@ -40,6 +98,18 @@ describe('migration bootstrap', () => {
 		const island = await setsByIsland(db, { gymId: gym.id, movementId: movement.id, equipmentClass: 'barbell' });
 		expect(island).toHaveLength(1);
 		expect(island[0].loadLb).toBe(100);
+	});
+
+	test('movement names are unique regardless of case or spacing', async () => {
+		const db = await freshDb();
+
+		await expect(
+			db.insert(movements).values({
+				name: 'bench  press',
+				primaryMuscleGroupId: 1,
+				unit: 'kg',
+			}),
+		).rejects.toThrow();
 	});
 
 	test('re-applying migrations is a no-op that preserves data', async () => {

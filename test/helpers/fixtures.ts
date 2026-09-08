@@ -31,12 +31,10 @@ export async function makeMovement(
 	{
 		name,
 		muscleGroup = 'Chest',
-		equipmentClass = 'barbell',
 		unit = 'kg',
 	}: {
 		name: string;
 		muscleGroup?: MuscleGroupName;
-		equipmentClass?: EquipmentClass;
 		unit?: Unit;
 	},
 ): Promise<Movement> {
@@ -48,7 +46,6 @@ export async function makeMovement(
 	return createMovement(db, {
 		name,
 		primaryMuscleGroupId: group.id,
-		defaultEquipmentClass: equipmentClass,
 		unit,
 	});
 }

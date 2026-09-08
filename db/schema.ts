@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { index, int, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 import { DEFAULT_UNIT, DEFAULT_VOLUME_MAX, DEFAULT_VOLUME_MIN } from './constants';
@@ -32,18 +33,21 @@ export const muscleGroups = sqliteTable('muscle_groups', {
  * A canonical, gym-agnostic lift (e.g. "Bench Press"). Lives once, is the text of
  * every routine, and remembers the unit it is logged in (kg or lb).
  */
-export const movements = sqliteTable('movements', {
-	id: int('id').primaryKey({ autoIncrement: true }),
-	name: text('name').notNull(),
-	primaryMuscleGroupId: int('primary_muscle_group_id')
-		.notNull()
-		.references(() => muscleGroups.id),
-	defaultEquipmentClass: text('default_equipment_class').notNull(),
-	// Recording unit: 'kg' | 'lb', defaulting from the app-wide setting.
-	unit: text('unit').notNull().default(DEFAULT_UNIT),
-	instructions: text('instructions'),
-	archived: int('archived').notNull().default(0),
-});
+export const movements = sqliteTable(
+	'movements',
+	{
+		id: int('id').primaryKey({ autoIncrement: true }),
+		name: text('name').notNull(),
+		primaryMuscleGroupId: int('primary_muscle_group_id')
+			.notNull()
+			.references(() => muscleGroups.id),
+		// Recording unit: 'kg' | 'lb', defaulting from the app-wide setting.
+		unit: text('unit').notNull().default(DEFAULT_UNIT),
+		instructions: text('instructions'),
+		archived: int('archived').notNull().default(0),
+	},
+	(t) => [uniqueIndex('movements_name_unique').on(sql`lower(replace(${t.name}, ' ', ''))`)],
+);
 
 /**
  * A gym-agnostic, ordered list of movements with optional targets.

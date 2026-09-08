@@ -33,6 +33,7 @@ export const MUSCLE_GROUPS = [
 	'Obliques',
 	'Traps',
 	'Quads',
+	'Adductors',
 	'Hamstrings',
 	'Glutes',
 	'Calves',
