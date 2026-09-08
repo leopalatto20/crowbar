@@ -5,11 +5,19 @@ Local-first, single-lifter workout tracking for advanced lifters. The domain spl
 ## Identity
 
 **Movement**:
-A canonical, gym-agnostic lift (e.g., "Bench Press"). Movements live once in the library and are the text of every routine. Editing re-maps: renaming or re-tagging a movement's history follows it (re-tagging a muscle group re-buckets past volume at query time, after a confirm).
+A canonical, gym-agnostic lift (e.g., "Bench Press"). Movements live once in the library and are the text of every routine. Movements are **equipment-free** — "Fly", not "Dumbbell Fly"; variations (implement, grip, angle, stance) live in sub-routine bindings, never as separate movements. Equipment class is recorded on sub-routine bindings and session entries/sets, never on the movement row. Names are unique app-wide, case- and spacing-insensitive, blank rejected, near-duplicates suggested while typing. Editing re-maps: renaming or re-tagging a movement's history follows it (re-tagging a muscle group re-buckets past volume at query time, after a confirm). Changing a movement's unit is a pure display change — loads are stored canonically (ADR 0004), so past sets simply re-render in the new unit; nothing converts and history stays truthful.
 _Avoid_: exercise (overloaded), lift
 
+**Catalog**:
+The full set of movements — the hand-authored **seed catalog** plus everything the user creates. Seed movements are ordinary movements: no provenance flag, no protection, freely renamed/re-tagged/archived. Product updates never overwrite; updates only ever *add*.
+_Avoid_: library, dataset, factory catalog
+
+**Instructions**:
+A movement's personal user notes — free multi-line text the lifter writes for themselves, consistent with how they execute the movement. No formatting, no fixed content. Seed movements ship with none; optional per movement. Only the user edits them; they are not part of the shared canonical lift.
+_Avoid_: description, cue card, coaching text
+
 **Archived**:
-The only lifecycle for a movement or gym that has history — flagged, excluded from pickers and sub-routines, history retained and still counted in landmarks. No hard delete in v1.
+The lifecycle for a movement (or gym) that has history. Archive excludes the movement from *pickers only* — existing routine entries, sub-routine bindings, and history persist untouched, and history still counts in landmarks. **Delete is allowed only when a movement has zero history AND zero references** (sets, routine/sub-routine/session entries); otherwise delete is blocked and the references are shown. Archive is always available, even with zero history — it is the escape hatch; un-archive clears the flag.
 _Avoid_: deleted, removed
 
 **Equipment class**:
@@ -51,7 +59,7 @@ The load unit a movement is logged in — **kg** or **lb**, assigned per movemen
 _Avoid_: as-entered unit
 
 **Muscle group**:
-One of a closed canonical set: Chest, Back, Shoulders, Biceps, Triceps, Forearms, Core, Obliques, Traps, Quads, Hamstrings, Glutes, Calves. Every movement carries exactly one primary muscle group; landmarks are keyed by it.
+One of a closed canonical set of 14: Chest, Back, Shoulders, Biceps, Triceps, Forearms, Core, Obliques, Traps, Quads, **Adductors**, Hamstrings, Glutes, Calves. Adductors sits between Quads and Hamstrings so adductor work counts toward its own volume landmark instead of inflating Quads. Every movement carries exactly one primary muscle group; landmarks are keyed by it.
 
 **Volume landmark**:
 A weekly target of counted sets for a muscle group (e.g., 12–16 for Chest), measured over the calendar week (Mon–Sun). Global — a muscle group does not know which gym the work happened in. Only **direct** sets count: a set contributes to its movement's primary muscle group, never to secondary work. Default: a uniform 4–8 sets per group, editable.
