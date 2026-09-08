@@ -1,6 +1,14 @@
 import { and, count, desc, eq, gte, lt, sql } from 'drizzle-orm';
 
-import { EQUIPMENT_CLASSES, MUSCLE_GROUPS, type EquipmentClass, type RecordingScale, type Unit } from './constants';
+import {
+	DEFAULT_UNIT,
+	EQUIPMENT_CLASSES,
+	MUSCLE_GROUPS,
+	UNITS,
+	type EquipmentClass,
+	type RecordingScale,
+	type Unit,
+} from './constants';
 import {
 	gyms,
 	movements,
@@ -58,15 +66,146 @@ export async function listGyms(db: DB, { includeArchived = false } = {}) {
 
 /* ------------------------------ Movements ------------------------------ */
 
+export type Movement = typeof movements.$inferSelect;
+
 export type NewMovement = {
 	name: string;
 	primaryMuscleGroupId: number;
-	unit: Unit;
+	unit?: Unit;
 	instructions?: string | null;
 };
 
-export async function createMovement(db: DB, movement: NewMovement) {
-	return (await db.insert(movements).values(movement).returning())[0];
+/** The comparison key for movement names; display spelling is never changed. */
+export function normalizeMovementName(name: string): string {
+	// Keep this expression aligned with movements_name_unique in schema.ts.
+	return name.trim().replace(/ /g, '').toLowerCase();
+}
+
+function assertMovementName(name: string): string {
+	if (!normalizeMovementName(name)) {
+		throw new Error('Movement name cannot be blank.');
+	}
+	return name.trim();
+}
+
+async function assertMuscleGroupExists(db: DB, id: number): Promise<void> {
+	const group = await db.select({ id: muscleGroups.id }).from(muscleGroups).where(eq(muscleGroups.id, id)).limit(1);
+	if (!group[0]) {
+		throw new Error(`Muscle group ${id} does not exist.`);
+	}
+}
+
+async function findExactMovement(db: DB, name: string, excludeId?: number): Promise<Movement | null> {
+	const normalized = normalizeMovementName(name);
+	if (!normalized) return null;
+	const rows = await db.select().from(movements).orderBy(movements.id);
+	return rows.find((row) => row.id !== excludeId && normalizeMovementName(row.name) === normalized) ?? null;
+}
+
+function movementConstraintError(error: unknown): Error {
+	if (error instanceof Error && /unique|constraint/i.test(error.message)) {
+		return new Error('A movement with that name already exists (names ignore case and spacing).');
+	}
+	return error instanceof Error ? error : new Error(String(error));
+}
+
+export async function createMovement(db: DB, movement: NewMovement): Promise<Movement> {
+	const name = assertMovementName(movement.name);
+	const unit = movement.unit ?? DEFAULT_UNIT;
+	assertIn(unit, UNITS, 'unit');
+	await assertMuscleGroupExists(db, movement.primaryMuscleGroupId);
+	// Check immediately before the write; SQLite's unique index remains the final
+	// defense for concurrent writers and legacy data.
+	if (await findExactMovement(db, name)) {
+		throw new Error('A movement with that name already exists (names ignore case and spacing).');
+	}
+	try {
+		return (
+			await db.insert(movements).values({
+				name,
+				primaryMuscleGroupId: movement.primaryMuscleGroupId,
+				unit,
+				instructions: movement.instructions ?? null,
+			}).returning()
+		)[0];
+	} catch (error) {
+		throw movementConstraintError(error);
+	}
+}
+
+export type MovementPatch = {
+	name?: string;
+	primaryMuscleGroupId?: number;
+	unit?: Unit;
+	instructions?: string | null;
+};
+
+export async function updateMovement(db: DB, id: number, patch: MovementPatch): Promise<Movement> {
+	const existing = (await db.select().from(movements).where(eq(movements.id, id)).limit(1))[0];
+	if (!existing) throw new Error(`Movement ${id} does not exist.`);
+
+	const values: Partial<typeof movements.$inferInsert> = {};
+	if (patch.name !== undefined) values.name = assertMovementName(patch.name);
+	if (patch.primaryMuscleGroupId !== undefined) {
+		await assertMuscleGroupExists(db, patch.primaryMuscleGroupId);
+		values.primaryMuscleGroupId = patch.primaryMuscleGroupId;
+	}
+	if (patch.unit !== undefined) {
+		assertIn(patch.unit, UNITS, 'unit');
+		values.unit = patch.unit;
+	}
+	if (patch.instructions !== undefined) values.instructions = patch.instructions;
+
+	if (Object.keys(values).length === 0) return existing;
+
+	// Check immediately before updating so a collision cannot be introduced by
+	// the repository; the unique index covers the remaining race window.
+	if (patch.name !== undefined && (await findExactMovement(db, patch.name, id))) {
+		throw new Error('A movement with that name already exists (names ignore case and spacing).');
+	}
+	try {
+		return (await db.update(movements).set(values).where(eq(movements.id, id)).returning())[0];
+	} catch (error) {
+		throw movementConstraintError(error);
+	}
+}
+
+export async function findMovementByName(
+	db: DB,
+	name: string,
+	{ near = false, excludeId }: { near?: boolean; excludeId?: number } = {},
+): Promise<Movement | null> {
+	const normalized = normalizeMovementName(name);
+	if (!normalized) return null;
+	const rows = await db.select().from(movements).orderBy(movements.id);
+	const exact = rows.find((row) => row.id !== excludeId && normalizeMovementName(row.name) === normalized);
+	if (exact || !near) return exact ?? null;
+
+	let nearest: { row: Movement; distance: number } | undefined;
+	for (const row of rows) {
+		if (row.id === excludeId) continue;
+		const distance = levenshteinDistance(normalized, normalizeMovementName(row.name));
+		if (distance <= 2 && (!nearest || distance < nearest.distance || (distance === nearest.distance && row.id < nearest.row.id))) {
+			nearest = { row, distance };
+		}
+	}
+	return nearest?.row ?? null;
+}
+
+function levenshteinDistance(left: string, right: string): number {
+	const previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+	for (let i = 1; i <= left.length; i++) {
+		const current = [i];
+		for (let j = 1; j <= right.length; j++) {
+			current[j] = Math.min(
+				current[j - 1] + 1,
+				previous[j] + 1,
+				previous[j - 1] + (left[i - 1] === right[j - 1] ? 0 : 1),
+			);
+		}
+		for (let j = 0; j <= right.length; j++) previous[j] = current[j];
+	}
+	return previous[right.length];
 }
 
 export async function listMuscleGroups(db: DB) {

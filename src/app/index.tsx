@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FlatList, ScrollView } from 'react-native';
+import { FlatList, Pressable, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Box } from '@/components/ui/box';
@@ -8,6 +8,7 @@ import { Input, InputField } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
 import { getDb, listMovements, listMuscleGroups, type CatalogMovement } from '@/db';
+import { MovementEditorModal } from '@/components/movement-editor-modal';
 import type { MuscleGroupName } from '@/db/constants';
 
 const ALL = 'All' as const;
@@ -23,18 +24,21 @@ type Filter = typeof ALL | MuscleGroupName;
  * is the identity list, not the measurement one.
  */
 export default function CatalogScreen() {
-	const [groups, setGroups] = useState<MuscleGroupName[]>([]);
+	const [groups, setGroups] = useState<{ id: number; name: MuscleGroupName }[]>([]);
 	const [filter, setFilter] = useState<Filter>(ALL);
 	const [query, setQuery] = useState('');
 	const [showArchived, setShowArchived] = useState(false);
 	const [rows, setRows] = useState<CatalogMovement[]>([]);
 	const [loaded, setLoaded] = useState(false);
+	const [refreshToken, setRefreshToken] = useState(0);
+	const [editorMovement, setEditorMovement] = useState<CatalogMovement | null>(null);
+	const [editorVisible, setEditorVisible] = useState(false);
 
 	useEffect(() => {
 		let cancelled = false;
 		listMuscleGroups(getDb())
 			.then((gs) => {
-				if (!cancelled) setGroups(gs.map((g) => g.name as MuscleGroupName));
+				if (!cancelled) setGroups(gs.map((g) => ({ id: g.id, name: g.name as MuscleGroupName })));
 			})
 			.catch((e) => console.error('Unable to load muscle groups', e));
 		return () => {
@@ -59,7 +63,7 @@ export default function CatalogScreen() {
 		return () => {
 			cancelled = true;
 		};
-	}, [filter, query, showArchived]);
+	}, [filter, query, showArchived, refreshToken]);
 
 	const empty = loaded && rows.length === 0;
 
@@ -75,9 +79,22 @@ export default function CatalogScreen() {
 				keyboardShouldPersistTaps="handled"
 				ListHeaderComponent={
 					<Box className="gap-4">
-						<Text size="5xl" bold>
-							Catalog
-						</Text>
+						<Box className="flex-row items-center justify-between">
+							<Text size="5xl" bold>
+								Catalog
+							</Text>
+							<Button
+								variant="outline"
+								size="icon"
+								onPress={() => {
+									setEditorMovement(null);
+									setEditorVisible(true);
+								}}
+								accessibilityLabel="Add movement"
+							>
+								<ButtonText>+</ButtonText>
+							</Button>
+						</Box>
 
 						<Input className="rounded-xl border-0 bg-card">
 							<InputField
@@ -95,7 +112,7 @@ export default function CatalogScreen() {
 							horizontal
 							showsHorizontalScrollIndicator={false}
 							contentContainerClassName="gap-2 py-1">
-							{([ALL, ...groups] as Filter[]).map((group) => {
+							{([ALL, ...groups.map((group) => group.name)] as Filter[]).map((group) => {
 								const selected = filter === group;
 								return (
 									<Button
@@ -129,24 +146,61 @@ export default function CatalogScreen() {
 						</Box>
 					) : null
 				}
-				renderItem={({ item }) => <MovementRow movement={item} muted={item.archived} />}
+				renderItem={({ item }) => (
+					<MovementRow
+						movement={item}
+						muted={item.archived}
+						onPress={() => {
+							setEditorMovement(item);
+							setEditorVisible(true);
+						}}
+					/>
+				)}
+			/>
+			<MovementEditorModal
+				key={`${editorVisible}-${editorMovement?.id ?? 'new'}`}
+				visible={editorVisible}
+				movement={editorMovement}
+				muscleGroups={groups}
+				onClose={() => setEditorVisible(false)}
+				onSaved={() => {
+					setEditorVisible(false);
+					setRefreshToken((value) => value + 1);
+				}}
+				onDuplicate={(duplicate) => {
+					setEditorVisible(false);
+					setEditorMovement(null);
+					setFilter(ALL);
+					setShowArchived((current) => current || duplicate.archived === 1);
+					setQuery(duplicate.name);
+				}}
 			/>
 		</SafeAreaView>
 	);
 }
 
-function MovementRow({ movement, muted }: { movement: CatalogMovement; muted: boolean }) {
+function MovementRow({
+	movement,
+	muted,
+	onPress,
+}: {
+	movement: CatalogMovement;
+	muted: boolean;
+	onPress: () => void;
+}) {
 	return (
-		<Box className={`flex-row items-center gap-2 rounded-xl bg-card px-4 py-4 ${muted ? 'opacity-50' : ''}`}>
-			<Text>{movement.name}</Text>
-			<Text size="sm" className="text-muted-foreground">
-				{movement.muscleGroup}
-			</Text>
-			{muted && (
-				<Text size="xs" bold className="ml-auto text-muted-foreground uppercase">
-					Archived
+		<Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`Edit ${movement.name}`}>
+			<Box className={`flex-row items-center gap-2 rounded-xl bg-card px-4 py-4 ${muted ? 'opacity-50' : ''}`}>
+				<Text>{movement.name}</Text>
+				<Text size="sm" className="text-muted-foreground">
+					{movement.muscleGroup}
 				</Text>
-			)}
-		</Box>
+				{muted && (
+					<Text size="xs" bold className="ml-auto text-muted-foreground uppercase">
+						Archived
+					</Text>
+				)}
+			</Box>
+		</Pressable>
 	);
 }
