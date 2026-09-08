@@ -21,18 +21,18 @@ describe('the differentiator — progress islands (Exercise × Gym)', () => {
 
 	test('the same island accumulates across sessions', async () => {
 		const gymA = await makeGym(db, 'Gym A');
-		const bench = await makeMovement(db, { name: 'Bench Press' });
+		const movement = await makeMovement(db, { name: 'Chest Press' });
 		const t0 = new Date(2026, 0, 12, 9).getTime(); // Monday, distinct timestamps
 
-		const first = await startSession(db, { gymId: gymA.id, movement: bench, equipmentClass: 'barbell', startedAt: t0 });
+		const first = await startSession(db, { gymId: gymA.id, movement, equipmentClass: 'barbell', startedAt: t0 });
 		await logSet(db, first.entry, { loadLb: 100, reps: 5, recordedAt: t0 });
 		await logSet(db, first.entry, { loadLb: 100, reps: 5, recordedAt: t0 + 60_000 });
 
-		const second = await startSession(db, { gymId: gymA.id, movement: bench, equipmentClass: 'barbell', startedAt: t0 + 120_000 });
+		const second = await startSession(db, { gymId: gymA.id, movement, equipmentClass: 'barbell', startedAt: t0 + 120_000 });
 		await logSet(db, second.entry, { loadLb: 105, reps: 5, recordedAt: t0 + 120_000 });
 		await completeSession(db, { sessionId: second.session.id, endedAt: t0 + 180_000 });
 
-		const sets = await island(gymA.id, bench.id, 'barbell');
+		const sets = await island(gymA.id, movement.id, 'barbell');
 		expect(sets).toHaveLength(3);
 		expect(sets.map((s) => s.loadLb)).toEqual([105, 100, 100]); // newest first
 	});
@@ -40,41 +40,41 @@ describe('the differentiator — progress islands (Exercise × Gym)', () => {
 	test('sessions at different Gyms stay separate islands', async () => {
 		const gymA = await makeGym(db, 'Gym A');
 		const gymB = await makeGym(db, 'Gym B');
-		const bench = await makeMovement(db, { name: 'Bench Press' });
+		const movement = await makeMovement(db, { name: 'Chest Press' });
 
-		await logTwoSets(db, await startSession(db, { gymId: gymA.id, movement: bench, equipmentClass: 'barbell' }));
-		await logTwoSets(db, await startSession(db, { gymId: gymB.id, movement: bench, equipmentClass: 'barbell' }));
+		await logTwoSets(db, await startSession(db, { gymId: gymA.id, movement, equipmentClass: 'barbell' }));
+		await logTwoSets(db, await startSession(db, { gymId: gymB.id, movement, equipmentClass: 'barbell' }));
 
-		expect(await island(gymA.id, bench.id, 'barbell')).toHaveLength(2);
-		expect(await island(gymB.id, bench.id, 'barbell')).toHaveLength(2);
+		expect(await island(gymA.id, movement.id, 'barbell')).toHaveLength(2);
+		expect(await island(gymB.id, movement.id, 'barbell')).toHaveLength(2);
 	});
 
 	test('same Gym, different Equipment class — separate islands', async () => {
 		const gymA = await makeGym(db, 'Gym A');
-		const bench = await makeMovement(db, { name: 'Bench Press' });
+		const movement = await makeMovement(db, { name: 'Chest Press' });
 
-		await logTwoSets(db, await startSession(db, { gymId: gymA.id, movement: bench, equipmentClass: 'barbell' }));
-		await logTwoSets(db, await startSession(db, { gymId: gymA.id, movement: bench, equipmentClass: 'dumbbell' }));
+		await logTwoSets(db, await startSession(db, { gymId: gymA.id, movement, equipmentClass: 'barbell' }));
+		await logTwoSets(db, await startSession(db, { gymId: gymA.id, movement, equipmentClass: 'dumbbell' }));
 
-		expect(await island(gymA.id, bench.id, 'barbell')).toHaveLength(2);
-		expect(await island(gymA.id, bench.id, 'dumbbell')).toHaveLength(2);
+		expect(await island(gymA.id, movement.id, 'barbell')).toHaveLength(2);
+		expect(await island(gymA.id, movement.id, 'dumbbell')).toHaveLength(2);
 
 		// Both islands stay one movement's history inside the gym.
-		const wholeMovement = await setsByIsland(db, { gymId: gymA.id, movementId: bench.id });
+		const wholeMovement = await setsByIsland(db, { gymId: gymA.id, movementId: movement.id });
 		expect(wholeMovement).toHaveLength(4);
 	});
 
 	test('islands never merge across Gyms, even un-scoped', async () => {
 		const gymA = await makeGym(db, 'Gym A');
 		const gymB = await makeGym(db, 'Gym B');
-		const bench = await makeMovement(db, { name: 'Bench Press' });
+		const movement = await makeMovement(db, { name: 'Chest Press' });
 
-		await logTwoSets(db, await startSession(db, { gymId: gymA.id, movement: bench, equipmentClass: 'barbell' }));
-		await logTwoSets(db, await startSession(db, { gymId: gymB.id, movement: bench, equipmentClass: 'barbell' }));
+		await logTwoSets(db, await startSession(db, { gymId: gymA.id, movement, equipmentClass: 'barbell' }));
+		await logTwoSets(db, await startSession(db, { gymId: gymB.id, movement, equipmentClass: 'barbell' }));
 
 		// Reads without a Gym never happen — the differentiator is structural.
-		const gymALevel = await setsByIsland(db, { gymId: gymA.id, movementId: bench.id });
-		const gymBLevel = await setsByIsland(db, { gymId: gymB.id, movementId: bench.id });
+		const gymALevel = await setsByIsland(db, { gymId: gymA.id, movementId: movement.id });
+		const gymBLevel = await setsByIsland(db, { gymId: gymB.id, movementId: movement.id });
 		expect(gymALevel).toHaveLength(2);
 		expect(gymBLevel).toHaveLength(2);
 	});

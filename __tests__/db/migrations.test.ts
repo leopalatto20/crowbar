@@ -34,22 +34,22 @@ describe('migration bootstrap', () => {
 
 		// The migrated schema actually serves the domain end-to-end.
 		const gym = await makeGym(db, 'Iron Hall');
-		const bench = await makeMovement(db, { name: 'Bench Press' });
-		const { entry } = await startSession(db, { gymId: gym.id, movement: bench });
+		const movement = await makeMovement(db, { name: 'Chest Press' });
+		const { entry } = await startSession(db, { gymId: gym.id, movement });
 		await logSet(db, entry, { loadLb: 100, reps: 5 });
-		const island = await setsByIsland(db, { gymId: gym.id, movementId: bench.id, equipmentClass: 'barbell' });
+		const island = await setsByIsland(db, { gymId: gym.id, movementId: movement.id, equipmentClass: 'barbell' });
 		expect(island).toHaveLength(1);
 		expect(island[0].loadLb).toBe(100);
 	});
 
 	test('re-applying migrations is a no-op that preserves data', async () => {
 		const db = await freshDb();
-		const bench = await makeMovement(db, { name: 'Bench Press' });
+		const movement = await makeMovement(db, { name: 'Chest Press' });
 
 		await migrateDb(db);
 
-		const still = (await db.select().from(movements).where(eq(movements.id, bench.id)))[0];
-		expect(still?.name).toBe('Bench Press');
+		const still = (await db.select().from(movements).where(eq(movements.id, movement.id)))[0];
+		expect(still?.name).toBe('Chest Press');
 		const groups = await listMuscleGroups(db);
 		expect(groups).toHaveLength(constants.MUSCLE_GROUPS.length); // seeds not duplicated
 	});

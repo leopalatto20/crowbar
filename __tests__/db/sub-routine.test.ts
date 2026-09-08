@@ -26,12 +26,12 @@ describe('sub-routine binding — Routine × Gym maps Movement → Equipment cla
 	test('first binding creates the sub-routine; re-binding updates it explicitly', async () => {
 		const gym = await makeGym(db, 'Gym A');
 		const routine = await makeRoutine(db, 'Push');
-		const bench = await makeMovement(db, { name: 'Bench Press' });
+		const movement = await makeMovement(db, { name: 'Chest Press' });
 
 		await setSubRoutineClass(db, {
 			routineId: routine.id,
 			gymId: gym.id,
-			movementId: bench.id,
+			movementId: movement.id,
 			equipmentClass: 'barbell',
 			position: 0,
 		});
@@ -45,7 +45,7 @@ describe('sub-routine binding — Routine × Gym maps Movement → Equipment cla
 		await setSubRoutineClass(db, {
 			routineId: routine.id,
 			gymId: gym.id,
-			movementId: bench.id,
+			movementId: movement.id,
 			equipmentClass: 'machine',
 			position: 0,
 		});
@@ -59,19 +59,19 @@ describe('sub-routine binding — Routine × Gym maps Movement → Equipment cla
 		const gymA = await makeGym(db, 'Gym A');
 		const gymB = await makeGym(db, 'Gym B');
 		const routine = await makeRoutine(db, 'Push');
-		const bench = await makeMovement(db, { name: 'Bench Press' });
+		const movement = await makeMovement(db, { name: 'Chest Press' });
 
 		await setSubRoutineClass(db, {
 			routineId: routine.id,
 			gymId: gymA.id,
-			movementId: bench.id,
+			movementId: movement.id,
 			equipmentClass: 'barbell',
 			position: 0,
 		});
 		await setSubRoutineClass(db, {
 			routineId: routine.id,
 			gymId: gymB.id,
-			movementId: bench.id,
+			movementId: movement.id,
 			equipmentClass: 'dumbbell',
 			position: 0,
 		});
@@ -83,19 +83,19 @@ describe('sub-routine binding — Routine × Gym maps Movement → Equipment cla
 	test('each Routine × Gym has exactly one sub-routine', async () => {
 		const gym = await makeGym(db, 'Gym A');
 		const routine = await makeRoutine(db, 'Push');
-		const bench = await makeMovement(db, { name: 'Bench Press' });
+		const movement = await makeMovement(db, { name: 'Chest Press' });
 
 		await setSubRoutineClass(db, {
 			routineId: routine.id,
 			gymId: gym.id,
-			movementId: bench.id,
+			movementId: movement.id,
 			equipmentClass: 'barbell',
 			position: 0,
 		});
 		await setSubRoutineClass(db, {
 			routineId: routine.id,
 			gymId: gym.id,
-			movementId: bench.id,
+			movementId: movement.id,
 			equipmentClass: 'machine',
 			position: 0,
 		});

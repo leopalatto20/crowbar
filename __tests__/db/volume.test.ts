@@ -29,19 +29,19 @@ describe('weekly volume per muscle group', () => {
 	test('counts direct sets per primary group over the calendar week, global across gyms', async () => {
 		const gymA = await makeGym(db, 'Gym A');
 		const gymB = await makeGym(db, 'Gym B');
-		const bench = await makeMovement(db, { name: 'Bench Press', muscleGroup: 'Chest' });
-		const deadlift = await makeMovement(db, { name: 'Deadlift', muscleGroup: 'Back' });
+		const movement = await makeMovement(db, { name: 'Chest Press', muscleGroup: 'Chest' });
+		const hipHinge = await makeMovement(db, { name: 'Hip Hinge', muscleGroup: 'Back' });
 
 		// Chest: 2 sets at Gym A, 2 at Gym B → 4 globally.
-		const a = await startSession(db, { gymId: gymA.id, movement: bench, startedAt: wednesday });
+		const a = await startSession(db, { gymId: gymA.id, movement, startedAt: wednesday });
 		await logSet(db, a.entry, { loadLb: 100, reps: 5, recordedAt: wednesday });
 		await logSet(db, a.entry, { loadLb: 105, reps: 5, recordedAt: wednesday });
-		const b = await startSession(db, { gymId: gymB.id, movement: bench, startedAt: wednesday });
+		const b = await startSession(db, { gymId: gymB.id, movement, startedAt: wednesday });
 		await logSet(db, b.entry, { loadLb: 100, reps: 5, recordedAt: wednesday });
 		await logSet(db, b.entry, { loadLb: 105, reps: 5, recordedAt: wednesday });
 
 		// Back: 1 set elsewhere.
-		const back = await startSession(db, { gymId: gymB.id, movement: deadlift, startedAt: wednesday });
+		const back = await startSession(db, { gymId: gymB.id, movement: hipHinge, startedAt: wednesday });
 		await logSet(db, back.entry, { loadLb: 200, reps: 5, recordedAt: wednesday });
 
 		const volume = await volumeByGroup();
@@ -50,16 +50,16 @@ describe('weekly volume per muscle group', () => {
 
 	test('only sets inside the calendar week count (Mon 00:00 → next Mon 00:00)', async () => {
 		const gym = await makeGym(db, 'Gym A');
-		const bench = await makeMovement(db, { name: 'Bench Press' });
+		const movement = await makeMovement(db, { name: 'Chest Press' });
 		const { start, end } = weekBounds(wednesday);
 
-		const inWeek = await startSession(db, { gymId: gym.id, movement: bench, startedAt: wednesday });
+		const inWeek = await startSession(db, { gymId: gym.id, movement, startedAt: wednesday });
 		await logSet(db, inWeek.entry, { loadLb: 100, reps: 5, recordedAt: wednesday });
 
-		const beforeWeek = await startSession(db, { gymId: gym.id, movement: bench, startedAt: start });
+		const beforeWeek = await startSession(db, { gymId: gym.id, movement, startedAt: start });
 		await logSet(db, beforeWeek.entry, { loadLb: 100, reps: 5, recordedAt: start - 86_400_000 }); // previous Sunday
 
-		const atEnd = await startSession(db, { gymId: gym.id, movement: bench, startedAt: end });
+		const atEnd = await startSession(db, { gymId: gym.id, movement, startedAt: end });
 		await logSet(db, atEnd.entry, { loadLb: 100, reps: 5, recordedAt: end }); // exactly next Monday 00:00
 
 		expect(await volumeByGroup()).toEqual({ Chest: 1 });
@@ -67,13 +67,13 @@ describe('weekly volume per muscle group', () => {
 
 	test('skipped sessions entries never count', async () => {
 		const gym = await makeGym(db, 'Gym A');
-		const bench = await makeMovement(db, { name: 'Bench Press' });
-		const started = await startSession(db, { gymId: gym.id, movement: bench, startedAt: wednesday });
+		const movement = await makeMovement(db, { name: 'Chest Press' });
+		const started = await startSession(db, { gymId: gym.id, movement, startedAt: wednesday });
 
 		const skipped = await appendSessionEntry(db, {
 			sessionId: started.session.id,
 			position: 1,
-			movementId: bench.id,
+			movementId: movement.id,
 			equipmentClass: 'barbell',
 			skipped: true,
 		});
@@ -85,10 +85,10 @@ describe('weekly volume per muscle group', () => {
 
 	test('the count is what the group landmark compares against (uniform 4–8 by default)', async () => {
 		const gym = await makeGym(db, 'Gym A');
-		const bench = await makeMovement(db, { name: 'Bench Press', muscleGroup: 'Chest' });
+		const movement = await makeMovement(db, { name: 'Chest Press', muscleGroup: 'Chest' });
 
 		for (let i = 0; i < 3; i++) {
-			await logSet(db, (await startSession(db, { gymId: gym.id, movement: bench, startedAt: wednesday })).entry, {
+			await logSet(db, (await startSession(db, { gymId: gym.id, movement, startedAt: wednesday })).entry, {
 				loadLb: 100 + i,
 				reps: 5,
 				recordedAt: wednesday,

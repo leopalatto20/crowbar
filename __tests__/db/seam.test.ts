@@ -30,8 +30,8 @@ describe('the getDb() test seam', () => {
 		setDbFactory(() => db);
 
 		const gym = await createGym(getDb(), { name: 'Iron Hall' });
-		const bench = await makeMovement(getDb(), { name: 'Bench Press' });
-		const { entry } = await startSessionFixture(getDb(), { gymId: gym.id, movement: bench });
+		const movement = await makeMovement(getDb(), { name: 'Chest Press' });
+		const { entry } = await startSessionFixture(getDb(), { gymId: gym.id, movement });
 		await logSet(getDb(), entry, { loadLb: 100, reps: 5 });
 
 		expect((await listGyms(getDb())).map((g) => g.name)).toContain('Iron Hall');
@@ -52,8 +52,8 @@ describe('the getDb() test seam', () => {
 		const db = await freshDb();
 		setDbFactory(() => db);
 		const gym = await makeGym(getDb(), 'Iron Hall');
-		const bench = await makeMovement(getDb(), { name: 'Bench Press' });
-		const { entry } = await startSessionFixture(getDb(), { gymId: gym.id, movement: bench });
+		const movement = await makeMovement(getDb(), { name: 'Chest Press' });
+		const { entry } = await startSessionFixture(getDb(), { gymId: gym.id, movement });
 		await logSet(getDb(), entry, { loadLb: 100, reps: 5 });
 
 		// …then prove no on-device file was ever opened anywhere under the repo.

@@ -17,10 +17,10 @@ describe('truthfulness — recording scale and canonical loads', () => {
 	});
 
 	async function oneSetSession(gymId: number, set: { loadLb: number; reps?: number; proximity?: { scale: string; value: number } }) {
-		const bench = await makeMovement(db, { name: 'Bench Press' });
-		const started = await startSession(db, { gymId, movement: bench });
+		const movement = await makeMovement(db, { name: 'Chest Press' });
+		const started = await startSession(db, { gymId, movement });
 		await logSet(db, started.entry, set);
-		return setsByIsland(db, { gymId, movementId: bench.id, equipmentClass: 'barbell' });
+		return setsByIsland(db, { gymId, movementId: movement.id, equipmentClass: 'barbell' });
 	}
 
 	test('proximity values carry the Recording scale they were written in', async () => {
@@ -33,15 +33,15 @@ describe('truthfulness — recording scale and canonical loads', () => {
 
 	test('mixing Recording scales within one island keeps each value truthful', async () => {
 		const gym = await makeGym(db, 'Gym A');
-		const bench = await makeMovement(db, { name: 'Bench Press' });
+		const movement = await makeMovement(db, { name: 'Chest Press' });
 
-		const first = await startSession(db, { gymId: gym.id, movement: bench });
+		const first = await startSession(db, { gymId: gym.id, movement });
 		await logSet(db, first.entry, { loadLb: 100, proximity: { scale: 'rpe', value: 2 } });
 
-		const second = await startSession(db, { gymId: gym.id, movement: bench });
+		const second = await startSession(db, { gymId: gym.id, movement });
 		await logSet(db, second.entry, { loadLb: 100, proximity: { scale: 'rir', value: 3 } });
 
-		const sets = await setsByIsland(db, { gymId: gym.id, movementId: bench.id, equipmentClass: 'barbell' });
+		const sets = await setsByIsland(db, { gymId: gym.id, movementId: movement.id, equipmentClass: 'barbell' });
 		expect(sets.map((s) => ({ scale: s.proximityScale, value: s.proximityValue }))).toEqual(
 			expect.arrayContaining([
 				{ scale: 'rpe', value: 2 },
@@ -61,8 +61,8 @@ describe('truthfulness — recording scale and canonical loads', () => {
 
 	test('loads persist canonically in pounds, whatever the movement unit', async () => {
 		const gym = await makeGym(db, 'Gym A');
-		const inKg = await makeMovement(db, { name: 'Bench Press (kg)', unit: 'kg' });
-		const inLb = await makeMovement(db, { name: 'Bench Press (lb)', unit: 'lb' });
+		const inKg = await makeMovement(db, { name: 'Chest Press (kg)', unit: 'kg' });
+		const inLb = await makeMovement(db, { name: 'Chest Press (lb)', unit: 'lb' });
 
 		const kgSession = await startSession(db, { gymId: gym.id, movement: inKg });
 		const kgSet = await logSet(db, kgSession.entry, { loadLb: 100, reps: 5 });
