@@ -64,14 +64,17 @@ export default function CatalogScreen() {
 	const empty = loaded && rows.length === 0;
 
 	return (
-		<SafeAreaView className="flex-1" edges={['top', 'left', 'right', 'bottom']}>
+		<SafeAreaView
+			className="flex-1 web:max-w-[800px] web:mx-auto"
+			edges={['top', 'left', 'right', 'bottom']}
+		>
 			<FlatList
 				contentContainerClassName="gap-4 px-4 pb-28 pt-4"
 				data={rows}
 				keyExtractor={(r) => String(r.id)}
 				keyboardShouldPersistTaps="handled"
 				ListHeaderComponent={
-					<Box className="mb-2 gap-4">
+					<Box className="gap-4">
 						<Text size="5xl" bold>
 							Catalog
 						</Text>
@@ -121,7 +124,7 @@ export default function CatalogScreen() {
 				}
 				ListEmptyComponent={
 					empty ? (
-						<Box className="items-center rounded-xl bg-card py-8">
+						<Box className="items-center rounded-xl bg-card px-4 py-8">
 							<Text className="text-muted-foreground">No movements match</Text>
 						</Box>
 					) : null
@@ -134,15 +137,13 @@ export default function CatalogScreen() {
 
 function MovementRow({ movement, muted }: { movement: CatalogMovement; muted: boolean }) {
 	return (
-		<Box className={`mb-2 flex-row items-center gap-2 rounded-xl bg-card px-4 py-4 ${muted ? 'opacity-50' : ''}`}>
+		<Box className={`flex-row items-center gap-2 rounded-xl bg-card px-4 py-4 ${muted ? 'opacity-50' : ''}`}>
 			<Text>{movement.name}</Text>
-			<Box className="rounded-full bg-background/0 px-2 py-1">
-				<Text size="sm" bold className={muted ? 'text-muted-foreground' : 'text-foreground'}>
-					{movement.muscleGroup}
-				</Text>
-			</Box>
+			<Text size="sm" className="text-muted-foreground">
+				{movement.muscleGroup}
+			</Text>
 			{muted && (
-				<Text size="sm" bold className="ml-auto text-muted-foreground uppercase">
+				<Text size="xs" bold className="ml-auto text-muted-foreground uppercase">
 					Archived
 				</Text>
 			)}
