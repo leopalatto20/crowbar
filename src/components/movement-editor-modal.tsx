@@ -149,8 +149,9 @@ export function MovementEditorModal({
 
 	return (
 		<Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-			<SafeAreaView className="flex-1 justify-end bg-background/50" edges={['top', 'bottom']}>
-				<Box className="max-h-[92%] rounded-t-xl bg-background px-4 pb-4 pt-4 web:max-w-[800px] web:w-full web:mx-auto">
+			<Box className="flex-1 justify-end bg-background/50">
+				<SafeAreaView className="bg-background" edges={['bottom']}>
+					<Box className="max-h-[92%] rounded-t-xl bg-background px-4 pb-4 pt-4 web:max-w-[800px] web:w-full web:mx-auto">
 					<ScrollView keyboardShouldPersistTaps="handled" contentContainerClassName="gap-4">
 						<Box className="flex-row items-center justify-between">
 							<Text size="2xl" className="font-semibold">{editing ? 'Edit movement' : 'New movement'}</Text>
@@ -161,7 +162,7 @@ export function MovementEditorModal({
 
 						<Box className="gap-2">
 							<Text size="sm" className="font-medium">Name</Text>
-							<Input className={error && !name.trim() ? 'border-destructive' : ''}>
+							<Input className={(error && !name.trim()) || exactDuplicate ? 'border-destructive' : ''}>
 								<InputField
 									value={name}
 									onChangeText={setName}
@@ -171,8 +172,8 @@ export function MovementEditorModal({
 								/>
 							</Input>
 							{exactDuplicate && name.trim() && (
-								<Box className="gap-1 rounded-xl bg-destructive/10 px-3 py-2">
-									<Text className="text-destructive">A movement named “{exactDuplicate.name}” already exists.</Text>
+								<Box className="gap-1 rounded-xl bg-muted px-3 py-2">
+									<Text>A movement named “{exactDuplicate.name}” already exists.</Text>
 									<Button variant="ghost" size="sm" className="self-start px-0" onPress={() => onDuplicate(exactDuplicate)}>
 										<ButtonText className="underline">Open existing movement</ButtonText>
 									</Button>
@@ -222,7 +223,6 @@ export function MovementEditorModal({
 									onChangeText={setInstructions}
 									placeholder="Optional notes"
 									multiline
-									textAlignVertical="top"
 									className="py-2"
 								/>
 							</Input>
@@ -244,8 +244,9 @@ export function MovementEditorModal({
 							</Box>
 						)}
 					</ScrollView>
-				</Box>
-			</SafeAreaView>
+					</Box>
+				</SafeAreaView>
+			</Box>
 		</Modal>
 	);
 }
