@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-08T17:58:21Z",
+  "generatedAt": "2026-09-09T02:31:25Z",
   "title": "Design System: Crowbar",
   "extensions": {
     "colorMeta": {
@@ -31,101 +31,105 @@
       "label": { "displayName": "Label", "purpose": "Chips, buttons, secondary rows. Machine-label variant: 12px / 700 / uppercase status tags only." }
     },
     "shadows": [
-      { "name": "field-cue", "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)", "purpose": "The only shadow in the system. Sits on inputs and outline buttons as a tactile cue that the element receives input; never an ambient glow." }
+      { "name": "field-cue", "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)", "purpose": "The only shadow in the system. Sits on inputs and outline buttons as a tactile cue for interactive surfaces." }
     ],
     "motion": [
-      { "name": "fill-alpha", "value": "150ms ease", "purpose": "Hover/active fill shifts (primary 90%, secondary 80%). Alpha fades, never layout or transforms." },
-      { "name": "stroke-shift", "value": "150ms ease", "purpose": "Input border color shift to ring on focus." },
-      { "name": "press-fade", "value": "120ms ease", "purpose": "Navigation/tab pressed opacity drop to 70%." }
+      { "name": "fill-alpha", "value": "state-dependent; no declared transition", "purpose": "Buttons shift primary fills to 90% and secondary fills to 80% on hover/press." },
+      { "name": "stroke-shift", "value": "Tailwind transition-[color,box-shadow]", "purpose": "Inputs shift their border and focus ring when focused." },
+      { "name": "press-fade", "value": "immediate opacity 0.7", "purpose": "Web navigation rows visibly fade while pressed." }
     ],
-    "breakpoints": []
+    "breakpoints": [],
+    "notes": [
+      "The global role tokens support light and dark modes, but src/app/_layout.tsx currently forces the Gluestack provider to dark mode.",
+      "Web navigation currently uses legacy theme constants rather than global.css role tokens.",
+      "The web navigation outer radius is 32px and its active tab radius is 16px; these are existing chrome exceptions to the new-surface radius ladder."
+    ]
   },
   "components": [
     {
       "name": "Primary Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "The one decisive action surface per view — Anodized Black (Warm Ivory in dark), 6px radius.",
+      "description": "The decisive action surface: 36px high, 6px radius, primary fill, and inverted foreground.",
       "html": "<button class=\"ds-btn-primary\">Log Session</button>",
-      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 16px; background: var(--color-primary, #171717); color: var(--color-primary-foreground, #FAFAFA); font-family: system-ui, -apple-system, sans-serif; font-size: 14px; line-height: 1; border: none; border-radius: 6px; cursor: pointer; transition: background 150ms ease; } .ds-btn-primary:hover { background: rgba(23, 23, 23, 0.9); } .ds-btn-primary:active { background: rgba(23, 23, 23, 0.9); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 2px #FFFFFF, 0 0 0 4px var(--color-ring, #D4D4D4); } @media (prefers-color-scheme: dark) { .ds-btn-primary { background: var(--color-primary, #FFF5F5); color: var(--color-primary-foreground, #171717); } .ds-btn-primary:hover, .ds-btn-primary:active { background: rgba(255, 245, 245, 0.9); } }"
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; padding: 8px 16px; background: #171717; color: #FAFAFA; font: 500 14px/20px system-ui, -apple-system, sans-serif; border: 0; border-radius: 6px; cursor: pointer; } .ds-btn-primary:hover, .ds-btn-primary:active { background: rgba(23,23,23,.9); } .ds-btn-primary:focus-visible { outline: 2px solid #D4D4D4; outline-offset: 2px; } @media (prefers-color-scheme: dark) { .ds-btn-primary { background: #FFF5F5; color: #171717; } .ds-btn-primary:hover, .ds-btn-primary:active { background: rgba(255,245,245,.9); } }"
     },
     {
       "name": "Outline Button",
       "kind": "button",
       "refersTo": "button-outline",
-      "description": "Secondary choice: 1px Burr Line stroke, transparent ground, fill shifts on hover.",
+      "description": "Secondary choice with Burr Line stroke, Field Cue shadow, and accent fill on interaction.",
       "html": "<button class=\"ds-btn-outline\">Filter</button>",
-      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 16px; background: transparent; color: var(--color-foreground, #0A0A0A); font-family: system-ui, -apple-system, sans-serif; font-size: 14px; line-height: 1; border: 1px solid var(--color-border, #E5E5E5); border-radius: 6px; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); cursor: pointer; transition: background 150ms ease, color 150ms ease; } .ds-btn-outline:hover { background: var(--color-accent, #F7F7F7); color: var(--color-accent-foreground, #343434); } .ds-btn-outline:active { background: var(--color-accent, #F7F7F7); } .ds-btn-outline:focus-visible { outline: none; box-shadow: 0 0 0 2px #FFFFFF, 0 0 0 4px var(--color-ring, #D4D4D4); } @media (prefers-color-scheme: dark) { .ds-btn-outline { border-color: var(--color-border, #2E2E2E); color: var(--color-foreground, #FAFAFA); box-shadow: none; } .ds-btn-outline:hover { background: var(--color-accent, #262626); color: var(--color-accent-foreground, #FAFAFA); } }"
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 36px; padding: 8px 16px; background: #FFFFFF; color: #0A0A0A; font: 500 14px/20px system-ui, -apple-system, sans-serif; border: 1px solid #E5E5E5; border-radius: 6px; box-shadow: 0 1px 2px 0 rgb(0 0 0 / .05); cursor: pointer; } .ds-btn-outline:hover, .ds-btn-outline:active { background: #F7F7F7; color: #343434; } .ds-btn-outline:focus-visible { outline: 2px solid #D4D4D4; outline-offset: 2px; } @media (prefers-color-scheme: dark) { .ds-btn-outline { background: rgba(46,46,46,.05); border-color: rgba(46,46,46,.9); color: #FAFAFA; } .ds-btn-outline:hover, .ds-btn-outline:active { background: rgba(46,46,46,.1); color: #FAFAFA; } }"
     },
     {
-      "name": "Filter Chip (selected / unselected)",
+      "name": "Filter Chip",
       "kind": "chip",
       "refersTo": "chip-selected",
-      "description": "Full-radius filter pills. Selected = the solid primary surface; unselected = hairline outline that fills on hover.",
-      "html": "<div style=\"display:flex;gap:8px\"><button class=\"ds-chip ds-chip-selected\">Chest</button><button class=\"ds-chip\">Back</button><button class=\"ds-chip\">Legs</button></div>",
-      "css": ".ds-chip { display: inline-flex; align-items: center; height: 28px; padding: 0 12px; font-family: system-ui, -apple-system, sans-serif; font-size: 12px; font-weight: 500; border: 1px solid var(--color-border, #E5E5E5); border-radius: 9999px; background: transparent; color: var(--color-foreground, #0A0A0A); cursor: pointer; transition: background 150ms ease, color 150ms ease; } .ds-chip:hover { background: var(--color-accent, #F7F7F7); } .ds-chip-selected { background: var(--color-primary, #171717); border-color: var(--color-primary, #171717); color: var(--color-primary-foreground, #FAFAFA); } .ds-chip-selected:hover { background: var(--color-primary, #171717); opacity: 0.9; } @media (prefers-color-scheme: dark) { .ds-chip { border-color: var(--color-border, #2E2E2E); color: var(--color-foreground, #FAFAFA); } .ds-chip-selected { background: var(--color-primary, #FFF5F5); border-color: var(--color-primary, #FFF5F5); color: var(--color-primary-foreground, #171717); } }"
+      "description": "Compact 32px full-radius filter control; selected is primary, unselected is outlined.",
+      "html": "<div class=\"ds-chip-row\"><button class=\"ds-chip ds-chip-selected\">Chest</button><button class=\"ds-chip\">Back</button></div>",
+      "css": ".ds-chip-row { display: flex; gap: 8px; } .ds-chip { display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; color: #0A0A0A; font: 500 12px/16px system-ui, -apple-system, sans-serif; background: #FFFFFF; border: 1px solid #E5E5E5; border-radius: 9999px; cursor: pointer; } .ds-chip:hover { background: #F7F7F7; } .ds-chip-selected { color: #FAFAFA; background: #171717; border-color: #171717; } .ds-chip-selected:hover { background: rgba(23,23,23,.9); } @media (prefers-color-scheme: dark) { .ds-chip { color: #FAFAFA; background: transparent; border-color: #2E2E2E; } .ds-chip:hover { background: #262626; } .ds-chip-selected { color: #171717; background: #FFF5F5; border-color: #FFF5F5; } }"
     },
     {
-      "name": "Search Input",
+      "name": "Catalog Search Input",
       "kind": "input",
       "refersTo": "input",
-      "description": "Catalog search: recessed control — 12px radius, card fill, no stroke. The resting field variant carries the Field Cue shadow.",
-      "html": "<div class=\"ds-input-wrap\"><svg class=\"ds-input-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><line x1=\"21\" y1=\"21\" x2=\"16.65\" y2=\"16.65\"/></svg><input class=\"ds-input\" type=\"text\" placeholder=\"Search movements\"/></div>",
-      "css": ".ds-input-wrap { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; background: var(--color-card, #FFFFFF); border: none; border-radius: 12px; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); transition: box-shadow 150ms ease, border-color 150ms ease; } .ds-input-wrap:focus-within { box-shadow: 0 0 0 2px var(--color-ring, #D4D4D4); } .ds-input-icon { width: 16px; height: 16px; color: var(--color-muted-foreground, #737373); flex: none; } .ds-input { flex: 1; height: 100%; border: none; outline: none; background: transparent; font-family: system-ui, -apple-system, sans-serif; font-size: 14px; color: var(--color-foreground, #0A0A0A); } .ds-input::placeholder { color: var(--color-muted-foreground, #737373); } @media (prefers-color-scheme: dark) { .ds-input-wrap { background: var(--color-card, #171717); box-shadow: none; } .ds-input { color: var(--color-foreground, #FAFAFA); } }"
+      "description": "Recessed catalog field: card fill, no border, 12px radius, and a search icon in the actual screen.",
+      "html": "<label class=\"ds-search\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.35-4.35\"/></svg><input type=\"search\" placeholder=\"Search movements\"/></label>",
+      "css": ".ds-search { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px; background: #FFFFFF; border: 0; border-radius: 12px; box-shadow: 0 1px 2px 0 rgb(0 0 0 / .05); } .ds-search svg { width: 16px; height: 16px; fill: none; stroke: #737373; stroke-width: 2; } .ds-search input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: #0A0A0A; font: 400 14px/20px system-ui, -apple-system, sans-serif; } .ds-search input::placeholder { color: #737373; } .ds-search:focus-within { outline: 2px solid #D4D4D4; outline-offset: 0; } @media (prefers-color-scheme: dark) { .ds-search { background: #171717; } .ds-search input { color: #FAFAFA; } .ds-search input::placeholder { color: #A1A1A1; } }"
     },
     {
       "name": "Catalog Row",
       "kind": "card",
       "refersTo": "card",
-      "description": "The ledger's atomic unit: a borderless 12px-radius plate with movement name, quiet muscle-group tag, and optional machine label.",
+      "description": "The ledger's atomic unit: borderless 12px plate, movement name, muted muscle-group tag, and optional archive label.",
       "html": "<div class=\"ds-row\"><span class=\"ds-row-name\">Bench Press</span><span class=\"ds-tag\">Chest</span><span class=\"ds-row-status\">Archived</span></div>",
-      "css": ".ds-row { display: flex; align-items: center; gap: 8px; padding: 16px; background: var(--color-card, #FFFFFF); border-radius: 12px; } .ds-row-name { font-family: system-ui, -apple-system, sans-serif; font-size: 16px; line-height: 24px; color: var(--color-foreground, #0A0A0A); } .ds-tag { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; font-family: system-ui, -apple-system, sans-serif; font-size: 12px; font-weight: 700; border-radius: 9999px; color: var(--color-foreground, #0A0A0A); background: transparent; } .ds-row-status { margin-left: auto; font-family: system-ui, -apple-system, sans-serif; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-muted-foreground, #737373); } @media (prefers-color-scheme: dark) { .ds-row { background: var(--color-card, #171717); } .ds-row-name { color: var(--color-foreground, #FAFAFA); } .ds-tag { color: var(--color-foreground, #FAFAFA); } }"
+      "css": ".ds-row { display: flex; align-items: center; gap: 8px; padding: 16px; background: #FFFFFF; border-radius: 12px; } .ds-row-name { color: #0A0A0A; font: 400 16px/24px system-ui, -apple-system, sans-serif; } .ds-tag { display: inline-flex; align-items: center; min-height: 24px; padding: 0 8px; color: #0A0A0A; background: #F5F5F5; border-radius: 9999px; font: 400 14px/20px system-ui, -apple-system, sans-serif; } .ds-row-status { margin-left: auto; color: #737373; font: 700 12px/16px system-ui, -apple-system, sans-serif; letter-spacing: .05em; text-transform: uppercase; } @media (prefers-color-scheme: dark) { .ds-row { background: #171717; } .ds-row-name { color: #FAFAFA; } .ds-tag { color: #FAFAFA; background: #262626; } .ds-row-status { color: #A1A1A1; } }"
     },
     {
-      "name": "Floating Nav Pill",
+      "name": "Floating Navigation",
       "kind": "nav",
       "refersTo": "nav-pill",
-      "description": "Web chrome: a floating full-radius pill with the brand pinned left and an active-tab plate inside. (Currently built from legacy Colors constants.)",
-      "html": "<div style=\"padding:16px;display:flex;justify-content:center\"><nav class=\"ds-nav\"><span class=\"ds-nav-brand\">Crowbar</span><button class=\"ds-nav-tab ds-nav-tab-active\">Catalog</button></nav></div>",
-      "css": ".ds-nav { display: flex; align-items: center; gap: 8px; max-width: 800px; width: 100%; padding: 8px 32px; background: #F0F0F3; border-radius: 9999px; } .ds-nav-brand { margin-right: auto; font-family: system-ui, -apple-system, sans-serif; font-size: 14px; font-weight: 700; color: #0A0A0A; } .ds-nav-tab { display: inline-flex; align-items: center; height: 28px; padding: 0 16px; font-family: system-ui, -apple-system, sans-serif; font-size: 14px; border: none; border-radius: 24px; background: transparent; color: #60646C; cursor: pointer; transition: opacity 120ms ease, background 150ms ease; } .ds-nav-tab:hover { opacity: 0.7; } .ds-nav-tab-active { background: #E0E1E6; color: #0A0A0A; } @media (prefers-color-scheme: dark) { .ds-nav { background: #212225; } .ds-nav-brand { color: #FFFFFF; } .ds-nav-tab { color: #B0B4BA; } .ds-nav-tab-active { background: #2E3135; color: #FFFFFF; } }"
+      "description": "Existing web chrome: legacy-colored floating navigation with 32px outer radius, 16px active tab radius, and pressed opacity.",
+      "html": "<nav class=\"ds-nav\"><strong class=\"ds-nav-brand\">Crowbar</strong><button class=\"ds-nav-tab ds-nav-tab-active\">Catalog</button></nav>",
+      "css": ".ds-nav { display: flex; align-items: center; gap: 8px; width: min(100%, 800px); padding: 8px 32px; background: #F0F0F3; border-radius: 32px; } .ds-nav-brand { margin-right: auto; color: #0A0A0A; font: 700 14px/20px system-ui, -apple-system, sans-serif; } .ds-nav-tab { min-height: 32px; padding: 4px 16px; color: #60646C; background: transparent; border: 0; border-radius: 16px; font: 400 14px/20px system-ui, -apple-system, sans-serif; } .ds-nav-tab:hover { opacity: .7; } .ds-nav-tab-active { color: #0A0A0A; background: #E0E1E6; } @media (prefers-color-scheme: dark) { .ds-nav { background: #212225; } .ds-nav-brand { color: #FFFFFF; } .ds-nav-tab { color: #B0B4BA; } .ds-nav-tab-active { color: #FFFFFF; background: #2E3135; } }"
     }
   ],
   "narrative": {
     "northStar": "The Strength Ledger",
-    "overview": "Crowbar is a professional instrument for recording training, not a fitness app that wants to be liked. The interface behaves like a good training ledger: dense, legible, monotone, and completely uninterested in decoration. Every screen is a column of facts — movements, sets, landmarks — and the chrome around those facts exists only to keep them scannable at a glance between sets.\n\nThe material language is machined metal and paper. Warm neutrals run from Bare Steel white to Anodized Black; the only decisive surface is the near-black (or warm ivory, in dark mode) action color, which appears exactly when something is selected or about to be committed. Radii are kept to a three-step ladder, spacing to a 4px scale, and depth is conveyed by tonal layering alone — the system contains one faint functional shadow and uses it only on interactive fields.\n\nDark mode is a first-class citizen, shipped from the same role tokens (primary, card, muted…) rather than a sepia re-tint. The palette flips into a warm dark: ivory action surfaces on an anodized near-black ground.",
+    "overview": "Crowbar is a professional instrument for recording training, not a fitness app that wants to be liked. The interface behaves like a good training ledger: dense, legible, monotone, and uninterested in decoration. Every screen is a column of facts — movements, sets, landmarks — and the chrome exists only to keep them scannable at a glance between sets.\n\nThe material language is machined metal and paper. Warm neutrals run from Bare Steel white to Anodized Black; the only decisive surface is the near-black (or warm ivory, in dark mode) action color, appearing when something is selected or committed. Radii follow a small ladder, spacing follows a 4px scale, and depth is primarily tonal. The implementation supports light and dark role tokens, although the current app root forces the dark provider mode while automatic appearance remains declared in app configuration.",
     "keyCharacteristics": [
-      "Monochrome warm neutrals; single decisive action color that inverts between modes",
-      "Flat-by-default surfaces; depth through tonal layering, not shadows",
-      "System typography only — SF Pro / Roboto; no downloaded fonts",
-      "Three-step radius ladder (6px controls / 12px containers / full pills)",
+      "Monochrome warm neutrals; one decisive action surface",
+      "Flat-by-default surfaces; depth through tonal layering",
+      "System typography only — SF Pro / Roboto / system UI",
+      "6px controls, 12px containers, full-radius pills",
       "4px spacing scale, 16px gutters, max content width 800px",
-      "Machine-label typography (uppercase, bold, muted) reserved for status tags"
+      "Uppercase machine labels reserved for status tags"
     ],
     "rules": [
-      { "name": "The One-Surface Rule", "body": "The primary color (Anodized Black or Warm Ivory) appears on at most one element per view. Its rarity is the point: when the eye finds a solid dark shape, it knows that is the decision.", "section": "colors" },
-      { "name": "The System-Font Rule", "body": "No downloaded or custom fonts, ever. SF Pro and Roboto are the identity; a distinct typeface would make the ledger feel like a branded artifact instead of an instrument.", "section": "typography" },
-      { "name": "The Machine-Label Rule", "body": "Uppercase bold microcopy (12px, 700) is the only sanctioned ornament. It appears solely as a status tag, muted, at the end of a row — never as body text, never in the primary color.", "section": "typography" },
-      { "name": "The 800-Rule", "body": "No content column ever exceeds 800px, even on wide desktop web. The ledger stays a column; whitespace goes to the sides, never inside.", "section": "layout" },
-      { "name": "The Flat-By-Default Rule", "body": "At rest, nothing casts a shadow. Elevation is earned by interactivity: fields get the Field Cue, hover and pressed states shift fill alpha (90% primary, 80% secondary), and web focus is a 2px ring — never a drop shadow.", "section": "elevation" },
-      { "name": "The No-Hybrid-Radius Rule", "body": "A radius must be one of the three steps. 4px squares and 8–10px compromises read as a different (and softer) system; they are not in the language.", "section": "shapes" }
+      { "name": "The One-Surface Rule", "body": "The primary color appears on at most one decisive element per view. Its rarity tells the user where commitment happens.", "section": "colors" },
+      { "name": "The System-Font Rule", "body": "Do not load custom fonts. SF Pro, Roboto, and system UI are the identity.", "section": "typography" },
+      { "name": "The 800-Rule", "body": "No web content column exceeds 800px; extra width stays as side whitespace.", "section": "layout" },
+      { "name": "The Flat-By-Default Rule", "body": "Do not add resting drop shadows or glows. State changes use fill alpha, border shifts, focus rings, and pressed opacity rather than transforms.", "section": "elevation" },
+      { "name": "The No-Hybrid-Radius Rule", "body": "New controls and containers must use only the established radius steps; do not introduce intermediate 4px or 8–10px radii.", "section": "shapes" }
     ],
     "dos": [
-      "Do build structure from the neutral ladder — ground, plate, mill finish — and treat the primary surface as the single decision point per view.",
-      "Do use the fixed spacing ladder (4/8/16/24/32/64px) and the 16px gutter rhythm; the ledger's calm depends on predictable rhythm.",
-      "Do keep radii on the three-step ladder: 6px controls, 12px containers, full pills.",
-      "Do support both modes from the same role tokens; a new screen must look right in Warm Ivory dark just by virtue of using card, muted, and foreground roles.",
-      "Do keep interactive elements at min-height 36px and body text at 16px — density is the product.",
-      "Do reserve uppercase bold microcopy for status machine labels like 'Archived'.",
-      "Do cap content columns at 800px."
+      "Do build new surfaces from the global role tokens in src/global.css.",
+      "Do use the 4/8/16/24/32/64px spacing rhythm and 16px gutters.",
+      "Do keep new controls at 6px, new containers at 12px, and new pills at full radius.",
+      "Do support both token modes, and verify both light and dark class states when changing UI.",
+      "Do keep important interactive targets at least 36px high.",
+      "Do reserve uppercase bold microcopy for muted status labels.",
+      "Do cap web content columns at 800px."
     ],
     "donts": [
-      "Don't introduce accent hues, gradients, imagery, or emoji — the palette is steel and ivory; a second hue breaks the ledger's authority.",
-      "Don't add drop shadows or glow at rest; flat is the identity, and the Field Cue on inputs is the only sanctioned shadow.",
-      "Don't use radii outside the ladder, and never put 12px radius on a control.",
-      "Don't load custom fonts or brand the type; system faces are the identity.",
-      "Don't render more than one primary-colored element per view.",
-      "Don't uppercase body or label copy — only machine status tags.",
-      "Don't mix the legacy Colors constants into new screens; new work uses the global.css role tokens, and the legacy nav chrome is slated to migrate once its tab patterns stabilize."
+      "Don't introduce accent hues, gradients, imagery, or emoji into the ledger interface.",
+      "Don't add ambient shadows or glow; use the Field Cue only on interactive fields and outline buttons.",
+      "Don't introduce new radius values outside the established ladder.",
+      "Don't load custom fonts or mix brand typefaces.",
+      "Don't use more than one decisive primary surface per view.",
+      "Don't uppercase ordinary body or label copy.",
+      "Don't use legacy Colors constants in new feature screens; legacy navigation is the current documented exception pending migration."
     ]
   }
 }

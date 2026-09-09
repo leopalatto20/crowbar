@@ -25,7 +25,7 @@ typography:
     fontFamily: "system-ui, -apple-system, sans-serif"
     fontSize: "48px"
     fontWeight: 700
-    lineHeight: 1.08
+    lineHeight: 1
   headline:
     fontFamily: "system-ui, -apple-system, sans-serif"
     fontSize: "30px"
@@ -64,40 +64,52 @@ components:
     textColor: "{colors.primary-foreground}"
     rounded: "{rounded.sm}"
     padding: "8px 16px"
+    height: "36px"
   button-primary-hover:
     backgroundColor: "rgba(23, 23, 23, 0.9)"
     textColor: "{colors.primary-foreground}"
     rounded: "{rounded.sm}"
     padding: "8px 16px"
+    height: "36px"
   button-outline:
     backgroundColor: "{colors.background}"
     textColor: "{colors.foreground}"
     rounded: "{rounded.sm}"
     padding: "8px 16px"
+    height: "36px"
   button-secondary:
     backgroundColor: "{colors.secondary}"
     textColor: "{colors.secondary-foreground}"
     rounded: "{rounded.sm}"
     padding: "8px 16px"
+    height: "36px"
   chip-selected:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.primary-foreground}"
     rounded: "{rounded.full}"
-    padding: "2px 12px"
+    padding: "0 12px"
+    height: "32px"
   chip-unselected:
     backgroundColor: "{colors.background}"
     textColor: "{colors.foreground}"
     rounded: "{rounded.full}"
-    padding: "2px 12px"
+    padding: "0 12px"
+    height: "32px"
   card:
     backgroundColor: "{colors.card}"
     rounded: "{rounded.md}"
     padding: "16px"
   input:
-    backgroundColor: "{colors.input}"
+    backgroundColor: "transparent"
     textColor: "{colors.foreground}"
     rounded: "{rounded.sm}"
     height: "36px"
+  nav-pill:
+    backgroundColor: "#F0F0F3"
+    textColor: "#0A0A0A"
+    rounded: "32px"
+    padding: "8px 32px"
+
 ---
 
 # Design System: Crowbar
@@ -106,150 +118,135 @@ components:
 
 **Creative North Star: "The Strength Ledger"**
 
-Crowbar is a professional instrument for recording training, not a fitness app that wants to be liked. The interface behaves like a good training ledger: dense, legible, monotone, and completely uninterested in decoration. Every screen is a column of facts — movements, sets, landmarks — and the chrome around those facts exists only to keep them scannable at a glance between sets.
+Crowbar is a professional instrument for recording training, not a fitness app that wants to be liked. The interface behaves like a good training ledger: dense, legible, monotone, and uninterested in decoration. Every screen is a column of facts — movements, sets, landmarks — and the chrome exists only to keep them scannable at a glance between sets.
 
-The material language is machined metal and paper. Warm neutrals run from Bare Steel white to Anodized Black; the only decisive surface is the near-black (or warm ivory, in dark mode) action color, which appears exactly when something is selected or about to be committed. Radii are kept to a three-step ladder, spacing to a 4px scale, and depth is conveyed by tonal layering alone — the system contains one faint functional shadow and uses it only on interactive fields.
-
-Dark mode is a first-class citizen, shipped from the same role tokens (`primary`, `card`, `muted`…) rather than a sepia re-tint. The palette flips into a warm dark: ivory action surfaces on an anodized near-black ground.
+The material language is machined metal and paper. Warm neutrals run from Bare Steel white to Anodized Black; the only decisive surface is the near-black (or warm ivory, in dark mode) action color, appearing when something is selected or committed. Radii follow a small ladder, spacing follows a 4px scale, and depth is primarily tonal. The implementation supports light and dark role tokens, although the current app root forces the dark provider mode while automatic appearance remains declared in app configuration.
 
 **Key Characteristics:**
-- Monochrome warm neutrals; single decisive action color that inverts between modes
-- Flat-by-default surfaces; depth through tonal layering, not shadows
-- System typography only — SF Pro / Roboto; no downloaded fonts
-- Three-step radius ladder (6px controls / 12px containers / full pills)
+- Monochrome warm neutrals; one decisive action surface
+- Flat-by-default surfaces; depth through tonal layering
+- System typography only — SF Pro / Roboto / system UI
+- 6px controls, 12px containers, full-radius pills
 - 4px spacing scale, 16px gutters, max content width 800px
-- Machine-label typography (uppercase, bold, muted) reserved for status tags
+- Uppercase machine labels reserved for status tags
 
 ## Colors
 
-A warm-neutral monochrome palette with one decisive inversion: near-black in light mode, warm ivory in dark mode. Every color is a role token defined in light and dark; screens never reference raw values.
+A warm-neutral monochrome palette with one decisive inversion. The canonical source is the role-token layer in `src/global.css`; the frontmatter records its light values and the dark counterparts are described below.
 
 ### Primary
-- **Anodized Black** (#171717 / dark: **Warm Ivory** #FFF5F5): The single decisive surface — solid buttons, the selected filter chip, focus rings on switches. It is the only aggressive color and it marks exactly one commitment per view.
-- **Primary Foreground** (#FAFAFA / dark: #171717): Text and icons on primary surfaces. Inverts with its pair.
+- **Anodized Black / Warm Ivory** (`#171717` / dark `#FFF5F5`): Solid buttons and selected controls. Its rarity marks the decision surface.
+- **Primary Foreground** (`#FAFAFA` / dark `#171717`): Inverted text and icons on primary surfaces.
 
-### Secondary (functional)
-- **Safety Red** (#E7000B / dark: **Safety Red Soft** #FF6467): Destructive actions and invalid field borders only. Never used expressively; its job is to say "stop" or "this is wrong."
+### Secondary
+- **Safety Red / Safety Red Soft** (`#E7000B` / dark `#FF6467`): Destructive actions and invalid fields only.
 
 ### Neutral
-- **Bare Steel** (#FFFFFF / dark: **Anodized Void** #0A0A0A): The ground. Screen background on which everything sits.
-- **Machine Black** (#0A0A0A / dark: **Bare Steel** #FAFAFA): Primary text and the `foreground` role.
-- **Ground Plate** (#FFFFFF / dark: **Plate Steel** #171717): Cards, rows, popovers. In light mode the plate is indistinguishable from the ground — separation is carried by structure and spacing, not paint.
-- **Paper Steel** (#FFFFFF, `popover` role / dark: #171717): Floating overlays, menus.
-- **Mill Finish** (#F5F5F5 / dark: **Charred** #262626): Muted/secondary fills — secondary buttons, the muted surface under content.
-- **Bead Blast** (#F7F7F7 / dark: **Charred** #262626): Hover/active fills on outline buttons, ghost buttons, and the `accent` role; `accent-foreground` #343434 / dark #FAFAFA.
-- **Iron Grey** (#737373 / dark: #A1A1A1): `muted-foreground` — placeholders, secondary copy, empty states, archived labels.
-- **Burr Line** (#E5E5E5 / dark: **Burr Dark** #2E2E2E): `border` and `input` strokes — the one-pixel outlines on fields and outline buttons, nothing else.
-- **Focus Ring** (#D4D4D4 / dark: #737373): `ring` — web focus indication.
-- **Graphite** (#343434): `accent-foreground` text on hover fills (light mode).
+- **Bare Steel / Anodized Void** (`#FFFFFF` / dark `#0A0A0A`): Screen ground.
+- **Ground Plate / Plate Steel** (`#FFFFFF` / dark `#171717`): Cards, rows, and popovers.
+- **Mill Finish / Charred** (`#F5F5F5` / dark `#262626`): Secondary surfaces and muted fills.
+- **Bead Blast / Charred** (`#F7F7F7` / dark `#262626`): Hover and active fills.
+- **Machine Black / Bare Steel** (`#0A0A0A` / dark `#FAFAFA`): Primary text.
+- **Iron Grey** (`#737373` / dark `#A1A1A1`): Placeholders, secondary copy, and archived labels.
+- **Burr Line / Burr Dark** (`#E5E5E5` / dark `#2E2E2E`): Borders and field strokes.
+- **Focus Ring** (`#D4D4D4` / dark `#737373`): Focus indication.
 
-**The One-Surface Rule.** The primary color (Anodized Black or Warm Ivory) appears on at most one element per view. Its rarity is the point: when the eye finds a solid dark shape, it knows that is the decision.
+**The One-Surface Rule.** The primary color appears on at most one decisive element per view. Its rarity tells the user where commitment happens.
 
 ## Typography
 
-**Display Font:** System UI — SF Pro on iOS/macOS, Roboto on Android, system-ui on web
-**Body Font:** Same system stack; no second font.
-**Label/Mono Font:** System monospace only for code/identifiers (legacy `ThemedText` code style, 12px).
+**Display Font:** System UI — SF Pro on Apple platforms, Roboto on Android, system-ui on web
+**Body Font:** The same system stack
+**Label/Mono Font:** System monospace only for identifiers and legacy code styles
 
-**Character:** The interface never competes with the data. System faces carry the tonal hierarchy on weight and size alone; the ledger's authority comes from density and alignment, not letterforms.
+**Character:** Typography stays quiet so the data can carry authority. Weight and size create hierarchy; no downloaded or custom font is part of the identity.
 
 ### Hierarchy
-- **Display** (700, 48px/52px, 1.08): Page titles ("Catalog"). One per screen, at the top of the column, no subheads at this size.
-- **Headline** (700, 30px): Section titles within a surface.
-- **Title** (600, 24px): Card and panel titles, routine names.
-- **Body** (400, 16px/24px, 1.5): Default text, movement names, list content. Keep prose lines to 65–75ch on web.
-- **Label** (500, 14px): Chips, buttons, secondary rows. The **machine label** variant — 12px, 700 weight, uppercase — is reserved for status tags such as "Archived".
+- **Display** (700, 48px/48px, 1): Page titles such as “Catalog”, one per screen.
+- **Headline** (700, 30px/36px, 1.2): Section titles.
+- **Title** (600, 24px/30px, 1.25): Card and panel titles.
+- **Body** (400, 16px/24px, 1.5): Movement names and list content.
+- **Label** (500, 14px/20px, 1.4): Buttons, chips, and secondary rows.
+- **Machine label** (700, 12px, uppercase): Muted status tags such as “Archived” only.
 
-### Named Rules
-**The System-Font Rule.** No downloaded or custom fonts, ever. SF Pro and Roboto *are* the identity; a distinct typeface would make the ledger feel like a branded artifact instead of an instrument.
-**The Machine-Label Rule.** Uppercase bold microcopy (12px, 700) is the only sanctioned ornament. It appears solely as a status tag, muted, at the end of a row — never as body text, never in the primary color.
+**The System-Font Rule.** Do not load custom fonts. SF Pro, Roboto, and system UI are the identity.
 
 ## Layout
 
-Single centered column, mobile-first, `max-width: 800px` on web. Screen padding is 16px (`px-4`); vertical rhythm between list rows and header blocks is 16px (`gap-4`), with an 8px (`gap-2`) rhythm inside rows and chip clusters. The bottom of scrollable lists carries 112px of inset so the last row clears the tab bar.
+The app uses a single centered column. Web content is capped at 800px, with 16px screen gutters and 16px vertical gaps between header blocks and rows. Chip clusters and compact row content use 8px gaps. Scrollable catalog content reserves 112px of bottom inset so the final row clears navigation.
 
-Density is professional and compact: rows are 16px-padded cards, interactive controls are `min-height 36px`, and a full-width data list is the normal state — a screen is a ledger page, not a feed. The spacing ladder is fixed at 2/4/8/16/24/32/64px (`half`/`one`/`two`/`three`/`four`/`five`/`six`); a 12px step exists for control padding (`px-3`).
+Density is professional and compact: catalog rows use 16px padding, inputs are 36px high, and the list is a full-width ledger rather than a feed. The spacing ladder is 2/4/8/16/24/32/64px. Adaptation is platform-based rather than breakpoint-led: web uses a floating navigation pill, while native uses Expo router tabs.
 
-There are no bespoke breakpoints: layout is single-column everywhere, and the only adaptive behavior is the navigation chrome (floating pill on web, native tab bar on iOS/Android).
-
-**The 800-Rule.** No content column ever exceeds 800px, even on wide desktop web. The ledger stays a column; whitespace goes to the sides, never inside.
+**The 800-Rule.** No web content column exceeds 800px; extra width stays as side whitespace.
 
 ## Elevation & Depth
 
-**Flat-by-default.** Surfaces sit flush. Depth is carried by tonal layering — ground, plate, and mill-finish greys stack to separate content — plus spacing and hairlines. Shadows are not part of the resting vocabulary.
+The system is flat by default. Ground, plate, muted fill, spacing, and hairlines establish depth. The only sanctioned shadow is the Field Cue on inputs and outline buttons, where it signals an interactive surface. Catalog search is a recessed card-filled field without a border.
 
 ### Shadow Vocabulary
-- **Field Cue** (`0 1px 2px rgb(0 0 0 / 0.05)` — Tailwind `shadow-xs`): The system's only shadow. It sits on inputs and outline buttons — interactive fields — as a tactile cue that these elements receive input. It is a functional affordance, not an ambient glow.
+- **Field Cue** (`0 1px 2px 0 rgb(0 0 0 / 0.05)`): The functional shadow on inputs and outline buttons. It is not an ambient elevation effect.
 
-**The Flat-By-Default Rule.** At rest, nothing casts a shadow. Elevation is earned by interactivity: fields get the Field Cue, hover and pressed states shift fill alpha (90% primary, 80% secondary), and web focus is a 2px ring — never a drop shadow.
+**The Flat-By-Default Rule.** Do not add resting drop shadows or glows. State changes use fill alpha, border shifts, focus rings, and pressed opacity rather than transforms.
 
 ## Shapes
 
-Radius follows a three-step ladder and nothing between: **6px** (`rounded-md`) for controls — buttons, inputs, switches in invalid state — **12px** (`rounded-xl`) for containers — cards, rows, empty states — and **full** (`rounded-full`) for pills — filter chips, muscle-group tags, the floating web nav, the native switch. While the 12px cards use 6px controls on them, controls never sit at 12px and containers never sit at 6px.
+Controls use a 6px radius, containers and rows use 12px, and chips/tags use full radius. Fields and outline buttons use 1px role-token strokes; cards are borderless and separated by tonal layering and gutters.
 
-Borders are 1px `border`/`input` strokes, used only on fields and outline buttons; cards are borderless and separated by tonal layering. Corners are never clipped, cut, or beveled — geometry is simple and complete.
+The floating web navigation is a documented implementation exception: its outer container uses a 32px radius and its tab plate uses 16px. The switch implementation also currently uses a 12px track radius. New feature surfaces should use the three-step ladder unless they are extending these existing platform chrome patterns.
 
-**The No-Hybrid-Radius Rule.** A radius must be one of the three steps. 4px squares and 8–10px compromises read as a different (and softer) system; they are not in the language.
+**The No-Hybrid-Radius Rule.** New controls and containers must use only the established radius steps; do not introduce intermediate 4px or 8–10px radii.
 
 ## Components
 
 ### Buttons
-- **Shape:** 6px radius (`rounded-md`), full-width of content, `min-height 36px` default.
-- **Primary:** Anodized Black (dark: Warm Ivory) with inverted text (#FAFAFA / #171717). Padding 8px 16px, `text-sm`. Hover/active: 90% fill alpha.
-- **Focus:** Web focus-visible shows a 2px ring in the ring color; focus ring shadows on destructive use a red-tinted ring.
-- **Secondary:** Mill Finish fill, inverted text; 80% alpha on hover.
-- **Outline:** 1px Burr Line border on transparent ground, text `foreground`; hover fills Bead Blast, text switches to `accent-foreground`. Carries the Field Cue shadow.
-- **Ghost:** No stroke, no fill at rest; hover fills Bead Blast.
-- **Link:** Primary-colored text, underline appears on hover/active only.
-- **Destructive:** Safety Red fill with inverted text; 90% alpha on hover. Reserved for irreversible actions.
-- **Sizes:** `sm` (28px min-height, 12px text), `default`, `lg` (40px min-height, 32px horizontal padding), `icon` (36×36px square). Disabled: 40% opacity, no interaction.
+- **Shape:** 6px radius; default buttons resolve to 36px with 8px vertical and 16px horizontal padding.
+- **Primary:** Primary role fill with inverted foreground; hover/active shifts to 90% alpha.
+- **Outline:** 1px border, ground background, Field Cue shadow; hover/active fills the accent role.
+- **Secondary:** Muted fill; hover/active shifts to 80% alpha.
+- **Ghost / Link:** No resting fill or stroke; hover/active reveals accent or underline.
+- **Destructive:** Safety Red fill, with a softer dark-mode treatment in the current component implementation.
+- **Small:** 32px minimum height, 12px text, and compact padding. Use only for secondary controls such as filter chips.
+- **Icon:** 36px square minimum size.
 
-### Chips (filters & tags)
-- **Style:** Full-radius pills, `text-sm`. Filter chips are sized `sm`; content tags use 2px vertical / 8px horizontal padding.
-- **States:** Selected = solid Primary fill with inverted text (the one decisive surface per view). Unselected = outline chip: Burr Line border on transparent ground, `foreground` text, hover fills Bead Blast. Content tags (e.g. muscle-group labels) are strokeless and quiet; muted content uses Iron Grey text.
+### Chips
+- **Style:** Full-radius 32px filter buttons with 12px horizontal padding and 12px text.
+- **State:** Selected chips use the primary surface. Unselected chips use a 1px outline and fill with the accent role on interaction.
+- **Tags:** Movement metadata tags remain quiet and muted, while status tags use the machine-label treatment.
 
 ### Cards / Containers
-- **Corner Style:** 12px radius (`rounded-xl`).
-- **Background:** `card` (Ground Plate light / Plate Steel dark).
-- **Shadow Strategy:** None at rest — see The Flat-By-Default Rule.
-- **Border:** None; separation comes from tonal layering and the 8–16px gutters between cards.
-- **Internal Padding:** 16px on all sides for rows (`px-4 py-4`); empty states drop to 8px vertical (`py-8`, centered).
-- **Muted rows:** Archived entries render the same card at 50% opacity with a trailing machine-label tag.
+- **Corner Style:** 12px radius.
+- **Background:** Card role; light Ground Plate or dark Plate Steel.
+- **Shadow Strategy:** None for resting cards.
+- **Border:** None; separation comes from tonal layering and spacing.
+- **Internal Padding:** 16px for ledger rows; empty states use larger vertical breathing room.
+- **Archived rows:** 50% opacity with a trailing muted machine label.
 
 ### Inputs / Fields
-- **Style:** 1px Burr Line stroke, `6px` radius, transparent background (sits directly on its surface), `min-height 36px`, `text-sm`, `foreground` text, Iron Grey placeholder.
-- **Focus:** Stroke shifts to `ring`, plus a 2px `ring/50` web halo. No glow, no scale.
-- **Invalid:** 40%-alpha Safety Red stroke plus a red-tinted web ring.
-- **Disabled:** 50% opacity, inert.
-- **Search variant:** The catalog search field swaps to `rounded-xl` (12px) with a `card` fill and no stroke — it reads as a control recessed into the header rather than a field.
-- **Base stroke note:** The component's resting stroke uses the `input` role, visually identical to `border`; both exist in the token set (input = interactive stroke, border = structural).
-
-### Switch
-- Native platform switch (iOS/Android), default size. Web focus shows a 2px solid Primary ring. Never restyled away from platform expectations.
+- **Base style:** 36px minimum height, 6px radius, 1px border, transparent light background, dark `input` fill, 12px horizontal padding, and Field Cue shadow.
+- **Focus:** Border shifts to the ring role with a 2px web ring halo.
+- **Invalid / disabled:** Safety Red border and ring for invalid fields; 50% opacity and inert interaction when disabled.
+- **Search:** Catalog search overrides the base field with a 12px radius, card fill, and no border.
 
 ### Navigation
-- **Web:** A floating top pill — up to 800px wide, full-radius, `backgroundElement`-tinted (legacy #F0F0F3 light / #212225 dark) — with the "Crowbar" brand (14px, 700) pinned left and tab buttons inside. The active tab fills a darker `backgroundSelected` plate; idle tabs sit on the pill fill with secondary text. Pressed rows drop to 70% opacity. *(This chrome is currently built from the legacy `Colors` constants in `src/legacy/theme/theme.ts`, not the global.css token roles — see Do/Don't below.)*
-- **Native:** System native tab bar via expo native tabs, tinted with the same background/backgroundElement text roles.
-
-### Empty State
-- A centered 12px-radius `card` plate, `padding: 32px 16px`, with one line of Iron Grey text ("No movements match"). No illustration, no animation — an empty ledger page says what it means in one line.
+- **Web:** A floating centered pill up to 800px wide. The current implementation uses legacy theme constants: light `#F0F0F3`/`#E0E1E6`, dark `#212225`/`#2E3135`, and muted tab text. The outer container is 32px radius; the active tab is 16px radius; pressed rows drop to 70% opacity.
+- **Native:** Expo router tabs use the same legacy navigation color roles and platform-native tab behavior.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** build structure from the neutral ladder — ground, plate, mill finish — and treat the primary surface as the single decision point per view.
-- **Do** use the fixed spacing ladder (4/8/16/24/32/64px) and the 16px gutter rhythm; the ledger's calm depends on predictable rhythm.
-- **Do** keep radii on the three-step ladder: 6px controls, 12px containers, full pills.
-- **Do** support both modes from the same role tokens; a new screen must look right in Warm Ivory dark just by virtue of using `card`, `muted`, and `foreground` roles.
-- **Do** keep interactive elements at `min-height 36px` and body text at 16px — density is the product.
-- **Do** reserve uppercase bold microcopy for status machine labels like "Archived".
-- **Do** cap content columns at 800px.
+- **Do** build new surfaces from the global role tokens in `src/global.css`.
+- **Do** use the 4/8/16/24/32/64px spacing rhythm and 16px gutters.
+- **Do** keep new controls at 6px, new containers at 12px, and new pills at full radius.
+- **Do** support both token modes, and verify both light and dark class states when changing UI.
+- **Do** keep important interactive targets at least 36px high.
+- **Do** reserve uppercase bold microcopy for muted status labels.
+- **Do** cap web content columns at 800px.
 
 ### Don't:
-- **Don't** introduce accent hues, gradients, imagery, or emoji — the palette is steel and ivory; a second hue breaks the ledger's authority.
-- **Don't** add drop shadows or glow at rest; flat is the identity, and the Field Cue on inputs is the only sanctioned shadow.
-- **Don't** use radii outside the ladder, and never put 12px radius on a control.
-- **Don't** load custom fonts or brand the type; system faces are the identity.
-- **Don't** render more than one primary-colored element per view.
-- **Don't** uppercase body or label copy — only machine status tags.
-- **Don't** mix the legacy `Colors` constants into new screens; new work uses the `global.css` role tokens, and the legacy nav chrome is slated to migrate once its tab patterns stabilize.
+- **Don't** introduce accent hues, gradients, imagery, or emoji into the ledger interface.
+- **Don't** add ambient shadows or glow; use the Field Cue only on interactive fields and outline buttons.
+- **Don't** introduce new radius values outside the established ladder.
+- **Don't** load custom fonts or mix brand typefaces.
+- **Don't** use more than one decisive primary surface per view.
+- **Don't** uppercase ordinary body or label copy.
+- **Don't** use legacy `Colors` constants in new feature screens; legacy navigation is the current documented exception pending migration.
