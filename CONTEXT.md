@@ -36,6 +36,14 @@ _Avoid_: location, venue
 A gym-agnostic, ordered list of movements, each entry carrying optional targets — working-set count, rep range, RIR/RPE target (on the recording scale), tempo target. Defined once, executed anywhere.
 _Avoid_: program, plan, template, workout
 
+**Routine entry**:
+One Movement's position in a Routine, with optional targets for working-set count, rep range, proximity, and tempo. A Routine contains at most one entry for each Movement.
+_Avoid_: routine exercise, routine item
+
+**Routine builder**:
+The place where a lifter defines or changes a Routine's name, ordered entries, and optional targets before saving it.
+_Avoid_: routine editor, workout builder
+
 **Sub-routine**:
 A routine as adapted to a specific gym — the recorded binding of each movement to the exercise (equipment) the lifter used there. One per Routine × Gym, auto-created from the first completed session there. A deviating session does not change it; the lifter is asked at the end whether to update the sub-routine or keep the original.
 _Avoid_: gym variant, adapted routine
