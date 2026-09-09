@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FlatList, Modal, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -22,16 +22,10 @@ import {
 	unarchiveMovement,
 } from '@/db';
 import { MovementEditorModal } from '@/components/movement-editor-modal';
-import {
-	createQuickCreateState,
-	quickCreateReducer,
-	type MovementEditorDraft,
-} from '@/components/quick-create-state';
 import { DEFAULT_UNIT, type MuscleGroupName, type Unit } from '@/db/constants';
 
 const ALL = 'All' as const;
 type Filter = typeof ALL | MuscleGroupName;
-type EditorSource = 'catalog' | 'quick';
 
 /**
  * Catalog browse (issue #7): a flat A–Z screen of movements. Each row shows the
@@ -40,9 +34,9 @@ type EditorSource = 'catalog' | 'quick';
  * filter; a "show archived" toggle (default off) gates archived rows entirely —
  * they only appear, muted with an "Archived" tag, when revealed. An empty state
  * appears when nothing matches. Volume-landmark numbers never appear here: this
- * is the identity list, not the measurement one. The Quick create card below is
- * the stand-in for future recording and routine-building anchors; those native
- * entry points are intentionally out of scope for this ticket.
+ * is the identity list, not the measurement one. Quick-create remains a shared
+ * capability for future recording and routine-building entry points, not a
+ * catalog surface.
  */
 export default function CatalogScreen() {
 	const [groups, setGroups] = useState<{ id: number; name: MuscleGroupName }[]>([]);
@@ -64,9 +58,6 @@ export default function CatalogScreen() {
 	const [deleteConfirmation, setDeleteConfirmation] = useState<CatalogMovement | null>(null);
 	const [defaultUnit, setDefaultUnit] = useState<Unit | undefined>();
 	const [defaultUnitLoaded, setDefaultUnitLoaded] = useState(false);
-	const [quickCreate, dispatchQuickCreate] = useReducer(quickCreateReducer, undefined, createQuickCreateState);
-	const { workingName: quickName, draft: quickDraft, currentMovementId } = quickCreate;
-	const [editorSource, setEditorSource] = useState<EditorSource>('catalog');
 
 	useEffect(() => {
 		let cancelled = false;
@@ -108,17 +99,10 @@ export default function CatalogScreen() {
 	}, [filter, query, showArchived, refreshToken]);
 
 	const refresh = () => setRefreshToken((value) => value + 1);
-	const updateQuickName = (name: string) => {
-		dispatchQuickCreate({ type: 'workingNameChanged', name });
-	};
-	const openCreate = (source: EditorSource) => {
+	const openCreate = () => {
 		if (!defaultUnitLoaded) return;
-		setEditorSource(source);
 		setEditorMovement(null);
 		setEditorVisible(true);
-	};
-	const retainDraft = (draft: MovementEditorDraft) => {
-		dispatchQuickCreate({ type: 'draftChanged', draft });
 	};
 
 	const toggleActions = async (movement: CatalogMovement) => {
@@ -209,29 +193,11 @@ export default function CatalogScreen() {
 							<Button
 								variant="outline"
 								size="icon"
-								onPress={() => openCreate('catalog')}
+								onPress={openCreate}
 								disabled={!defaultUnitLoaded}
 								accessibilityLabel="Add movement"
 							>
 								<ButtonText>+</ButtonText>
-							</Button>
-						</Box>
-
-						<Box className="gap-2 rounded-xl bg-card px-4 py-4">
-							<Text size="2xl" className="font-semibold">Quick create</Text>
-							<Text>Start a movement without changing catalog search.</Text>
-							<Input>
-								<InputField
-									value={quickName}
-									onChangeText={updateQuickName}
-									placeholder="Movement name"
-									accessibilityLabel="Quick create movement name"
-									autoCorrect={false}
-									autoCapitalize="words"
-								/>
-							</Input>
-							<Button variant="outline" onPress={() => openCreate('quick')} disabled={!defaultUnitLoaded}>
-								<ButtonText>{defaultUnitLoaded ? 'Open movement editor' : 'Loading defaults…'}</ButtonText>
 							</Button>
 						</Box>
 
@@ -293,11 +259,9 @@ export default function CatalogScreen() {
 				renderItem={({ item }) => (
 					<MovementRow
 						movement={item}
-						current={currentMovementId === item.id}
 						expanded={expandedRow === item.id}
 						deleteBlocked={deleteBlockedRows[item.id] ?? false}
 						onOpen={() => {
-							setEditorSource('catalog');
 							setEditorMovement(item);
 							setEditorVisible(true);
 						}}
@@ -309,34 +273,19 @@ export default function CatalogScreen() {
 				)}
 			/>
 			<MovementEditorModal
-				key={`${editorVisible}-${editorMovement?.id ?? editorSource}`}
+				key={`${editorVisible}-${editorMovement?.id ?? 'new'}`}
 				visible={editorVisible}
 				movement={editorMovement}
 				muscleGroups={groups}
 				defaultUnit={defaultUnit ?? DEFAULT_UNIT}
-				draft={editorSource === 'quick' && !editorMovement ? quickDraft : undefined}
-				initialName={editorSource === 'quick' && !editorMovement ? quickName : undefined}
-				onDraftChange={editorSource === 'quick' && !editorMovement ? retainDraft : undefined}
-				onClose={() => {
-					if (editorSource === 'quick') dispatchQuickCreate({ type: 'modalCancelled' });
-					setEditorVisible(false);
-				}}
-				onSaved={(saved) => {
+				onClose={() => setEditorVisible(false)}
+				onSaved={() => {
 					setEditorVisible(false);
 					setRefreshToken((value) => value + 1);
-					if (editorSource === 'quick') {
-						// A completed draft becomes the current entry; the next quick-create starts
-						// fresh so its required muscle group is never carried forward.
-						dispatchQuickCreate({ type: 'movementSaved', movement: saved });
-						setFilter(ALL);
-						setShowArchived(false);
-						setQuery(saved.name);
-					}
 				}}
 				onDuplicate={(duplicate) => {
 					setEditorVisible(false);
 					setEditorMovement(null);
-					if (editorSource === 'quick') dispatchQuickCreate({ type: 'duplicateNavigated' });
 					setFilter(ALL);
 					setShowArchived((current) => current || duplicate.archived === 1);
 					setQuery(duplicate.name);
@@ -359,7 +308,6 @@ export default function CatalogScreen() {
 
 type MovementRowProps = {
 	movement: CatalogMovement;
-	current: boolean;
 	expanded: boolean;
 	deleteBlocked: boolean;
 	onOpen: () => void;
@@ -371,7 +319,6 @@ type MovementRowProps = {
 
 function MovementRow({
 	movement,
-	current,
 	expanded,
 	deleteBlocked,
 	onOpen,
@@ -403,12 +350,9 @@ function MovementRow({
 				>
 					<ButtonText>{expanded ? 'Close' : 'More'}</ButtonText>
 				</Button>
-				<Box className="items-end gap-1">
-					{current && <Text size="xs" bold className="text-muted-foreground uppercase">Current entry</Text>}
-					{movement.archived && (
-						<Text size="xs" bold className="text-muted-foreground uppercase">Archived</Text>
-					)}
-				</Box>
+				{movement.archived && (
+					<Text size="xs" bold className="text-muted-foreground uppercase">Archived</Text>
+				)}
 			</Box>
 			{expanded && (
 				<Box className="flex-row flex-wrap items-center gap-2 px-4 pb-4">

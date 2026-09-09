@@ -25,8 +25,9 @@ export function createQuickCreateState(workingName = ''): QuickCreateState {
 }
 
 /**
- * The state seam for the catalog stand-in. Cancel and duplicate navigation
- * deliberately leave the draft intact.
+ * The state seam for quick-create entry points. Cancel and duplicate navigation
+ * deliberately leave the draft intact so recording and routine-building flows
+ * can resume without losing unfinished input.
  */
 export function quickCreateReducer(state: QuickCreateState, action: QuickCreateAction): QuickCreateState {
 	switch (action.type) {

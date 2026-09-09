@@ -34,7 +34,7 @@ export type MovementEditorModalProps = {
 	onDraftChange?: (draft: MovementEditorDraft) => void;
 };
 
-/** Shared create/edit surface for the catalog. */
+/** Shared movement create/edit surface for catalog and future quick-create anchors. */
 export function MovementEditorModal({
 	movement,
 	muscleGroups,
