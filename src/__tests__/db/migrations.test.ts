@@ -6,8 +6,8 @@ import { eq } from 'drizzle-orm';
 import { constants, getHomeGym, listGyms, listMuscleGroups, migrateDb, schema, setsByIsland } from '@/db';
 import { movements, muscleGroups } from '@/db/schema';
 
-import { closeDb, freshDb, freshFileDb } from '../../test/helpers/db';
-import { logSet, makeGym, makeMovement, startSession } from '../../test/helpers/fixtures';
+import { closeDb, freshDb, freshFileDb } from '@/test/helpers/db';
+import { logSet, makeGym, makeMovement, startSession } from '@/test/helpers/fixtures';
 
 describe('migration bootstrap', () => {
 	test('an empty database migrates to the current schema with identity seeds', async () => {

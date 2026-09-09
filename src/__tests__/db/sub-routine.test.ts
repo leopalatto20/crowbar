@@ -2,8 +2,8 @@ import { and, eq } from 'drizzle-orm';
 
 import { getSubRoutine, schema, setSubRoutineClass } from '@/db';
 
-import { freshDb } from '../../test/helpers/db';
-import { makeGym, makeMovement, makeRoutine } from '../../test/helpers/fixtures';
+import { freshDb } from '@/test/helpers/db';
+import { makeGym, makeMovement, makeRoutine } from '@/test/helpers/fixtures';
 
 /**
  * Sub-routine binding persistence (issue #3, story 6): a Routine is adapted per

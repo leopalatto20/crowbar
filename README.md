@@ -24,5 +24,5 @@ npm run test:watch
 ```
 
 `jest-expo` provides the runner and preset; `better-sqlite3` is the dev-only
-test driver over the same schema and migrations the app uses (see `db/get-db.ts`
-and `test/helpers/`).
+test driver over the same schema and migrations the app uses (see `src/db/get-db.ts`
+and `src/test/helpers/`).

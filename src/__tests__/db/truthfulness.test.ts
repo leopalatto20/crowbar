@@ -2,8 +2,8 @@ import { eq } from 'drizzle-orm';
 
 import { constants, schema, setsByIsland } from '@/db';
 
-import { freshDb } from '../../test/helpers/db';
-import { logSet, makeGym, makeMovement, startSession } from '../../test/helpers/fixtures';
+import { freshDb } from '@/test/helpers/db';
+import { logSet, makeGym, makeMovement, startSession } from '@/test/helpers/fixtures';
 
 /**
  * Truthfulness (issue #3, story 7): every stored proximity value carries the

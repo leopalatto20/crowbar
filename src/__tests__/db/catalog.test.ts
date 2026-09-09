@@ -11,8 +11,8 @@ import {
 	unarchiveMovement,
 } from '@/db';
 
-import { freshDb } from '../../test/helpers/db';
-import { makeGym, makeMovement, makeRoutine, startSession, logSet } from '../../test/helpers/fixtures';
+import { freshDb } from '@/test/helpers/db';
+import { makeGym, makeMovement, makeRoutine, startSession, logSet } from '@/test/helpers/fixtures';
 
 /**
  * Catalog browse read path (issue #7): flat A–Z listing, muscle-group filter,

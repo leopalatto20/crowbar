@@ -12,8 +12,8 @@ import {
 	weekBounds,
 } from '@/db';
 
-import { freshDb } from '../../test/helpers/db';
-import { logSet, makeGym, startSession } from '../../test/helpers/fixtures';
+import { freshDb } from '@/test/helpers/db';
+import { logSet, makeGym, startSession } from '@/test/helpers/fixtures';
 
 describe('movement editor repository seam', () => {
 	test('rejects blank names on create and update', async () => {

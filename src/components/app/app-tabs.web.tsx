@@ -8,10 +8,10 @@ import {
 } from 'expo-router/ui';
 import { Pressable, View, StyleSheet } from 'react-native';
 
-import { ThemedText } from './themed-text';
-import { ThemedView } from './themed-view';
+import { ThemedText } from '@/legacy/theme/themed-text';
+import { ThemedView } from '@/legacy/theme/themed-view';
 
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Spacing } from '@/legacy/theme/theme';
 
 export default function AppTabs() {
   return (

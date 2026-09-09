@@ -228,7 +228,7 @@ Borders are 1px `border`/`input` strokes, used only on fields and outline button
 - Native platform switch (iOS/Android), default size. Web focus shows a 2px solid Primary ring. Never restyled away from platform expectations.
 
 ### Navigation
-- **Web:** A floating top pill — up to 800px wide, full-radius, `backgroundElement`-tinted (legacy #F0F0F3 light / #212225 dark) — with the "Crowbar" brand (14px, 700) pinned left and tab buttons inside. The active tab fills a darker `backgroundSelected` plate; idle tabs sit on the pill fill with secondary text. Pressed rows drop to 70% opacity. *(This chrome is currently built from the legacy `Colors` constants in `src/constants/theme.ts`, not the global.css token roles — see Do/Don't below.)*
+- **Web:** A floating top pill — up to 800px wide, full-radius, `backgroundElement`-tinted (legacy #F0F0F3 light / #212225 dark) — with the "Crowbar" brand (14px, 700) pinned left and tab buttons inside. The active tab fills a darker `backgroundSelected` plate; idle tabs sit on the pill fill with secondary text. Pressed rows drop to 70% opacity. *(This chrome is currently built from the legacy `Colors` constants in `src/legacy/theme/theme.ts`, not the global.css token roles — see Do/Don't below.)*
 - **Native:** System native tab bar via expo native tabs, tinted with the same background/backgroundElement text roles.
 
 ### Empty State

@@ -2,7 +2,7 @@ import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useColorScheme } from 'react-native';
 
-import AppTabs from '@/components/app-tabs';
+import AppTabs from '@/components/app/app-tabs';
 
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import { getDb, migrateDb } from '@/db';

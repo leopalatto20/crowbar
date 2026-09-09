@@ -1,7 +1,7 @@
 import { setsByIsland } from '@/db';
 
-import { freshDb } from '../../test/helpers/db';
-import { completeSession, logSet, makeGym, makeMovement, startSession, type StartedSession } from '../../test/helpers/fixtures';
+import { freshDb } from '@/test/helpers/db';
+import { completeSession, logSet, makeGym, makeMovement, startSession, type StartedSession } from '@/test/helpers/fixtures';
 
 /**
  * The differentiator (issue #3, story 4; ADR 0001): progress lives per

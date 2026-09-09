@@ -1,7 +1,7 @@
 import {
 	createQuickCreateState,
 	quickCreateReducer,
-} from '@/components/quick-create-state';
+} from '@/features/catalog/quick-create-state';
 
 const unfinishedDraft = {
 	name: 'Bench Press - ',

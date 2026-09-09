@@ -3,8 +3,8 @@ import { join } from 'node:path';
 
 import { createGym, getDb, listGyms, setDbFactory } from '@/db';
 
-import { closeDb, freshDb } from '../../test/helpers/db';
-import { logSet, makeGym, makeMovement, startSession as startSessionFixture } from '../../test/helpers/fixtures';
+import { closeDb, freshDb } from '@/test/helpers/db';
+import { logSet, makeGym, makeMovement, startSession as startSessionFixture } from '@/test/helpers/fixtures';
 
 /**
  * The getDb() test seam (issue #3, stories 2 & 9): tests run against real

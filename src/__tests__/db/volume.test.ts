@@ -2,8 +2,8 @@ import { eq } from 'drizzle-orm';
 
 import { appendSessionEntry, constants, listMuscleGroups, schema, weekBounds, weeklyVolumeByMuscleGroup } from '@/db';
 
-import { freshDb } from '../../test/helpers/db';
-import { logSet, makeGym, makeMovement, startSession } from '../../test/helpers/fixtures';
+import { freshDb } from '@/test/helpers/db';
+import { logSet, makeGym, makeMovement, startSession } from '@/test/helpers/fixtures';
 
 /**
  * Weekly volume per muscle group (issue #3, story 5): counted over the calendar
