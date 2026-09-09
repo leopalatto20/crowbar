@@ -1,9 +1,18 @@
 import { eq } from 'drizzle-orm';
 
-import { listMovements, schema } from '@/db';
+import {
+	archiveMovement,
+	deleteMovement,
+	getMovementDeleteReferences,
+	listMovements,
+	schema,
+	setSubRoutineClass,
+	setsByIsland,
+	unarchiveMovement,
+} from '@/db';
 
 import { freshDb } from '../../test/helpers/db';
-import { makeMovement } from '../../test/helpers/fixtures';
+import { makeGym, makeMovement, makeRoutine, startSession, logSet } from '../../test/helpers/fixtures';
 
 /**
  * Catalog browse read path (issue #7): flat A–Z listing, muscle-group filter,
@@ -105,5 +114,95 @@ describe('catalog browse read path', () => {
 		await makeMovement(db, { name: 'Cable Fly', muscleGroup: 'Chest' });
 		const rows = await listMovements(db, { muscleGroup: 'Chest' });
 		expect(rows.map((r) => r.name)).toContain('Cable Fly');
+	});
+
+	test('archive and unarchive preserve history while changing picker visibility', async () => {
+		const movement = await makeMovement(db, { name: 'Catalog-only Fly' });
+		const gym = await makeGym(db, 'Downtown');
+		const routine = await makeRoutine(db, 'Upper A');
+		await db.insert(schema.routineEntries).values({ routineId: routine.id, position: 0, movementId: movement.id });
+		await setSubRoutineClass(db, {
+			routineId: routine.id,
+			gymId: gym.id,
+			movementId: movement.id,
+			equipmentClass: 'barbell',
+			position: 0,
+		});
+		const { entry } = await startSession(db, { gymId: gym.id, movement });
+		await logSet(db, entry, { loadLb: 100 });
+
+		const archived = await archiveMovement(db, movement.id);
+		expect(archived.archived).toBe(1);
+		expect(await listMovements(db, { query: movement.name })).toEqual([]);
+		expect((await listMovements(db, { includeArchived: true, query: movement.name }))[0].archived).toBe(true);
+		expect(await setsByIsland(db, { gymId: gym.id, movementId: movement.id })).toHaveLength(1);
+		const references = await getMovementDeleteReferences(db, movement.id);
+		expect(references.routines).toEqual([{ id: routine.id, name: 'Upper A' }]);
+		expect(references.subRoutines).toHaveLength(1);
+
+		const restored = await unarchiveMovement(db, movement.id);
+		expect(restored.archived).toBe(0);
+		expect((await listMovements(db, { query: movement.name }))[0].name).toBe(movement.name);
+	});
+
+	test('deletes a movement with no history or references', async () => {
+		const movement = await makeMovement(db, { name: 'Disposable Fly' });
+
+		expect(await getMovementDeleteReferences(db, movement.id)).toEqual({
+			sets: 0,
+			routines: [],
+			subRoutines: [],
+			sessions: [],
+		});
+		expect(await deleteMovement(db, movement.id)).toEqual({ deleted: true });
+		expect(await db.select().from(schema.movements).where(eq(schema.movements.id, movement.id))).toEqual([]);
+	});
+
+	test('blocks deletion for history and groups its session reference', async () => {
+		const movement = await makeMovement(db, { name: 'Recorded Fly' });
+		const gym = await makeGym(db, 'Downtown');
+		const { session, entry } = await startSession(db, { gymId: gym.id, movement, startedAt: 1_700_000_000_000 });
+		await logSet(db, entry, { loadLb: 100 });
+
+		const references = await getMovementDeleteReferences(db, movement.id);
+		expect(references.sets).toBe(1);
+		expect(references.sessions).toEqual([{ id: session.id, name: 'Downtown', date: session.startedAt }]);
+		expect((await deleteMovement(db, movement.id)).deleted).toBe(false);
+		expect(await db.select().from(schema.movements).where(eq(schema.movements.id, movement.id))).toHaveLength(1);
+	});
+
+	test('blocks deletion for a session entry even when it has no sets', async () => {
+		const movement = await makeMovement(db, { name: 'Skipped Fly' });
+		const gym = await makeGym(db, 'Home');
+		await startSession(db, { gymId: gym.id, movement });
+
+		const references = await getMovementDeleteReferences(db, movement.id);
+		expect(references.sets).toBe(0);
+		expect(references.sessions).toHaveLength(1);
+		expect((await deleteMovement(db, movement.id)).deleted).toBe(false);
+	});
+
+	test('blocks deletion for routine and sub-routine references even without history', async () => {
+		const movement = await makeMovement(db, { name: 'Planned Fly' });
+		const gym = await makeGym(db, 'Home');
+		const routine = await makeRoutine(db, 'Upper A');
+		await db.insert(schema.routineEntries).values({ routineId: routine.id, position: 0, movementId: movement.id });
+		await setSubRoutineClass(db, {
+			routineId: routine.id,
+			gymId: gym.id,
+			movementId: movement.id,
+			equipmentClass: 'barbell',
+			position: 0,
+		});
+
+		const references = await getMovementDeleteReferences(db, movement.id);
+		expect(references).toMatchObject({
+			sets: 0,
+			routines: [{ id: routine.id, name: 'Upper A' }],
+			subRoutines: [{ name: 'Upper A × Home', routineId: routine.id, gymId: gym.id }],
+			sessions: [],
+		});
+		const result = await deleteMovement(db, movement.id);
+		expect(result.deleted).toBe(false);
 	});
 });

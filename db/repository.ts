@@ -13,6 +13,8 @@ import {
 	gyms,
 	movements,
 	muscleGroups,
+	routineEntries,
+	routines,
 	sessionEntries,
 	sets,
 	subRoutineEntries,
@@ -170,6 +172,20 @@ export async function updateMovement(db: DB, id: number, patch: MovementPatch): 
 	}
 }
 
+async function setMovementArchived(db: DB, id: number, archived: 0 | 1): Promise<Movement> {
+	const updated = (await db.update(movements).set({ archived }).where(eq(movements.id, id)).returning())[0];
+	if (!updated) throw new Error(`Movement ${id} does not exist.`);
+	return updated;
+}
+
+export function archiveMovement(db: DB, id: number): Promise<Movement> {
+	return setMovementArchived(db, id, 1);
+}
+
+export function unarchiveMovement(db: DB, id: number): Promise<Movement> {
+	return setMovementArchived(db, id, 0);
+}
+
 export async function findMovementByName(
 	db: DB,
 	name: string,
@@ -268,6 +284,114 @@ export async function listMovements(db: DB, opts: BrowseCatalogOptions = {}): Pr
 		.where(and(...conditions))
 		.orderBy(sql`lower(${movements.name})`, movements.id);
 	return rows.map((r) => ({ ...r, archived: r.archived === 1 }));
+}
+
+/** A stable, user-facing parent that keeps a movement from being deleted. */
+export type Reference = {
+	id: number;
+	name: string;
+	date?: number;
+	routineId?: number;
+	gymId?: number;
+};
+
+/** All history and identity references that must be clear before deletion. */
+export type MovementDeleteReferences = {
+	sets: number;
+	routines: Reference[];
+	subRoutines: Reference[];
+	sessions: Reference[];
+};
+
+export type MovementDeleteBlocked = {
+	deleted: false;
+	references: MovementDeleteReferences;
+};
+
+export type MovementDeleteResult = { deleted: true } | MovementDeleteBlocked;
+
+/** Whether any history or parent reference still points at the movement. */
+export function hasMovementReferences(references: MovementDeleteReferences): boolean {
+	return references.sets > 0 || references.routines.length > 0 || references.subRoutines.length > 0 || references.sessions.length > 0;
+}
+
+/**
+ * Returns the grouped references used by the catalog's delete guard. Parent
+ * rows are distinct so the UI can show one navigable routine, sub-routine, or
+ * session per container even when it contains the movement more than once.
+ */
+function readMovementDeleteReferences(db: DB, id: number): MovementDeleteReferences {
+	const movement = db.select({ id: movements.id }).from(movements).where(eq(movements.id, id)).limit(1).all()[0];
+	if (!movement) throw new Error(`Movement ${id} does not exist.`);
+
+	const setCount = db
+		.select({ count: count() })
+		.from(sets)
+		.innerJoin(sessionEntries, eq(sessionEntries.id, sets.sessionEntryId))
+		.where(eq(sessionEntries.movementId, id)).all()[0].count;
+
+	const routineRows = db
+		.select({ id: routines.id, name: routines.name })
+		.from(routineEntries)
+		.innerJoin(routines, eq(routines.id, routineEntries.routineId))
+		.where(eq(routineEntries.movementId, id))
+		.groupBy(routines.id, routines.name)
+		.orderBy(routines.id)
+		.all();
+
+	const subRoutineRows = db
+		.select({
+			id: subRoutines.id,
+			routineId: routines.id,
+			routineName: routines.name,
+			gymId: gyms.id,
+			gymName: gyms.name,
+		})
+		.from(subRoutineEntries)
+		.innerJoin(subRoutines, eq(subRoutines.id, subRoutineEntries.subRoutineId))
+		.innerJoin(routines, eq(routines.id, subRoutines.routineId))
+		.innerJoin(gyms, eq(gyms.id, subRoutines.gymId))
+		.where(eq(subRoutineEntries.movementId, id))
+		.groupBy(subRoutines.id, routines.id, routines.name, gyms.id, gyms.name)
+		.orderBy(subRoutines.id)
+		.all();
+
+	const sessionRows = db
+		.select({ id: sessions.id, name: gyms.name, date: sessions.startedAt })
+		.from(sessionEntries)
+		.innerJoin(sessions, eq(sessions.id, sessionEntries.sessionId))
+		.innerJoin(gyms, eq(gyms.id, sessions.gymId))
+		.where(eq(sessionEntries.movementId, id))
+		.groupBy(sessions.id, gyms.name, sessions.startedAt)
+		.orderBy(sessions.id)
+		.all();
+
+	return {
+		sets: setCount,
+		routines: routineRows,
+		subRoutines: subRoutineRows.map((row) => ({
+			id: row.id,
+			name: `${row.routineName} × ${row.gymName}`,
+			routineId: row.routineId,
+			gymId: row.gymId,
+		})),
+		sessions: sessionRows,
+	};
+}
+
+export async function getMovementDeleteReferences(db: DB, id: number): Promise<MovementDeleteReferences> {
+	return readMovementDeleteReferences(db, id);
+}
+
+/** Permanently deletes only an unreferenced movement, atomically with its guard. */
+export async function deleteMovement(db: DB, id: number): Promise<MovementDeleteResult> {
+	return db.transaction((tx) => {
+		const references = readMovementDeleteReferences(tx, id);
+		if (hasMovementReferences(references)) return { deleted: false, references };
+
+		tx.delete(movements).where(eq(movements.id, id)).run();
+		return { deleted: true };
+	});
 }
 
 /* --------------------------- Sessions & sets --------------------------- */
