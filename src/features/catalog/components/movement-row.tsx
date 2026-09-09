@@ -7,6 +7,7 @@ type MovementRowProps = {
 	movement: CatalogMovement;
 	expanded: boolean;
 	deleteBlocked: boolean;
+	archiveBusy: boolean;
 	onOpen: () => void;
 	onMore: () => void;
 	onArchive: () => void;
@@ -18,6 +19,7 @@ export function MovementRow({
 	movement,
 	expanded,
 	deleteBlocked,
+	archiveBusy,
 	onOpen,
 	onMore,
 	onArchive,
@@ -54,8 +56,9 @@ export function MovementRow({
 					<Button
 						variant="outline"
 						onPress={onArchive}
+						disabled={archiveBusy}
 						accessibilityLabel={movement.archived ? `Un-archive ${movement.name}` : `Archive ${movement.name}`}>
-						<ButtonText>{movement.archived ? 'Un-archive' : 'Archive'}</ButtonText>
+						<ButtonText>{archiveBusy ? 'Saving…' : movement.archived ? 'Un-archive' : 'Archive'}</ButtonText>
 					</Button>
 					<Button
 						variant="destructive"

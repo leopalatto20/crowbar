@@ -1,4 +1,4 @@
-import { Modal, ScrollView } from 'react-native';
+import { Modal, Pressable, ScrollView } from 'react-native';
 
 import { Box } from '@/components/ui/box';
 import { Button, ButtonText } from '@/components/ui/button';
@@ -15,6 +15,7 @@ export function ReferencesModal({ panel, onClose }: ReferencesModalProps) {
 	return (
 		<Modal visible={panel !== null} transparent animationType="slide" onRequestClose={onClose}>
 			<Box className="flex-1 justify-end bg-foreground/40">
+				<Pressable className="absolute inset-0" onPress={onClose} />
 				<Box className="max-h-[85%] gap-4 rounded-t-xl bg-popover px-4 pb-8 pt-4">
 					<Box className="flex-row items-center justify-between gap-2">
 						<Text size="2xl" className="font-semibold">Cannot delete movement</Text>

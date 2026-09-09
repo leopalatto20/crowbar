@@ -40,7 +40,7 @@ function DbBootstrap({ children }: { children: ReactNode }) {
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   return (
-    <GluestackUIProvider mode="dark">
+    <GluestackUIProvider mode="system">
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <DbBootstrap>
           <AppTabs />
