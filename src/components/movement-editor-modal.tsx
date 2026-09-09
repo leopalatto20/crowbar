@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Modal, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,12 +10,14 @@ import {
 	createMovement,
 	findMovementByName,
 	getDb,
+	getDefaultUnit,
 	normalizeMovementName,
 	type CatalogMovement,
 	type Movement,
 	updateMovement,
 } from '@/db';
 import { DEFAULT_UNIT, type Unit } from '@/db/constants';
+import type { MovementEditorDraft } from './quick-create-state';
 
 export type MuscleGroupOption = { id: number; name: string };
 
@@ -26,6 +28,10 @@ export type MovementEditorModalProps = {
 	onClose: () => void;
 	onSaved: (movement: Movement) => void | Promise<void>;
 	onDuplicate: (movement: Movement) => void;
+	draft?: MovementEditorDraft;
+	initialName?: string;
+	defaultUnit?: Unit;
+	onDraftChange?: (draft: MovementEditorDraft) => void;
 };
 
 /** Shared create/edit surface for the catalog. */
@@ -36,21 +42,82 @@ export function MovementEditorModal({
 	onClose,
 	onSaved,
 	onDuplicate,
+	draft,
+	initialName,
+	defaultUnit,
+	onDraftChange,
 }: MovementEditorModalProps) {
+	const editing = movement != null;
 	const initialGroupId = movement
 		? muscleGroups.find((group) => group.name === movement.muscleGroup)?.id
 		: undefined;
-	const [name, setName] = useState(movement?.name ?? '');
-	const [groupId, setGroupId] = useState<number | undefined>(initialGroupId);
-	const [unit, setUnit] = useState<Unit>(movement?.unit ?? (DEFAULT_UNIT as Unit));
-	const [instructions, setInstructions] = useState(movement?.instructions ?? '');
+	const initialDraft: MovementEditorDraft = draft ?? {
+		name: initialName ?? '',
+		primaryMuscleGroupId: undefined,
+		unit: defaultUnit ?? DEFAULT_UNIT,
+		instructions: '',
+	};
+	const [name, setName] = useState(editing ? movement.name : initialDraft.name);
+	const [groupId, setGroupId] = useState<number | undefined>(editing ? initialGroupId : initialDraft.primaryMuscleGroupId);
+	const [unit, setUnit] = useState<Unit>(editing ? movement.unit : initialDraft.unit);
+	const [instructions, setInstructions] = useState(editing ? movement.instructions ?? '' : initialDraft.instructions);
+	const unitWasDraftedOnMount = useRef(draft !== undefined);
+	const unitWasEdited = useRef(false);
+	const onDraftChangeRef = useRef(onDraftChange);
 	const [error, setError] = useState<string | null>(null);
 	const [exactDuplicate, setExactDuplicate] = useState<Movement | null>(null);
 	const [nearMatch, setNearMatch] = useState<Movement | null>(null);
 	const [confirmingGroupChange, setConfirmingGroupChange] = useState(false);
 	const [saving, setSaving] = useState(false);
 
-	const editing = movement != null;
+	const reportDraft = (next: MovementEditorDraft) => {
+		if (visible) onDraftChangeRef.current?.(next);
+	};
+
+	useEffect(() => {
+		onDraftChangeRef.current = onDraftChange;
+	}, [onDraftChange]);
+
+	useEffect(() => {
+		if (!visible || editing || unitWasDraftedOnMount.current || unitWasEdited.current) return;
+		let cancelled = false;
+		const unitPromise = defaultUnit ? Promise.resolve(defaultUnit) : getDefaultUnit(getDb());
+		unitPromise.then((resolvedUnit) => {
+			if (!cancelled && !unitWasEdited.current) setUnit(resolvedUnit);
+		}).catch((lookupError) => {
+			if (!cancelled) console.error('Unable to load default movement unit', lookupError);
+		});
+		return () => {
+			cancelled = true;
+		};
+	}, [visible, editing, defaultUnit]);
+
+	useEffect(() => {
+		if (visible && !editing) {
+			reportDraft({ name, primaryMuscleGroupId: groupId, unit, instructions });
+		}
+		// The callback ref keeps this report from depending on an inline parent callback.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [visible, editing, name, groupId, unit, instructions]);
+
+	const updateName = (next: string) => {
+		setName(next);
+		reportDraft({ name: next, primaryMuscleGroupId: groupId, unit, instructions });
+	};
+	const updateGroup = (next: number) => {
+		setGroupId(next);
+		reportDraft({ name, primaryMuscleGroupId: next, unit, instructions });
+	};
+	const updateUnit = (next: Unit) => {
+		unitWasEdited.current = true;
+		setUnit(next);
+		reportDraft({ name, primaryMuscleGroupId: groupId, unit: next, instructions });
+	};
+	const updateInstructions = (next: string) => {
+		setInstructions(next);
+		reportDraft({ name, primaryMuscleGroupId: groupId, unit, instructions: next });
+	};
+
 	const originalGroupId = editing
 		? muscleGroups.find((group) => group.name === movement.muscleGroup)?.id
 		: undefined;
@@ -123,10 +190,21 @@ export function MovementEditorModal({
 				});
 			await onSaved(saved);
 		} catch (saveError) {
+			if (isMovementDuplicateError(saveError)) {
+				const duplicate = await findMovementByName(getDb(), name.trim(), { excludeId: movement?.id });
+				if (duplicate) {
+					setExactDuplicate(duplicate);
+					return;
+				}
+			}
 			setError(saveError instanceof Error ? saveError.message : 'Unable to save movement.');
 		} finally {
 			setSaving(false);
 		}
+	}
+
+	function isMovementDuplicateError(saveError: unknown): boolean {
+		return saveError instanceof Error && /already exists|duplicate|unique|constraint/i.test(saveError.message);
 	}
 
 	async function save(): Promise<void> {
@@ -165,7 +243,7 @@ export function MovementEditorModal({
 							<Input className={(error && !name.trim()) || exactDuplicate ? 'border-destructive' : ''}>
 								<InputField
 									value={name}
-									onChangeText={setName}
+									onChangeText={updateName}
 									placeholder="Movement name"
 									autoCapitalize="words"
 									autoCorrect={false}
@@ -193,7 +271,7 @@ export function MovementEditorModal({
 										key={group.id}
 										size="sm"
 										variant={groupId === group.id ? 'secondary' : 'outline'}
-										onPress={() => setGroupId(group.id)}
+										onPress={() => updateGroup(group.id)}
 									>
 										<ButtonText>{group.name}</ButtonText>
 									</Button>
@@ -205,7 +283,7 @@ export function MovementEditorModal({
 							<Text size="sm" className="font-medium">Unit</Text>
 							<Box className="flex-row gap-2">
 								{(['kg', 'lb'] as Unit[]).map((option) => (
-									<Button key={option} size="sm" variant={unit === option ? 'secondary' : 'outline'} onPress={() => setUnit(option)}>
+									<Button key={option} size="sm" variant={unit === option ? 'secondary' : 'outline'} onPress={() => updateUnit(option)}>
 										<ButtonText>{option}</ButtonText>
 									</Button>
 								))}
@@ -220,7 +298,7 @@ export function MovementEditorModal({
 							<Input className="min-h-24 items-start">
 								<InputField
 									value={instructions}
-									onChangeText={setInstructions}
+									onChangeText={updateInstructions}
 									placeholder="Optional notes"
 									multiline
 									className="py-2"

@@ -15,6 +15,7 @@ import {
 	muscleGroups,
 	routineEntries,
 	routines,
+	settings,
 	sessionEntries,
 	sets,
 	subRoutineEntries,
@@ -97,6 +98,11 @@ async function assertMuscleGroupExists(db: DB, id: number): Promise<void> {
 	}
 }
 
+export async function getDefaultUnit(db: DB): Promise<Unit> {
+	const row = (await db.select({ value: settings.value }).from(settings).where(eq(settings.key, 'default_unit')).limit(1))[0];
+	return row && UNITS.includes(row.value) ? (row.value as Unit) : DEFAULT_UNIT;
+}
+
 async function findExactMovement(db: DB, name: string, excludeId?: number): Promise<Movement | null> {
 	const normalized = normalizeMovementName(name);
 	if (!normalized) return null;
@@ -113,7 +119,7 @@ function movementConstraintError(error: unknown): Error {
 
 export async function createMovement(db: DB, movement: NewMovement): Promise<Movement> {
 	const name = assertMovementName(movement.name);
-	const unit = movement.unit ?? DEFAULT_UNIT;
+	const unit = movement.unit === undefined ? await getDefaultUnit(db) : movement.unit;
 	assertIn(unit, UNITS, 'unit');
 	await assertMuscleGroupExists(db, movement.primaryMuscleGroupId);
 	// Check immediately before the write; SQLite's unique index remains the final

@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import {
 	createMovement,
 	findMovementByName,
+	getDefaultUnit,
 	listMuscleGroups,
 	setsByIsland,
 	schema,
@@ -23,6 +24,22 @@ describe('movement editor repository seam', () => {
 		await expect(createMovement(db, { name: ' \t ', primaryMuscleGroupId: chest.id })).rejects.toThrow(/name/i);
 		const movement = await createMovement(db, { name: 'Blank Test', primaryMuscleGroupId: chest.id });
 		await expect(updateMovement(db, movement.id, { name: ' \n ' })).rejects.toThrow(/name/i);
+	});
+
+	test('uses the settings default for omitted units, honors explicit units, and blocks duplicates', async () => {
+		const db = await freshDb();
+		const chest = (await listMuscleGroups(db)).find((group) => group.name === 'Chest');
+		if (!chest) throw new Error('Chest was not seeded');
+
+		await db.update(schema.settings).set({ value: 'lb' }).where(eq(schema.settings.key, 'default_unit'));
+		expect(await getDefaultUnit(db)).toBe('lb');
+		const settingsDefault = await createMovement(db, { name: 'Settings Default Unit', primaryMuscleGroupId: chest.id });
+		const explicitUnit = await createMovement(db, { name: 'Explicit Unit', primaryMuscleGroupId: chest.id, unit: 'kg' });
+		expect(settingsDefault.unit).toBe('lb');
+		expect(explicitUnit.unit).toBe('kg');
+		await expect(
+			createMovement(db, { name: ' settings   default unit ', primaryMuscleGroupId: chest.id }),
+		).rejects.toThrow(/already exists|duplicate/i);
 	});
 
 	test('rejects exact duplicates, including archived movements', async () => {
