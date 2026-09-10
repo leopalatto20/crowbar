@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, PanResponder, ScrollView } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, FlatList, PanResponder, ScrollView, type LayoutChangeEvent } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Box } from "@/components/ui/box";
@@ -36,6 +36,7 @@ import {
 	type RoutineEntryTargetField,
 } from "./routine-builder-state";
 import { MovementPickerModal } from "./movement-picker-modal";
+import { canSelectMovement } from "./movement-picker-state";
 
 type View = "list" | "builder";
 
@@ -236,6 +237,10 @@ function RoutineBuilder({
 	const [draft, setDraft] = useState<RoutineDraft>(() => createDraft(routine?.routine.name ?? "", recordingScale, routine?.entries ?? []));
 	const [pendingEntry, setPendingEntry] = useState<RoutineEntryDraft | null>(null);
 	const [pickerVisible, setPickerVisible] = useState(false);
+	const ledgerScrollRef = useRef<ScrollView>(null);
+	const ledgerOffsetRef = useRef(0);
+	const ledgerLayoutsRef = useRef<Record<number, number>>({});
+	const pendingRevealRef = useRef<number | null>(null);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const validation = validateDraft(draft);
@@ -263,9 +268,29 @@ function RoutineBuilder({
 		setPendingEntry(null);
 	};
 	const chooseMovement = (movement: CatalogMovement) => {
-		if (movement.archived || selectedIds.includes(movement.id)) return;
+		if (!canSelectMovement(movement, selectedIds)) return;
 		setPendingEntry(createDraftEntry(movement.id));
 		setPickerVisible(false);
+	};
+	const scrollToLedgerEntry = (movementId: number): boolean => {
+		const y = ledgerLayoutsRef.current[movementId];
+		if (y === undefined) return false;
+		ledgerScrollRef.current?.scrollTo({ y: Math.max(0, y - 16), animated: true });
+		return true;
+	};
+	const onRevealExisting = (movementId: number) => {
+		setPickerVisible(false);
+		pendingRevealRef.current = movementId;
+		requestAnimationFrame(() => {
+			if (scrollToLedgerEntry(movementId)) {
+				pendingRevealRef.current = null;
+				return;
+			}
+			if (pendingRevealRef.current === movementId) {
+				pendingRevealRef.current = null;
+				ledgerScrollRef.current?.scrollToEnd({ animated: true });
+			}
+		});
 	};
 	const save = async () => {
 		if (!validation.valid || saving) return;
@@ -285,7 +310,7 @@ function RoutineBuilder({
 
 	return (
 		<SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right", "bottom"]}>
-			<ScrollView contentContainerClassName="mx-auto w-full max-w-[800px] gap-4 px-4 pb-28 pt-4" keyboardShouldPersistTaps="handled">
+			<ScrollView ref={ledgerScrollRef} contentContainerClassName="mx-auto w-full max-w-[800px] gap-4 px-4 pb-28 pt-4" keyboardShouldPersistTaps="handled">
 				<Box className="flex-row items-center justify-between">
 					<Button variant="ghost" onPress={onCancel} accessibilityLabel="Back to routines"><ButtonText>Back</ButtonText></Button>
 					<Text size="2xl" bold>{routine ? "Edit Routine" : "New Routine"}</Text>
@@ -306,7 +331,10 @@ function RoutineBuilder({
 					{validation.nameError && <Text size="sm" className="text-destructive">{validation.nameError}</Text>}
 				</Box>
 
-				<Box className="gap-4 rounded-xl bg-card p-4">
+				<Box
+					className="gap-4 rounded-xl bg-card p-4"
+					onLayout={(event) => { ledgerOffsetRef.current = event.nativeEvent.layout.y; }}
+				>
 					<Box className="flex-row items-center justify-between">
 						<Text size="lg" bold>Ledger</Text>
 						<Text size="sm" className="text-muted-foreground">{movementCountLabel(draft.entries.length)}</Text>
@@ -328,6 +356,13 @@ function RoutineBuilder({
 							onMoveUp={() => updateDraft(moveDraftEntry(draft, movement.id, "up"))}
 							onMoveDown={() => updateDraft(moveDraftEntry(draft, movement.id, "down"))}
 							onRemove={() => updateDraft(removeDraftEntry(draft, movement.id))}
+							onLayout={(event) => {
+								ledgerLayoutsRef.current[movement.id] = ledgerOffsetRef.current + event.nativeEvent.layout.y;
+								if (pendingRevealRef.current === movement.id) {
+									pendingRevealRef.current = null;
+									requestAnimationFrame(() => { scrollToLedgerEntry(movement.id); });
+								}
+							}}
 						/>
 					))}
 				</Box>
@@ -351,7 +386,7 @@ function RoutineBuilder({
 				<Button
 					variant="outline"
 					onPress={() => setPickerVisible(true)}
-					disabled={movementsLoading || movementOptions.filter((movement) => !movement.archived && !selectedIds.includes(movement.id)).length === 0}
+					disabled={movementsLoading || Boolean(movementsError)}
 					accessibilityLabel="Add movement to routine"
 				>
 					<ButtonText>{movementsLoading ? "Loading movements…" : "Add movement"}</ButtonText>
@@ -374,6 +409,7 @@ function RoutineBuilder({
 				selectedIds={selectedIds}
 				onClose={() => setPickerVisible(false)}
 				onSelect={chooseMovement}
+				onRevealExisting={onRevealExisting}
 			/>
 		</SafeAreaView>
 	);
@@ -392,11 +428,12 @@ type RoutineEntryRowProps = {
 	onMoveUp: () => void;
 	onMoveDown: () => void;
 	onRemove: () => void;
+	onLayout: (event: LayoutChangeEvent) => void;
 };
 
-function RoutineEntryRow({ index, entryCount, movement, entry, recordingScale, errors, onTargetChange, onClearRepRange, onMove, onMoveUp, onMoveDown, onRemove }: RoutineEntryRowProps) {
+function RoutineEntryRow({ index, entryCount, movement, entry, recordingScale, errors, onTargetChange, onClearRepRange, onMove, onMoveUp, onMoveDown, onRemove, onLayout }: RoutineEntryRowProps) {
 	return (
-		<Box className={movement.archived ? "gap-2 border-t border-border py-4 opacity-50" : "gap-2 border-t border-border py-4"}>
+		<Box onLayout={onLayout} className={movement.archived ? "gap-2 border-t border-border py-4 opacity-50" : "gap-2 border-t border-border py-4"}>
 			<Box className="flex-row items-start gap-2">
 				<DragHandle index={index} label={movement.name} onMove={onMove} />
 				<Box className="min-w-0 flex-1 gap-1">

@@ -110,10 +110,21 @@ describe('catalog browse read path', () => {
 		expect(chest.map((r) => r.name)).toContain('Bench Press');
 	});
 
-	test('user-created movements join the same A–Z list', async () => {
+	test('user-created movements join the same A–Z list and retain Instructions', async () => {
 		await makeMovement(db, { name: 'Cable Fly', muscleGroup: 'Chest' });
+		const groups = await db.select().from(schema.muscleGroups);
+		const chest = groups.find((group) => group.name === 'Chest');
+		if (!chest) throw new Error('Chest group was not seeded');
+		await db.insert(schema.movements).values({
+			name: 'Instructional Press',
+			primaryMuscleGroupId: chest.id,
+			unit: 'kg',
+			instructions: 'Brace before the first rep.',
+		});
+
 		const rows = await listMovements(db, { muscleGroup: 'Chest' });
 		expect(rows.map((r) => r.name)).toContain('Cable Fly');
+		expect(rows.find((r) => r.name === 'Instructional Press')?.instructions).toBe('Brace before the first rep.');
 	});
 
 	test('archive and unarchive preserve history while changing picker visibility', async () => {

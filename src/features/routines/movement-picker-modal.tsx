@@ -13,6 +13,11 @@ import { Button, ButtonText } from "@/components/ui/button";
 import { Input, InputField } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import type { CatalogMovement } from "@/db";
+import {
+	ALL_MUSCLE_GROUPS,
+	getMovementPickerRows,
+	MOVEMENT_PICKER_FILTERS,
+} from "./movement-picker-state";
 
 type MovementPickerModalProps = {
 	visible: boolean;
@@ -20,6 +25,7 @@ type MovementPickerModalProps = {
 	selectedIds: number[];
 	onClose: () => void;
 	onSelect: (movement: CatalogMovement) => void;
+	onRevealExisting: (movementId: number) => void;
 };
 
 export function MovementPickerModal({
@@ -28,16 +34,29 @@ export function MovementPickerModal({
 	selectedIds,
 	onClose,
 	onSelect,
+	onRevealExisting,
 }: MovementPickerModalProps) {
 	const [query, setQuery] = useState("");
-	const selected = useMemo(() => new Set(selectedIds), [selectedIds]);
-	const filteredOptions = useMemo(() => {
-		const normalizedQuery = query.trim().toLowerCase();
-		if (!normalizedQuery) return options;
-		return options.filter((movement) =>
-			movement.name.toLowerCase().includes(normalizedQuery),
-		);
-	}, [options, query]);
+	const [muscleGroup, setMuscleGroup] = useState<string>(ALL_MUSCLE_GROUPS);
+	const [expandedInstructions, setExpandedInstructions] = useState<Set<number>>(() => new Set());
+	const rows = useMemo(
+		() => getMovementPickerRows(options, { query, muscleGroup, selectedIds }),
+		[muscleGroup, options, query, selectedIds],
+	);
+	const hasFilters = query.trim() !== "" || muscleGroup !== ALL_MUSCLE_GROUPS;
+
+	const clearFilters = () => {
+		setQuery("");
+		setMuscleGroup(ALL_MUSCLE_GROUPS);
+	};
+	const toggleInstructions = (movementId: number) => {
+		setExpandedInstructions((current) => {
+			const next = new Set(current);
+			if (next.has(movementId)) next.delete(movementId);
+			else next.add(movementId);
+			return next;
+		});
+	};
 
 	return (
 		<Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
@@ -67,32 +86,87 @@ export function MovementPickerModal({
 								/>
 							</Input>
 							<ScrollView
+								horizontal
+								showsHorizontalScrollIndicator={false}
+								contentContainerClassName="gap-2"
+								accessibilityLabel="Filter by muscle group"
+							>
+								{MOVEMENT_PICKER_FILTERS.map((filter) => {
+									const selected = filter === muscleGroup;
+									return (
+										<Button
+											key={filter}
+											variant={selected ? "default" : "outline"}
+											size="sm"
+											className="rounded-full"
+											onPress={() => setMuscleGroup(filter)}
+											accessibilityLabel={`${filter} muscle group filter`}
+											accessibilityState={{ selected }}
+										>
+											<ButtonText>{filter}</ButtonText>
+										</Button>
+									);
+								})}
+							</ScrollView>
+							<Text size="sm" className="text-muted-foreground">
+								{rows.length} {hasFilters ? "matches" : "movements"}
+							</Text>
+							<ScrollView
 								className="min-h-0 flex-1"
 								contentContainerClassName="gap-2 pb-8"
 								keyboardShouldPersistTaps="handled"
 							>
-								{filteredOptions.length === 0 ? (
-									<Box className="items-center rounded-xl bg-card px-4 py-8">
-										<Text className="text-muted-foreground">No active movements match</Text>
-									</Box>
-								) : filteredOptions.map((movement) => {
-									const isSelected = selected.has(movement.id);
-									return (
-										<Button
-											key={movement.id}
-											variant="outline"
-											onPress={() => onSelect(movement)}
-											disabled={isSelected}
-											className="min-h-16 items-start justify-center px-4 py-2"
-											accessibilityLabel={`Add ${movement.name}`}
-										>
-											<Box className="min-w-0 flex-1 gap-1">
-												<Text bold>{movement.name}</Text>
-												<Text size="sm" className="text-muted-foreground">
-													{isSelected ? "Added" : movement.muscleGroup}
-												</Text>
-											</Box>
+								{rows.length === 0 ? (
+									hasFilters ? (
+										<Box className="items-center gap-4 rounded-xl bg-card px-4 py-8">
+											<Text className="text-center text-muted-foreground">No movements match these filters.</Text>
+											<Button variant="outline" onPress={clearFilters} accessibilityLabel="Clear movement filters">
+												<ButtonText>Clear filters</ButtonText>
+											</Button>
+										</Box>
+								) : (
+									<Box className="items-center gap-4 rounded-xl bg-card px-4 py-8">
+										<Text className="text-center text-muted-foreground">There are no active movements. Close this picker, then add one in Catalog.</Text>
+										<Button variant="outline" onPress={onClose} accessibilityLabel="Close picker to add a movement in Catalog">
+											<ButtonText>Close picker</ButtonText>
 										</Button>
+									</Box>
+								)
+								) : rows.map(({ movement, alreadyAdded, selectable }) => {
+									const hasInstructions = Boolean(movement.instructions?.trim());
+									const instructionsVisible = expandedInstructions.has(movement.id);
+									return (
+										<Box key={movement.id} className="gap-2 rounded-xl bg-card p-4">
+											<Box className="flex-row items-start gap-2">
+												<Button
+													variant="outline"
+													onPress={() => onSelect(movement)}
+													disabled={!selectable}
+													className="min-h-16 min-w-0 flex-1 items-start justify-center px-4 py-2"
+													accessibilityLabel={alreadyAdded ? `${movement.name} already added` : `Add ${movement.name}`}
+												>
+													<Box className="min-w-0 flex-1 items-start gap-1">
+														<ButtonText className="text-left">{movement.name}</ButtonText>
+														<ButtonText className="text-left text-muted-foreground">
+															{alreadyAdded ? "Already added" : movement.muscleGroup}
+														</ButtonText>
+													</Box>
+												</Button>
+												{alreadyAdded && (
+													<Button variant="link" size="sm" className="px-0" onPress={() => onRevealExisting(movement.id)} accessibilityLabel={`Reveal ${movement.name} in ledger`}>
+														<ButtonText>Reveal in ledger</ButtonText>
+													</Button>
+												)}
+											</Box>
+											{hasInstructions && (
+												<>
+													<Button variant="link" size="sm" className="self-start px-0" onPress={() => toggleInstructions(movement.id)} accessibilityLabel={`${instructionsVisible ? "Hide" : "Show"} instructions for ${movement.name}`}>
+													<ButtonText>{instructionsVisible ? "Hide instructions" : "Show instructions"}</ButtonText>
+												</Button>
+												{instructionsVisible && <Text className="text-muted-foreground">{movement.instructions}</Text>}
+											</>
+											)}
+										</Box>
 									);
 								})}
 							</ScrollView>
