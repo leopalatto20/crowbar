@@ -15,6 +15,7 @@
     "expo-router": "~57.0.19",
     "expo-sqlite": "~57.0.2",
     "expo-symbols": "~57.0.2",
+    "lucide-react-native": "^1.44.0",
     "nativewind": "^5.0.0-preview.2",
     "react": "19.2.3",
     "react-aria": "^3.52.1",
