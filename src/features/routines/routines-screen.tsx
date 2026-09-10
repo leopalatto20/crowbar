@@ -510,8 +510,8 @@ function RoutineBuilder({
 	const [initialDraft] = useState<RoutineDraft>(() => createDraft(routine?.routine.name ?? "", recordingScale, routine?.entries ?? []));
 	const [draft, setDraft] = useState<RoutineDraft>(() => createDraft(routine?.routine.name ?? "", recordingScale, routine?.entries ?? []));
 	const [pendingEntry, setPendingEntry] = useState<RoutineEntryDraft | null>(null);
+	const [pendingEntrySource, setPendingEntrySource] = useState<"picker" | "quickCreate" | null>(null);
 	const [pickerVisible, setPickerVisible] = useState(false);
-	const [createdMovementId, setCreatedMovementId] = useState<number | null>(null);
 	const [quickCreateVisible, setQuickCreateVisible] = useState(false);
 	const [quickCreateSession, setQuickCreateSession] = useState(0);
 	const [quickCreate, dispatchQuickCreate] = useReducer(quickCreateReducer, createQuickCreateState());
@@ -547,31 +547,41 @@ function RoutineBuilder({
 	};
 	const addPending = () => {
 		if (!pendingEntry || pendingErrors.length > 0) return;
+		const returnToPicker = pendingEntrySource === "quickCreate";
 		const added = addDraftEntry(draft, pendingEntry.movementId);
 		updateDraft({
 			...added,
 			entries: added.entries.map((entry) => entry.movementId === pendingEntry.movementId ? pendingEntry : entry),
 		});
 		setPendingEntry(null);
+		setPendingEntrySource(null);
+		if (returnToPicker) setPickerVisible(true);
 	};
-	const beginMovementSetup = (movementId: number) => {
+	const cancelPending = () => {
+		const returnToPicker = pendingEntrySource === "quickCreate";
+		setPendingEntry(null);
+		setPendingEntrySource(null);
+		if (returnToPicker) setPickerVisible(true);
+	};
+	const beginMovementSetup = (movementId: number, source: "picker" | "quickCreate" = "picker") => {
 		setPendingEntry(createDraftEntry(movementId));
+		setPendingEntrySource(source);
 		setPickerVisible(false);
 	};
 	const chooseMovement = (movement: CatalogMovement) => {
 		if (!canSelectMovement(movement, selectedIds)) return;
-		setCreatedMovementId(null);
 		beginMovementSetup(movement.id);
 	};
 	const startQuickCreate = (name: string) => {
-		setCreatedMovementId(null);
 		if (!quickCreate.draft) dispatchQuickCreate({ type: "quickCreateStarted", name });
+		setPickerVisible(false);
 		setQuickCreateSession((session) => session + 1);
 		setQuickCreateVisible(true);
 	};
 	const closeQuickCreate = () => {
 		dispatchQuickCreate({ type: "modalCancelled" });
 		setQuickCreateVisible(false);
+		setPickerVisible(true);
 	};
 	const handleQuickCreateMovement = async (movement: Movement, action: "movementSaved" | "movementSelected") => {
 		if (action === "movementSelected") dispatchQuickCreate({ type: "duplicateNavigated" });
@@ -579,7 +589,7 @@ function RoutineBuilder({
 		try {
 			const refreshedMovements = await onRefreshMovements();
 			const catalogMovement = refreshedMovements.find((candidate) => candidate.id === movement.id);
-			if (!catalogMovement) throw new Error("The new Movement could not be loaded into the picker.");
+			if (!catalogMovement) throw new Error("The new Movement could not be loaded for target setup.");
 			dispatchQuickCreate({ type: action, movement: { id: movement.id, name: movement.name } });
 			setQuickCreateVisible(false);
 			if (selectedIds.includes(catalogMovement.id)) {
@@ -590,13 +600,9 @@ function RoutineBuilder({
 			if (!canSelectMovement(catalogMovement, selectedIds)) {
 				throw new Error("Archived Movements cannot be added to a new Routine.");
 			}
-			beginMovementSetup(catalogMovement.id);
-			if (action === "movementSaved") {
-				setCreatedMovementId(catalogMovement.id);
-				setPickerVisible(true);
-			}
+			beginMovementSetup(catalogMovement.id, "quickCreate");
 		} catch (loadError) {
-			setError(errorMessage(loadError, "Unable to return to the Movement picker."));
+			setError(errorMessage(loadError, "Unable to continue to target setup."));
 		}
 	};
 	const onQuickCreateSaved = (movement: Movement) => handleQuickCreateMovement(movement, "movementSaved");
@@ -683,7 +689,6 @@ function RoutineBuilder({
 							recordingScale={recordingScale}
 							errors={validation.entryErrors[movement.id] ?? []}
 							onTargetChange={(field, value) => updateDraft(updateDraftTarget(draft, movement.id, field, value))}
-							onClearRepRange={() => updateDraft({ ...draft, entries: draft.entries.map((entry) => entry.movementId === movement.id ? { ...entry, repMin: "", repMax: "" } : entry) })}
 							onMove={(from, to) => updateDraft(reorderDraftEntry(draft, from, to))}
 							onMoveUp={() => updateDraft(moveDraftEntry(draft, movement.id, "up"))}
 							onMoveDown={() => updateDraft(moveDraftEntry(draft, movement.id, "down"))}
@@ -706,7 +711,7 @@ function RoutineBuilder({
 								<Text size="lg" bold>Configure Movement</Text>
 								<Text className="text-muted-foreground">{pendingMovement.name}</Text>
 							</Box>
-							<Button variant="ghost" onPress={() => setPendingEntry(null)} accessibilityLabel="Cancel movement setup"><ButtonText>Cancel</ButtonText></Button>
+							<Button variant="ghost" onPress={cancelPending} accessibilityLabel={pendingEntrySource === "quickCreate" ? "Back to movement picker" : "Cancel movement setup"}><ButtonText>{pendingEntrySource === "quickCreate" ? "Back to picker" : "Cancel"}</ButtonText></Button>
 						</Box>
 						<RoutineTargetFields entry={pendingEntry} recordingScale={recordingScale} errors={pendingErrors} onChange={updatePending} onClearRepRange={() => setPendingEntry((entry) => entry ? { ...entry, repMin: "", repMax: "" } : entry)} />
 						<Button variant="outline" onPress={addPending} disabled={pendingErrors.length > 0} accessibilityLabel={`Add ${pendingMovement.name} to routine`}>
@@ -745,21 +750,26 @@ function RoutineBuilder({
 						</Button>
 					</Box>
 				)}
-				<Button onPress={() => void save()} disabled={!validation.valid || saving} accessibilityLabel="Save routine">
-					<ButtonText>{saving ? "Saving…" : routine ? "Save changes" : "Save routine"}</ButtonText>
-				</Button>
 			</ScrollView>
+			<Box className="border-t border-border bg-background px-4 py-3">
+				<Box className="mx-auto w-full max-w-[800px] flex-row items-center gap-3">
+					<Box className="min-w-0 flex-1 gap-0.5">
+						<Text size="sm" bold>{saving ? "Saving…" : validation.valid ? "Ready to save" : "Finish setup"}</Text>
+						<Text size="xs" className="text-muted-foreground" numberOfLines={1}>
+							{validation.valid ? `${movementCountLabel(draft.entries.length)} · targets editable inline` : validation.nameError ?? validation.entriesError ?? "Review the highlighted targets."}
+						</Text>
+					</Box>
+					<Button onPress={() => void save()} disabled={!validation.valid || saving} accessibilityLabel="Save routine">
+						<ButtonText>{saving ? "Saving…" : routine ? "Save changes" : "Save routine"}</ButtonText>
+					</Button>
+				</Box>
+			</Box>
 			<MovementPickerModal
 				visible={pickerVisible}
 				options={movementOptions}
 				selectedIds={selectedIds}
-				createdMovement={createdMovementId === null ? null : movementOptions.find((movement) => movement.id === createdMovementId)}
 				onClose={() => setPickerVisible(false)}
 				onCreate={startQuickCreate}
-				onContinueWithCreated={() => {
-					setCreatedMovementId(null);
-					setPickerVisible(false);
-				}}
 				onSelect={chooseMovement}
 				onRevealExisting={onRevealExisting}
 			/>
@@ -771,6 +781,8 @@ function RoutineBuilder({
 					defaultUnit={defaultUnit}
 					initialName={quickCreate.workingName}
 					draft={quickCreate.draft}
+					closeLabel="Back"
+					closeAccessibilityLabel="Back to movement picker"
 					onClose={closeQuickCreate}
 					onSaved={(movement) => { void onQuickCreateSaved(movement); }}
 					onDuplicate={(movement) => { void onQuickCreateDuplicate(movement); }}
@@ -789,7 +801,6 @@ type RoutineEntryRowProps = {
 	recordingScale: RecordingScale;
 	errors: string[];
 	onTargetChange: (field: RoutineEntryTargetField, value: string) => void;
-	onClearRepRange: () => void;
 	onMove: (from: number, to: number) => void;
 	onMoveUp: () => void;
 	onMoveDown: () => void;
@@ -797,19 +808,17 @@ type RoutineEntryRowProps = {
 	onLayout: (event: LayoutChangeEvent) => void;
 };
 
-function RoutineEntryRow({ index, entryCount, movement, entry, recordingScale, errors, onTargetChange, onClearRepRange, onMove, onMoveUp, onMoveDown, onRemove, onLayout }: RoutineEntryRowProps) {
+function RoutineEntryRow({ index, entryCount, movement, entry, recordingScale, errors, onTargetChange, onMove, onMoveUp, onMoveDown, onRemove, onLayout }: RoutineEntryRowProps) {
 	return (
-		<Box onLayout={onLayout} className={movement.archived ? "gap-2 border-t border-border py-4 opacity-50" : "gap-2 border-t border-border py-4"}>
-			<Box className="flex-row items-start gap-2">
+		<Box onLayout={onLayout} className={movement.archived ? "gap-2 border-t border-border py-3 opacity-50" : "gap-2 border-t border-border py-3"}>
+			<Box className="flex-row items-center gap-2">
 				<DragHandle index={index} label={movement.name} onMove={onMove} />
-				<Box className="min-w-0 flex-1 gap-1">
-					<Text size="sm" className="text-muted-foreground">{index + 1}</Text>
-					<Text bold>{movement.name}</Text>
-					{movement.archived && <Text size="sm" bold className="uppercase text-muted-foreground">Archived</Text>}
-				</Box>
+				<Text size="xs" className="text-muted-foreground">{String(index + 1).padStart(2, "0")}</Text>
+				<Text bold className="min-w-0 flex-1" numberOfLines={1}>{movement.name}</Text>
+				{movement.archived && <Text size="xs" bold className="uppercase text-muted-foreground">Archived</Text>}
 				<Box className="flex-row gap-1">
-					<Button variant="ghost" size="sm" onPress={onMoveUp} disabled={index === 0} accessibilityLabel={`Move ${movement.name} up`}><ButtonText>↑</ButtonText></Button>
-					<Button variant="ghost" size="sm" onPress={onMoveDown} disabled={index === entryCount - 1} accessibilityLabel={`Move ${movement.name} down`}><ButtonText>↓</ButtonText></Button>
+					<Button variant="ghost" size="sm" onPress={onMoveUp} disabled={index === 0} accessibilityLabel={`Move ${movement.name} up`}><ButtonText>Up</ButtonText></Button>
+					<Button variant="ghost" size="sm" onPress={onMoveDown} disabled={index === entryCount - 1} accessibilityLabel={`Move ${movement.name} down`}><ButtonText>Down</ButtonText></Button>
 				</Box>
 			</Box>
 			<RoutineTargetFields
@@ -817,9 +826,9 @@ function RoutineEntryRow({ index, entryCount, movement, entry, recordingScale, e
 				recordingScale={recordingScale}
 				errors={errors}
 				onChange={onTargetChange}
-				onClearRepRange={onClearRepRange}
+				compact
 			/>
-			<Button variant="link" size="sm" className="self-start px-0" onPress={onRemove} accessibilityLabel={`Remove ${movement.name}`}><ButtonText>Remove</ButtonText></Button>
+			<Button variant="link" size="sm" className="self-start px-0" onPress={onRemove} accessibilityLabel={`Remove ${movement.name}`}><ButtonText>Remove movement</ButtonText></Button>
 		</Box>
 	);
 }
@@ -835,39 +844,47 @@ function DragHandle({ index, label, onMove }: { index: number; label: string; on
 	}), [index, onMove]);
 	return (
 		<Button {...responder.panHandlers} variant="ghost" size="icon" accessibilityLabel={`Drag ${label}`} className="bg-muted">
-			<ButtonText className="text-muted-foreground">≡</ButtonText>
+			<Box className="gap-0.5">
+				<Box className="h-0.5 w-3 rounded-full bg-muted-foreground" />
+				<Box className="h-0.5 w-3 rounded-full bg-muted-foreground" />
+				<Box className="h-0.5 w-3 rounded-full bg-muted-foreground" />
+			</Box>
 		</Button>
 	);
 }
 
-function RoutineTargetFields({ entry, recordingScale, errors, onChange, onClearRepRange }: { entry: RoutineEntryDraft; recordingScale: RecordingScale; errors: string[]; onChange: (field: RoutineEntryTargetField, value: string) => void; onClearRepRange: () => void }) {
-	return (
-		<Box className="gap-2">
-			<TargetField label="Working sets" value={entry.workingSetCount} error={errors.find((error) => error.startsWith("Working-set"))} onChange={(value) => onChange("workingSetCount", value)} onClear={() => onChange("workingSetCount", "")} keyboardType="number-pad" />
-			<Box className="gap-2">
-				<Text size="sm" bold>Rep range</Text>
-				<Box className="flex-row gap-2">
-					<Box className="min-w-0 flex-1"><Input isInvalid={Boolean(errors.some((error) => error.includes("Rep")))}><InputField value={entry.repMin} onChangeText={(value) => onChange("repMin", value)} placeholder="Min" accessibilityLabel="Minimum reps" keyboardType="number-pad" /></Input></Box>
-					<Box className="min-w-0 flex-1"><Input isInvalid={Boolean(errors.some((error) => error.includes("Rep")))}><InputField value={entry.repMax} onChangeText={(value) => onChange("repMax", value)} placeholder="Max" accessibilityLabel="Maximum reps" keyboardType="number-pad" /></Input></Box>
-					<Button variant="link" size="sm" className="px-0" onPress={onClearRepRange} accessibilityLabel="Clear rep range"><ButtonText>Clear</ButtonText></Button>
+function RoutineTargetFields({ entry, recordingScale, errors, onChange, onClearRepRange, compact = false }: { entry: RoutineEntryDraft; recordingScale: RecordingScale; errors: string[]; onChange: (field: RoutineEntryTargetField, value: string) => void; onClearRepRange?: () => void; compact?: boolean }) {
+	const repError = errors.some((error) => error.includes("Rep"));
+	const fields = (
+		<>
+			<TargetField compact={compact} label="Sets" value={entry.workingSetCount} error={errors.find((error) => error.startsWith("Working-set"))} onChange={(value) => onChange("workingSetCount", value)} onClear={() => onChange("workingSetCount", "")} keyboardType="number-pad" />
+			<Box className={compact ? "min-w-0 flex-1 gap-1" : "gap-2"}>
+				<Box className="flex-row items-center justify-between">
+					<Text size="sm" bold>Reps</Text>
+					{!compact && onClearRepRange && (entry.repMin !== "" || entry.repMax !== "") && <Button variant="link" size="sm" className="px-0" onPress={onClearRepRange} accessibilityLabel="Clear rep range"><ButtonText>Clear</ButtonText></Button>}
+				</Box>
+				<Box className="flex-row gap-1">
+					<Box className="min-w-0 flex-1"><Input isInvalid={repError}><InputField value={entry.repMin} onChangeText={(value) => onChange("repMin", value)} placeholder="Min" accessibilityLabel="Minimum reps" keyboardType="number-pad" textAlign="center" /></Input></Box>
+					<Box className="min-w-0 flex-1"><Input isInvalid={repError}><InputField value={entry.repMax} onChangeText={(value) => onChange("repMax", value)} placeholder="Max" accessibilityLabel="Maximum reps" keyboardType="number-pad" textAlign="center" /></Input></Box>
 				</Box>
 				{errors.filter((error) => error.includes("Rep")).map((error) => <Text key={error} size="sm" className="text-destructive">{error}</Text>)}
 			</Box>
-			<TargetField label={`${recordingScale.toUpperCase()} target`} value={entry.proximityValue} error={errors.find((error) => error.includes("target must"))} onChange={(value) => onChange("proximityValue", value)} onClear={() => onChange("proximityValue", "")} keyboardType="decimal-pad" />
-			<TargetField label="Tempo" value={entry.tempo} error={errors.find((error) => error.startsWith("Tempo"))} onChange={(value) => onChange("tempo", value)} onClear={() => onChange("tempo", "")} placeholder="3-1-1-0" />
-		</Box>
+			<TargetField compact={compact} label={recordingScale.toUpperCase()} value={entry.proximityValue} error={errors.find((error) => error.includes("target must"))} onChange={(value) => onChange("proximityValue", value)} onClear={() => onChange("proximityValue", "")} keyboardType="decimal-pad" />
+			<TargetField compact={compact} label="Tempo" value={entry.tempo} error={errors.find((error) => error.startsWith("Tempo"))} onChange={(value) => onChange("tempo", value)} onClear={() => onChange("tempo", "")} placeholder="3-1-1-0" />
+		</>
 	);
+	return compact ? <Box className="flex-row flex-wrap gap-2">{fields}</Box> : <Box className="gap-2">{fields}</Box>;
 }
 
-type TargetFieldProps = { label: string; value: string; error?: string; onChange: (value: string) => void; onClear: () => void; placeholder?: string; keyboardType?: "number-pad" | "decimal-pad" };
-function TargetField({ label, value, error, onChange, onClear, placeholder, keyboardType }: TargetFieldProps) {
+type TargetFieldProps = { label: string; value: string; error?: string; onChange: (value: string) => void; onClear: () => void; placeholder?: string; keyboardType?: "number-pad" | "decimal-pad"; compact?: boolean };
+function TargetField({ label, value, error, onChange, onClear, placeholder, keyboardType, compact = false }: TargetFieldProps) {
 	return (
-		<Box className="gap-2">
+		<Box className={compact ? "basis-1/2 min-w-0 flex-1 gap-1" : "gap-2"}>
 			<Box className="flex-row items-center justify-between">
-				<Text size="sm" bold>{label}</Text>
-				{value !== "" && <Button variant="link" size="sm" className="px-0" onPress={onClear} accessibilityLabel={`Clear ${label}`}><ButtonText>Clear</ButtonText></Button>}
+				<Text size="xs" bold>{label}</Text>
+				{!compact && value !== "" && <Button variant="link" size="sm" className="px-0" onPress={onClear} accessibilityLabel={`Clear ${label}`}><ButtonText>Clear</ButtonText></Button>}
 			</Box>
-			<Input isInvalid={Boolean(error)}><InputField value={value} onChangeText={onChange} placeholder={placeholder} accessibilityLabel={label} keyboardType={keyboardType} /></Input>
+			<Input isInvalid={Boolean(error)}><InputField value={value} onChangeText={onChange} placeholder={placeholder} accessibilityLabel={label} keyboardType={keyboardType} textAlign={compact ? "center" : undefined} /></Input>
 			{error && <Text size="sm" className="text-destructive">{error}</Text>}
 		</Box>
 	);

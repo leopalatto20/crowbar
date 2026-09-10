@@ -34,6 +34,8 @@ export type MovementEditorModalProps = {
 	muscleGroups: MuscleGroupOption[];
 	visible: boolean;
 	onClose: () => void;
+	closeLabel?: string;
+	closeAccessibilityLabel?: string;
 	onSaved: (movement: Movement) => void | Promise<void>;
 	onDuplicate: (movement: Movement) => void;
 	draft?: MovementEditorDraft;
@@ -48,6 +50,8 @@ export function MovementEditorModal({
 	muscleGroups,
 	visible,
 	onClose,
+	closeLabel,
+	closeAccessibilityLabel,
 	onSaved,
 	onDuplicate,
 	draft,
@@ -277,8 +281,8 @@ export function MovementEditorModal({
 					<Box className="h-[92%] rounded-t-xl bg-background px-4 pb-4 pt-4 web:max-w-[800px] web:w-full web:mx-auto">
 						<Box className="flex-row items-center justify-between">
 							<Text size="2xl" className="font-semibold">{editing ? 'Edit movement' : 'New movement'}</Text>
-							<Button variant="ghost" size="sm" onPress={close} accessibilityLabel="Close">
-								<ButtonText>Close</ButtonText>
+							<Button variant="ghost" size="sm" onPress={close} accessibilityLabel={closeAccessibilityLabel ?? 'Close'}>
+								<ButtonText>{closeLabel ?? 'Close'}</ButtonText>
 							</Button>
 						</Box>
 
