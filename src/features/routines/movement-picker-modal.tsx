@@ -1,5 +1,11 @@
 import { useMemo, useState } from "react";
-import { FlatList, Modal } from "react-native";
+import {
+	KeyboardAvoidingView,
+	Modal,
+	Platform,
+	Pressable,
+	ScrollView,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Box } from "@/components/ui/box";
@@ -34,68 +40,66 @@ export function MovementPickerModal({
 	}, [options, query]);
 
 	return (
-		<Modal
-			visible={visible}
-			animationType="slide"
-			onRequestClose={onClose}
-			presentationStyle="pageSheet"
-		>
-			<SafeAreaView className="flex-1 bg-background">
-				<Box className="mx-auto w-full max-w-[800px] flex-1 gap-4 px-4 pt-4">
-					<Box className="flex-row items-center justify-between">
-						<Text size="2xl" bold>
-							Choose movement
-						</Text>
-						<Button variant="ghost" onPress={onClose}>
-							<ButtonText>Close</ButtonText>
-						</Button>
-					</Box>
-					<Input>
-						<InputField
-							value={query}
-							onChangeText={setQuery}
-							placeholder="Search movements"
-							accessibilityLabel="Search movements"
-							autoCorrect={false}
-							autoCapitalize="none"
-							clearButtonMode="while-editing"
-						/>
-					</Input>
-					<FlatList
-						className="flex-1"
-						contentContainerClassName="gap-2 pb-8"
-						data={filteredOptions}
-						keyExtractor={(movement) => String(movement.id)}
-						keyboardShouldPersistTaps="handled"
-						ListEmptyComponent={
-							<Box className="items-center rounded-xl bg-card px-4 py-8">
-								<Text className="text-muted-foreground">
-									No active movements match
-								</Text>
-							</Box>
-						}
-						renderItem={({ item }) => {
-							const isSelected = selected.has(item.id);
-							return (
-								<Button
-									variant="outline"
-									onPress={() => onSelect(item)}
-									disabled={isSelected}
-									className="min-h-16 items-start justify-center px-4 py-2"
-									accessibilityLabel={`Add ${item.name}`}
-								>
-									<Box className="min-w-0 flex-1 gap-1">
-										<Text bold>{item.name}</Text>
-										<Text size="sm" className="text-muted-foreground">
-											{isSelected ? "Added" : item.muscleGroup}
-										</Text>
-									</Box>
+		<Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+			<KeyboardAvoidingView
+				behavior={Platform.OS === "ios" ? "padding" : "height"}
+				className="flex-1 justify-end"
+			>
+				<Pressable className="absolute inset-0 bg-background/50" onPress={onClose} />
+				<SafeAreaView className="flex-1 justify-end" edges={["bottom"]} pointerEvents="box-none">
+					<Box className="h-[86%] rounded-t-xl bg-background px-4 pb-4 pt-4 web:mx-auto web:w-full web:max-w-[800px]">
+						<Box className="min-h-0 flex-1 gap-4">
+							<Box className="flex-row items-center justify-between">
+								<Text size="2xl" bold>Choose movement</Text>
+								<Button variant="ghost" size="sm" onPress={onClose} accessibilityLabel="Close movement picker">
+									<ButtonText>Close</ButtonText>
 								</Button>
-							);
-						}}
-					/>
-				</Box>
-			</SafeAreaView>
+							</Box>
+							<Input>
+								<InputField
+									value={query}
+									onChangeText={setQuery}
+									placeholder="Search movements"
+									accessibilityLabel="Search movements"
+									autoCorrect={false}
+									autoCapitalize="none"
+									clearButtonMode="while-editing"
+								/>
+							</Input>
+							<ScrollView
+								className="min-h-0 flex-1"
+								contentContainerClassName="gap-2 pb-8"
+								keyboardShouldPersistTaps="handled"
+							>
+								{filteredOptions.length === 0 ? (
+									<Box className="items-center rounded-xl bg-card px-4 py-8">
+										<Text className="text-muted-foreground">No active movements match</Text>
+									</Box>
+								) : filteredOptions.map((movement) => {
+									const isSelected = selected.has(movement.id);
+									return (
+										<Button
+											key={movement.id}
+											variant="outline"
+											onPress={() => onSelect(movement)}
+											disabled={isSelected}
+											className="min-h-16 items-start justify-center px-4 py-2"
+											accessibilityLabel={`Add ${movement.name}`}
+										>
+											<Box className="min-w-0 flex-1 gap-1">
+												<Text bold>{movement.name}</Text>
+												<Text size="sm" className="text-muted-foreground">
+													{isSelected ? "Added" : movement.muscleGroup}
+												</Text>
+											</Box>
+										</Button>
+									);
+								})}
+							</ScrollView>
+						</Box>
+					</Box>
+				</SafeAreaView>
+			</KeyboardAvoidingView>
 		</Modal>
 	);
 }
