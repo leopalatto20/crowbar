@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, lt, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gte, inArray, lt, sql } from 'drizzle-orm';
 
 import {
 	DEFAULT_UNIT,
@@ -398,6 +398,92 @@ export async function deleteMovement(db: DB, id: number): Promise<MovementDelete
 		tx.delete(movements).where(eq(movements.id, id)).run();
 		return { deleted: true };
 	});
+}
+
+/* ------------------------------ Routines ------------------------------- */
+
+export type Routine = typeof routines.$inferSelect;
+export type RoutineEntry = typeof routineEntries.$inferSelect;
+
+export type NewRoutine = {
+	name: string;
+	movementIds: number[];
+};
+
+/** The compact row shown in the active Routine list. */
+export type RoutineSummary = {
+	id: number;
+	name: string;
+	movementCount: number;
+};
+
+function assertRoutineName(name: string): string {
+	const trimmed = name.trim();
+	if (!trimmed) throw new Error('Routine name cannot be blank.');
+	return trimmed;
+}
+
+function routineNameKey(name: string): string {
+	return name.trim().toLowerCase();
+}
+
+/**
+ * Saves a Routine and all of its ordered entries as one transaction. Only active
+ * Movements can be planned, and a Movement can appear at most once in a Routine.
+ */
+export async function createRoutine(db: DB, input: NewRoutine): Promise<{ routine: Routine; entries: RoutineEntry[] }> {
+	return db.transaction((tx) => {
+		const name = assertRoutineName(input.name);
+		if (input.movementIds.length === 0) {
+			throw new Error('A Routine needs at least one Movement.');
+		}
+		if (new Set(input.movementIds).size !== input.movementIds.length) {
+			throw new Error('A Routine cannot contain the same Movement twice.');
+		}
+
+		const activeMovements = tx
+			.select({ id: movements.id })
+			.from(movements)
+			.where(and(inArray(movements.id, input.movementIds), eq(movements.archived, 0)))
+			.all();
+		if (activeMovements.length !== input.movementIds.length) {
+			throw new Error('Every Routine Movement must be active.');
+		}
+
+		const existingNames = tx.select({ name: routines.name }).from(routines).all();
+		if (existingNames.some((row) => routineNameKey(row.name) === routineNameKey(name))) {
+			throw new Error('A Routine with that name already exists.');
+		}
+
+		const routine = tx.insert(routines).values({ name }).returning().all()[0];
+		const entries = tx
+			.insert(routineEntries)
+			.values(
+				input.movementIds.map((movementId, position) => ({
+					routineId: routine.id,
+					position,
+					movementId,
+				})),
+			)
+			.returning()
+			.all();
+		return { routine, entries };
+	});
+}
+
+/** Lists active Routines in deterministic case-insensitive A–Z order. */
+export async function listRoutines(db: DB): Promise<RoutineSummary[]> {
+	return db
+		.select({
+			id: routines.id,
+			name: routines.name,
+			movementCount: count(routineEntries.id),
+		})
+		.from(routines)
+		.leftJoin(routineEntries, eq(routineEntries.routineId, routines.id))
+		.where(eq(routines.archived, 0))
+		.groupBy(routines.id, routines.name)
+		.orderBy(sql`lower(${routines.name})`, routines.id);
 }
 
 /* --------------------------- Sessions & sets --------------------------- */
