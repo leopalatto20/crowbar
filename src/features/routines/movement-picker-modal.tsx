@@ -23,7 +23,10 @@ type MovementPickerModalProps = {
 	visible: boolean;
 	options: CatalogMovement[];
 	selectedIds: number[];
+	createdMovement?: CatalogMovement | null;
 	onClose: () => void;
+	onCreate: (name: string) => void;
+	onContinueWithCreated: () => void;
 	onSelect: (movement: CatalogMovement) => void;
 	onRevealExisting: (movementId: number) => void;
 };
@@ -32,7 +35,10 @@ export function MovementPickerModal({
 	visible,
 	options,
 	selectedIds,
+	createdMovement,
 	onClose,
+	onCreate,
+	onContinueWithCreated,
 	onSelect,
 	onRevealExisting,
 }: MovementPickerModalProps) {
@@ -85,6 +91,17 @@ export function MovementPickerModal({
 									clearButtonMode="while-editing"
 								/>
 							</Input>
+							<Button variant="outline" onPress={() => onCreate(query)} accessibilityLabel="Create movement">
+								<ButtonText>{query.trim() ? `Create “${query.trim()}”` : "Create movement"}</ButtonText>
+							</Button>
+							{createdMovement && (
+								<Box className="gap-2 rounded-xl bg-muted px-4 py-3">
+									<Text>{createdMovement.name} created.</Text>
+									<Button variant="outline" size="sm" onPress={onContinueWithCreated} accessibilityLabel={`Continue with ${createdMovement.name}`}>
+										<ButtonText>Continue to target setup</ButtonText>
+									</Button>
+								</Box>
+							)}
 							<ScrollView
 								horizontal
 								showsHorizontalScrollIndicator={false}

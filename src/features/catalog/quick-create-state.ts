@@ -14,10 +14,12 @@ export type QuickCreateState = {
 };
 
 export type QuickCreateAction =
+	| { type: 'quickCreateStarted'; name: string }
 	| { type: 'workingNameChanged'; name: string }
 	| { type: 'draftChanged'; draft: MovementEditorDraft }
 	| { type: 'modalCancelled' }
 	| { type: 'duplicateNavigated' }
+	| { type: 'movementSelected'; movement: { id: number; name: string } }
 	| { type: 'movementSaved'; movement: { id: number; name: string } };
 
 export function createQuickCreateState(workingName = ''): QuickCreateState {
@@ -31,6 +33,8 @@ export function createQuickCreateState(workingName = ''): QuickCreateState {
  */
 export function quickCreateReducer(state: QuickCreateState, action: QuickCreateAction): QuickCreateState {
 	switch (action.type) {
+		case 'quickCreateStarted':
+			return createQuickCreateState(action.name);
 		case 'workingNameChanged':
 			return {
 				...state,
@@ -42,12 +46,13 @@ export function quickCreateReducer(state: QuickCreateState, action: QuickCreateA
 		case 'modalCancelled':
 		case 'duplicateNavigated':
 			return state;
+		case 'movementSelected':
 		case 'movementSaved':
 			return {
-			...state,
-			workingName: action.movement.name,
-			draft: undefined,
-			currentMovementId: action.movement.id,
-		};
+				...state,
+				workingName: action.movement.name,
+				draft: undefined,
+				currentMovementId: action.movement.id,
+			};
 	}
 }

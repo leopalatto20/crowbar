@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { ActivityIndicator, FlatList, PanResponder, ScrollView, type LayoutChangeEvent } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -8,17 +8,20 @@ import { Input, InputField } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import {
 	createRoutine,
+	getDefaultUnit,
 	getRecordingScale,
 	getRoutine,
 	getDb,
 	listMovements,
+	listMuscleGroups,
 	listRoutines,
 	updateRoutine,
 	type CatalogMovement,
+	type Movement,
 	type RoutineSummary,
 	type RoutineWithEntries,
 } from "@/db";
-import type { RecordingScale } from "@/db/constants";
+import { DEFAULT_UNIT, type RecordingScale, type Unit } from "@/db/constants";
 
 import {
 	addRoutineEntry as addDraftEntry,
@@ -35,6 +38,11 @@ import {
 	type RoutineEntryDraft,
 	type RoutineEntryTargetField,
 } from "./routine-builder-state";
+import { MovementEditorModal, type MuscleGroupOption } from "@/features/catalog/movement-editor-modal";
+import {
+	createQuickCreateState,
+	quickCreateReducer,
+} from "@/features/catalog/quick-create-state";
 import { MovementPickerModal } from "./movement-picker-modal";
 import { canSelectMovement } from "./movement-picker-state";
 
@@ -51,8 +59,15 @@ export default function RoutinesScreen() {
 	const [movementsLoading, setMovementsLoading] = useState(false);
 	const [movementsError, setMovementsError] = useState<string | null>(null);
 	const [recordingScale, setRecordingScale] = useState<RecordingScale>("rpe");
+	const [muscleGroups, setMuscleGroups] = useState<MuscleGroupOption[]>([]);
+	const [defaultUnit, setDefaultUnit] = useState<Unit>(DEFAULT_UNIT);
 	const [editingRoutine, setEditingRoutine] = useState<RoutineWithEntries | null>(null);
 	const [editingRoutineId, setEditingRoutineId] = useState<number | null>(null);
+	const refreshMovementOptions = useCallback(async (includeArchived: boolean) => {
+		const movements = await listMovements(getDb(), { includeArchived });
+		setMovementOptions(movements);
+		return movements;
+	}, []);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -82,6 +97,12 @@ export default function RoutinesScreen() {
 
 	useEffect(() => {
 		getRecordingScale(getDb()).then(setRecordingScale).catch(() => undefined);
+		Promise.all([listMuscleGroups(getDb()), getDefaultUnit(getDb())])
+			.then(([groups, unit]) => {
+				setMuscleGroups(groups.map((group) => ({ id: group.id, name: group.name })));
+				setDefaultUnit(unit);
+			})
+			.catch(() => undefined);
 	}, []);
 
 	useEffect(() => {
@@ -92,10 +113,7 @@ export default function RoutinesScreen() {
 				if (cancelled) return undefined;
 				setMovementsLoading(true);
 				setMovementsError(null);
-				return listMovements(getDb(), { includeArchived: editingRoutine !== null });
-			})
-			.then((movements) => {
-				if (!cancelled && movements) setMovementOptions(movements);
+				return refreshMovementOptions(editingRoutine !== null);
 			})
 			.catch((loadError) => {
 				if (!cancelled) setMovementsError(errorMessage(loadError, "Unable to load active Movements."));
@@ -106,7 +124,7 @@ export default function RoutinesScreen() {
 		return () => {
 			cancelled = true;
 		};
-	}, [editingRoutine, view]);
+	}, [editingRoutine, refreshMovementOptions, view]);
 
 	const openCreate = () => {
 		setError(null);
@@ -144,6 +162,9 @@ export default function RoutinesScreen() {
 				movementOptions={movementOptions}
 				movementsLoading={movementsLoading}
 				movementsError={movementsError}
+				muscleGroups={muscleGroups}
+				defaultUnit={defaultUnit}
+				onRefreshMovements={() => refreshMovementOptions(editingRoutine !== null)}
 				onCancel={closeBuilder}
 				onSaved={() => {
 					closeBuilder();
@@ -221,6 +242,9 @@ type RoutineBuilderProps = {
 	movementOptions: CatalogMovement[];
 	movementsLoading: boolean;
 	movementsError: string | null;
+	muscleGroups: MuscleGroupOption[];
+	defaultUnit: Unit;
+	onRefreshMovements: () => Promise<CatalogMovement[]>;
 	onCancel: () => void;
 	onSaved: () => void;
 };
@@ -231,12 +255,19 @@ function RoutineBuilder({
 	movementOptions,
 	movementsLoading,
 	movementsError,
+	muscleGroups,
+	defaultUnit,
+	onRefreshMovements,
 	onCancel,
 	onSaved,
 }: RoutineBuilderProps) {
 	const [draft, setDraft] = useState<RoutineDraft>(() => createDraft(routine?.routine.name ?? "", recordingScale, routine?.entries ?? []));
 	const [pendingEntry, setPendingEntry] = useState<RoutineEntryDraft | null>(null);
 	const [pickerVisible, setPickerVisible] = useState(false);
+	const [createdMovementId, setCreatedMovementId] = useState<number | null>(null);
+	const [quickCreateVisible, setQuickCreateVisible] = useState(false);
+	const [quickCreateSession, setQuickCreateSession] = useState(0);
+	const [quickCreate, dispatchQuickCreate] = useReducer(quickCreateReducer, createQuickCreateState());
 	const ledgerScrollRef = useRef<ScrollView>(null);
 	const ledgerOffsetRef = useRef(0);
 	const ledgerLayoutsRef = useRef<Record<number, number>>({});
@@ -267,11 +298,53 @@ function RoutineBuilder({
 		});
 		setPendingEntry(null);
 	};
-	const chooseMovement = (movement: CatalogMovement) => {
-		if (!canSelectMovement(movement, selectedIds)) return;
-		setPendingEntry(createDraftEntry(movement.id));
+	const beginMovementSetup = (movementId: number) => {
+		setPendingEntry(createDraftEntry(movementId));
 		setPickerVisible(false);
 	};
+	const chooseMovement = (movement: CatalogMovement) => {
+		if (!canSelectMovement(movement, selectedIds)) return;
+		setCreatedMovementId(null);
+		beginMovementSetup(movement.id);
+	};
+	const startQuickCreate = (name: string) => {
+		setCreatedMovementId(null);
+		dispatchQuickCreate({ type: "quickCreateStarted", name });
+		setQuickCreateSession((session) => session + 1);
+		setQuickCreateVisible(true);
+	};
+	const closeQuickCreate = () => {
+		dispatchQuickCreate({ type: "modalCancelled" });
+		setQuickCreateVisible(false);
+	};
+	const handleQuickCreateMovement = async (movement: Movement, action: "movementSaved" | "movementSelected") => {
+		if (action === "movementSelected") dispatchQuickCreate({ type: "duplicateNavigated" });
+		setError(null);
+		try {
+			const refreshedMovements = await onRefreshMovements();
+			const catalogMovement = refreshedMovements.find((candidate) => candidate.id === movement.id);
+			if (!catalogMovement) throw new Error("The new Movement could not be loaded into the picker.");
+			dispatchQuickCreate({ type: action, movement: { id: movement.id, name: movement.name } });
+			setQuickCreateVisible(false);
+			if (selectedIds.includes(catalogMovement.id)) {
+				setPickerVisible(false);
+				onRevealExisting(catalogMovement.id);
+				return;
+			}
+			if (!canSelectMovement(catalogMovement, selectedIds)) {
+				throw new Error("Archived Movements cannot be added to a new Routine.");
+			}
+			beginMovementSetup(catalogMovement.id);
+			if (action === "movementSaved") {
+				setCreatedMovementId(catalogMovement.id);
+				setPickerVisible(true);
+			}
+		} catch (loadError) {
+			setError(errorMessage(loadError, "Unable to return to the Movement picker."));
+		}
+	};
+	const onQuickCreateSaved = (movement: Movement) => handleQuickCreateMovement(movement, "movementSaved");
+	const onQuickCreateDuplicate = (movement: Movement) => handleQuickCreateMovement(movement, "movementSelected");
 	const scrollToLedgerEntry = (movementId: number): boolean => {
 		const y = ledgerLayoutsRef.current[movementId];
 		if (y === undefined) return false;
@@ -407,10 +480,30 @@ function RoutineBuilder({
 				visible={pickerVisible}
 				options={movementOptions}
 				selectedIds={selectedIds}
+				createdMovement={createdMovementId === null ? null : movementOptions.find((movement) => movement.id === createdMovementId)}
 				onClose={() => setPickerVisible(false)}
+				onCreate={startQuickCreate}
+				onContinueWithCreated={() => {
+					setCreatedMovementId(null);
+					setPickerVisible(false);
+				}}
 				onSelect={chooseMovement}
 				onRevealExisting={onRevealExisting}
 			/>
+			{quickCreateVisible && (
+				<MovementEditorModal
+					key={`quick-create-${quickCreateSession}`}
+					visible
+					muscleGroups={muscleGroups}
+					defaultUnit={defaultUnit}
+					initialName={quickCreate.workingName}
+					draft={quickCreate.draft}
+					onClose={closeQuickCreate}
+					onSaved={(movement) => { void onQuickCreateSaved(movement); }}
+					onDuplicate={(movement) => { void onQuickCreateDuplicate(movement); }}
+					onDraftChange={(draft) => dispatchQuickCreate({ type: "draftChanged", draft })}
+				/>
+			)}
 		</SafeAreaView>
 	);
 }
