@@ -25,6 +25,7 @@ import {
 	updateMovement,
 } from '@/db';
 import { DEFAULT_UNIT, type Unit } from '@/db/constants';
+import { normalizeErrorMessage } from '@/shared/error-message';
 import type { MovementEditorDraft } from './quick-create-state';
 
 export type MuscleGroupOption = { id: number; name: string };
@@ -238,7 +239,7 @@ export function MovementEditorModal({
 					return;
 				}
 			}
-			setError(saveError instanceof Error ? saveError.message : 'Unable to save movement.');
+			setError(normalizeErrorMessage(saveError, 'Unable to save movement.'));
 		} finally {
 			setSaving(false);
 		}

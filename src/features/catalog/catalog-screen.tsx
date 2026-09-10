@@ -21,6 +21,7 @@ import {
   unarchiveMovement,
 } from "@/db";
 import { DEFAULT_UNIT, type MuscleGroupName, type Unit } from "@/db/constants";
+import { normalizeErrorMessage } from "@/shared/error-message";
 import { MovementEditorModal } from "./movement-editor-modal";
 import { DeleteConfirmationModal } from "./components/delete-confirmation-modal";
 import { MovementRow } from "./components/movement-row";
@@ -140,7 +141,7 @@ export default function CatalogScreen() {
       })
       .catch((loadError) => {
         if (!cancelled) {
-          setCatalogError(errorMessage(loadError, "Unable to load catalog."));
+          setCatalogError(normalizeErrorMessage(loadError, "Unable to load catalog."));
         }
       })
       .finally(() => {
@@ -204,7 +205,7 @@ export default function CatalogScreen() {
       setExpandedRow(movement.id);
     } catch (mutationError) {
       setError(
-        errorMessage(mutationError, "Unable to check movement references."),
+        normalizeErrorMessage(mutationError, "Unable to check movement references."),
       );
     }
   };
@@ -223,7 +224,7 @@ export default function CatalogScreen() {
       showFeedback(`${movement.name} ${archived ? "archived" : "restored"}.`);
       refresh();
     } catch (mutationError) {
-      setError(errorMessage(mutationError, "Unable to update movement."));
+      setError(normalizeErrorMessage(mutationError, "Unable to update movement."));
     } finally {
       setArchiveBusyId(null);
     }
@@ -243,7 +244,7 @@ export default function CatalogScreen() {
       showFeedback(`${pending.name} ${archived ? "archived" : "restored"}.`);
       refresh();
     } catch (mutationError) {
-      setError(errorMessage(mutationError, "Unable to undo archive change."));
+      setError(normalizeErrorMessage(mutationError, "Unable to undo archive change."));
     } finally {
       setArchiveBusyId(null);
     }
@@ -259,7 +260,7 @@ export default function CatalogScreen() {
       setReferencePanel({ movementName: movement.name, references });
     } catch (mutationError) {
       setError(
-        errorMessage(mutationError, "Unable to check movement references."),
+        normalizeErrorMessage(mutationError, "Unable to check movement references."),
       );
     }
   };
@@ -280,7 +281,7 @@ export default function CatalogScreen() {
         });
       }
     } catch (mutationError) {
-      setError(errorMessage(mutationError, "Unable to delete movement."));
+      setError(normalizeErrorMessage(mutationError, "Unable to delete movement."));
     }
   };
 
@@ -297,7 +298,7 @@ export default function CatalogScreen() {
       }
     } catch (mutationError) {
       setError(
-        errorMessage(mutationError, "Unable to check movement references."),
+        normalizeErrorMessage(mutationError, "Unable to check movement references."),
       );
       return;
     }
@@ -553,10 +554,6 @@ export default function CatalogScreen() {
       />
     </SafeAreaView>
   );
-}
-
-function errorMessage(error: unknown, fallback: string): string {
-  return error instanceof Error ? error.message : fallback;
 }
 
 function movementCountLabel(count: number): string {
