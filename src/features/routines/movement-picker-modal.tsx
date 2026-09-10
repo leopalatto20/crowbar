@@ -64,11 +64,11 @@ export function MovementPickerModal({
 		<Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
 			<KeyboardAvoidingView
 				behavior={Platform.OS === "ios" ? "padding" : "height"}
-				className="flex-1"
+				style={{ flex: 1, justifyContent: "flex-end" }}
 			>
 				<Pressable className="absolute inset-0 bg-background/50" onPress={onClose} />
-				<SafeAreaView className="absolute inset-x-0 bottom-0 h-[86%] rounded-t-xl bg-background web:mx-auto web:w-full web:max-w-[800px]" edges={["bottom"]} pointerEvents="box-none">
-					<Box className="min-h-0 flex-1 px-4 pb-4 pt-4">
+				<SafeAreaView style={{ flex: 1, justifyContent: "flex-end" }} edges={["bottom"]} pointerEvents="box-none">
+					<Box className="h-[86%] rounded-t-xl bg-background px-4 pb-4 pt-4 web:mx-auto web:w-full web:max-w-[800px]">
 						<Box className="min-h-0 flex-1 gap-4">
 							<Box className="flex-row items-center justify-between">
 								<Text size="2xl" bold>Choose movement</Text>
@@ -93,6 +93,7 @@ export function MovementPickerModal({
 							<ScrollView
 								horizontal
 								showsHorizontalScrollIndicator={false}
+								style={{ flexGrow: 0, flexShrink: 0 }}
 								contentContainerClassName="gap-2"
 								accessibilityLabel="Filter by muscle group"
 							>
