@@ -149,10 +149,19 @@ describe('Routine create and list read path', () => {
 		expect(await db.select().from(schema.subRoutines)).toHaveLength(1);
 		expect(updated.entries.map((entry) => entry.movementId)).toEqual([second.id]);
 		expect((await getRoutine(db, saved.routine.id))?.entries[0]).toMatchObject({
-		movementId: second.id,
-		workingSetCount: 3,
-		position: 0,
-	});
+			movementId: second.id,
+			workingSetCount: 3,
+			position: 0,
+		});
+
+		await expect(updateRoutine(db, saved.routine.id, {
+			name: 'Failed edit',
+			entries: [{ movementId: first.id, workingSetCount: 0 }],
+		})).rejects.toThrow('Working-set count');
+		expect(await getRoutine(db, saved.routine.id)).toMatchObject({
+			routine: { name: 'Edited routine' },
+			entries: [{ movementId: second.id, workingSetCount: 3 }],
+		});
 	});
 
 	test('rejects duplicate entries and duplicate Routine names', async () => {

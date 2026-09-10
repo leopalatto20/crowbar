@@ -143,7 +143,7 @@ export function MovementPickerModal({
 										</Box>
 								) : (
 									<Box className="items-center gap-4 rounded-xl bg-card px-4 py-8">
-										<Text className="text-center text-muted-foreground">There are no active movements. Close this picker, then add one in Catalog.</Text>
+										<Text className="text-center text-muted-foreground">There are no active movements. Create one above or add one in Catalog.</Text>
 										<Button variant="outline" onPress={onClose} accessibilityLabel="Close picker to add a movement in Catalog">
 											<ButtonText>Close picker</ButtonText>
 										</Button>

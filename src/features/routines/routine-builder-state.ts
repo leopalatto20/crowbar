@@ -29,6 +29,7 @@ export type RoutineDraft = {
 export type RoutineDraftValidation = {
 	valid: boolean;
 	nameError: string | null;
+	entriesError: string | null;
 	entryErrors: Record<number, string[]>;
 };
 
@@ -156,9 +157,11 @@ export function validateRoutineDraft(draft: RoutineDraft): RoutineDraftValidatio
 		seenMovementIds.add(entry.movementId);
 		if (errors.length > 0) entryErrors[entry.movementId] = errors;
 	}
+	const entriesError = draft.entries.length > 0 ? null : 'Add at least one Movement to the Ledger.';
 	return {
-		valid: !nameError && draft.entries.length > 0 && Object.keys(entryErrors).length === 0,
+		valid: !nameError && !entriesError && Object.keys(entryErrors).length === 0,
 		nameError,
+		entriesError,
 		entryErrors,
 	};
 }

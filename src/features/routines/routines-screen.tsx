@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { ActivityIndicator, FlatList, PanResponder, ScrollView, type LayoutChangeEvent } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -55,11 +56,32 @@ import { canSelectMovement } from "./movement-picker-state";
 import { RoutineDeleteConfirmationModal } from "./components/routine-delete-confirmation-modal";
 import { RoutineReferencesModal } from "./components/routine-references-modal";
 import { RoutineRow } from "./components/routine-row";
+import { UnsavedChangesModal } from "@/features/catalog/components/unsaved-changes-modal";
+import {
+	isQuickCreateDraftDirty,
+	isRoutineDraftDirty,
+	parseRoutineBuilderRoute,
+} from "./routine-builder-navigation-state";
 
-type View = "list" | "builder";
+type NavigationAction = Record<string, unknown>;
+type NavigationEvents = {
+	addListener: (eventName: 'beforeRemove' | 'tabPress', listener: (event: { preventDefault: () => void; target?: string; data?: { action: NavigationAction } }) => void) => () => void;
+	getState: () => { routes: { key: string; name: string }[] };
+	dispatch: (action: NavigationAction) => void;
+	navigate: (name: string) => void;
+};
 
 export default function RoutinesScreen() {
-	const [view, setView] = useState<View>("list");
+	const router = useRouter();
+	const navigation = useNavigation();
+	const params = useLocalSearchParams<{ builder?: string | string[]; routineId?: string | string[] }>();
+	const builderParam = Array.isArray(params.builder) ? params.builder[0] : params.builder;
+	const routineIdParam = Array.isArray(params.routineId) ? params.routineId[0] : params.routineId;
+	const builderRoute = useMemo(() => parseRoutineBuilderRoute({ builder: builderParam, routineId: routineIdParam }), [builderParam, routineIdParam]);
+	const [routineBuilderDirty, setRoutineBuilderDirty] = useState(false);
+	const [discardChangesVisible, setDiscardChangesVisible] = useState(false);
+	const [pendingExit, setPendingExit] = useState<(() => void) | null>(null);
+	const allowNavigationRef = useRef(false);
 	const [rows, setRows] = useState<RoutineSummary[]>([]);
 	const [showArchived, setShowArchived] = useState(false);
 	const [expandedRow, setExpandedRow] = useState<number | null>(null);
@@ -80,12 +102,64 @@ export default function RoutinesScreen() {
 	const [muscleGroups, setMuscleGroups] = useState<MuscleGroupOption[]>([]);
 	const [defaultUnit, setDefaultUnit] = useState<Unit>(DEFAULT_UNIT);
 	const [editingRoutine, setEditingRoutine] = useState<RoutineWithEntries | null>(null);
-	const [editingRoutineId, setEditingRoutineId] = useState<number | null>(null);
+	const [editLoading, setEditLoading] = useState(false);
+	const [editError, setEditError] = useState<string | null>(null);
+	const [editRetryToken, setEditRetryToken] = useState(0);
+	const [successMessage, setSuccessMessage] = useState<string | null>(null);
 	const refreshMovementOptions = useCallback(async (includeArchived: boolean) => {
 		const movements = await listMovements(getDb(), { includeArchived });
 		setMovementOptions(movements);
 		return movements;
 	}, []);
+	const loadMovementOptions = useCallback(async (includeArchived: boolean) => {
+		setMovementsLoading(true);
+		setMovementsError(null);
+		try {
+			return await refreshMovementOptions(includeArchived);
+		} catch (loadError) {
+			setMovementsError(errorMessage(loadError, 'Unable to load active Movements.'));
+			throw loadError;
+		} finally {
+			setMovementsLoading(false);
+		}
+	}, [refreshMovementOptions]);
+	const exitBuilder = useCallback(() => {
+		allowNavigationRef.current = true;
+		setRoutineBuilderDirty(false);
+		setDiscardChangesVisible(false);
+		setPendingExit(null);
+		setEditingRoutine(null);
+		setMovementOptions([]);
+		router.replace('/routines');
+	}, [router]);
+
+	useEffect(() => {
+		if (!builderRoute || !routineBuilderDirty) return;
+		const appNavigation = navigation as unknown as NavigationEvents;
+		const unsubscribeBeforeRemove = appNavigation.addListener('beforeRemove', (event) => {
+			if (allowNavigationRef.current) return;
+			event.preventDefault();
+			if (event.data) setPendingExit(() => () => appNavigation.dispatch(event.data!.action));
+			setDiscardChangesVisible(true);
+		});
+		const unsubscribeTabPress = appNavigation.addListener('tabPress', (event) => {
+			const target = appNavigation.getState().routes.find((route) => route.key === event.target)?.name;
+			if (!target || target === 'routines') return;
+			event.preventDefault();
+			setPendingExit(() => () => {
+				exitBuilder();
+				appNavigation.dispatch({ type: 'JUMP_TO', payload: { name: target } });
+			});
+			setDiscardChangesVisible(true);
+			// NativeTabs cannot cancel tabPress. Return to this tab on the next
+			// frame, then let the shared discard confirmation decide what happens.
+			requestAnimationFrame(() => appNavigation.navigate('routines'));
+		});
+		return () => {
+			unsubscribeBeforeRemove();
+			unsubscribeTabPress();
+		};
+	}, [builderRoute, exitBuilder, navigation, routineBuilderDirty]);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -124,25 +198,80 @@ export default function RoutinesScreen() {
 	}, []);
 
 	useEffect(() => {
-		if (view !== "builder") return;
+		if (!builderRoute) return;
+		Promise.resolve().then(() => loadMovementOptions(builderRoute.mode === 'edit')).catch(() => undefined);
+	}, [builderRoute, loadMovementOptions]);
+
+	useEffect(() => {
+		if (!builderRoute || builderRoute.mode !== 'edit') return;
 		let cancelled = false;
-		Promise.resolve()
-			.then(() => {
-				if (cancelled) return undefined;
-				setMovementsLoading(true);
-				setMovementsError(null);
-				return refreshMovementOptions(editingRoutine !== null);
+		Promise.resolve().then(() => {
+			if (cancelled) return;
+			setEditingRoutine(null);
+			setEditError(null);
+			setEditLoading(true);
+		});
+		getRoutine(getDb(), builderRoute.routineId)
+			.then((routine) => {
+				if (!cancelled) {
+					if (routine) setEditingRoutine(routine);
+					else setEditError('Routine no longer exists.');
+				}
 			})
 			.catch((loadError) => {
-				if (!cancelled) setMovementsError(errorMessage(loadError, "Unable to load active Movements."));
+				if (!cancelled) setEditError(errorMessage(loadError, 'Unable to open Routine.'));
 			})
 			.finally(() => {
-				if (!cancelled) setMovementsLoading(false);
+				if (!cancelled) setEditLoading(false);
 			});
 		return () => {
 			cancelled = true;
 		};
-	}, [editingRoutine, refreshMovementOptions, view]);
+	}, [builderRoute, editRetryToken]);
+
+	const requestBuilderExit = () => {
+		if (!routineBuilderDirty) {
+			exitBuilder();
+			return;
+		}
+		setPendingExit(() => exitBuilder);
+		setDiscardChangesVisible(true);
+	};
+
+	const discardAndContinue = () => {
+		const continuation = pendingExit;
+		allowNavigationRef.current = true;
+		setDiscardChangesVisible(false);
+		setPendingExit(null);
+		setRoutineBuilderDirty(false);
+		if (continuation) requestAnimationFrame(continuation);
+	};
+
+	const openCreate = () => {
+		allowNavigationRef.current = false;
+		setEditingRoutine(null);
+		setError(null);
+		setSuccessMessage(null);
+		setEditError(null);
+		router.replace({ pathname: '/routines', params: { builder: 'create' } });
+	};
+
+	const openEdit = (routineId: number) => {
+		allowNavigationRef.current = false;
+		setError(null);
+		setEditError(null);
+		setSuccessMessage(null);
+		setExpandedRow(null);
+		router.replace({ pathname: '/routines', params: { builder: 'edit', routineId: String(routineId) } });
+	};
+
+	const discardConfirmation = (
+		<UnsavedChangesModal
+			visible={discardChangesVisible}
+			onKeepEditing={() => setDiscardChangesVisible(false)}
+			onDiscard={discardAndContinue}
+		/>
+	);
 
 	const refresh = () => setRefreshToken((token) => token + 1);
 
@@ -191,52 +320,41 @@ export default function RoutinesScreen() {
 		}
 	};
 
-	const openCreate = () => {
-		setError(null);
-		setEditingRoutine(null);
-		setView("builder");
-	};
-
-	const openEdit = async (routineId: number) => {
-		setError(null);
-		setExpandedRow(null);
-		setEditingRoutineId(routineId);
-		try {
-			const routine = await getRoutine(getDb(), routineId);
-			if (!routine) throw new Error("Routine no longer exists.");
-			setEditingRoutine(routine);
-			setView("builder");
-		} catch (loadError) {
-			setError(errorMessage(loadError, "Unable to open Routine."));
-		} finally {
-			setEditingRoutineId(null);
+	if (builderRoute) {
+		if (builderRoute.mode === 'edit' && editError) {
+			return (
+				<BuilderLoadError
+					error={editError}
+					onRetry={() => setEditRetryToken((token) => token + 1)}
+					onCancel={requestBuilderExit}
+				/>
+			);
 		}
-	};
-
-	const closeBuilder = () => {
-		setView("list");
-		setEditingRoutine(null);
-		setMovementOptions([]);
-	};
-
-	if (view === "builder") {
+		if (builderRoute.mode === 'edit' && (editLoading || !editingRoutine)) {
+			return <BuilderLoadingState onCancel={requestBuilderExit} />;
+		}
 		return (
-			<RoutineBuilder
-				key={`${editingRoutine?.routine.id ?? "new"}-${recordingScale}`}
-				routine={editingRoutine}
-				recordingScale={recordingScale}
-				movementOptions={movementOptions}
-				movementsLoading={movementsLoading}
-				movementsError={movementsError}
-				muscleGroups={muscleGroups}
-				defaultUnit={defaultUnit}
-				onRefreshMovements={() => refreshMovementOptions(editingRoutine !== null)}
-				onCancel={closeBuilder}
-				onSaved={() => {
-					closeBuilder();
-					setRefreshToken((token) => token + 1);
-				}}
-			/>
+			<>
+				<RoutineBuilder
+					key={(builderRoute.mode === 'edit' ? editingRoutine?.routine.id : undefined) ?? 'new'}
+					routine={builderRoute.mode === 'edit' ? editingRoutine : null}
+					recordingScale={recordingScale}
+					movementOptions={movementOptions}
+					movementsLoading={movementsLoading}
+					movementsError={movementsError}
+					muscleGroups={muscleGroups}
+					defaultUnit={defaultUnit}
+					onRefreshMovements={() => loadMovementOptions(builderRoute.mode === 'edit')}
+					onCancel={requestBuilderExit}
+					onDirtyChange={setRoutineBuilderDirty}
+					onSaved={() => {
+						setSuccessMessage(builderRoute.mode === 'edit' ? 'Routine updated.' : 'Routine created.');
+						exitBuilder();
+						refresh();
+					}}
+				/>
+				{discardConfirmation}
+			</>
 		);
 	}
 
@@ -262,6 +380,11 @@ export default function RoutinesScreen() {
 							<Switch value={showArchived} onValueChange={setShowArchived} accessibilityLabel="Show archived" />
 							<Text size="sm" className="text-muted-foreground">Show archived</Text>
 						</Box>
+						{successMessage && (
+							<Box className="rounded-xl bg-muted px-4 py-2" accessibilityLiveRegion="polite">
+								<Text>{successMessage}</Text>
+						</Box>
+						)}
 						{error && (
 							<Box className="gap-2 rounded-xl bg-muted px-4 py-4" accessibilityRole="alert">
 								<Text className="text-destructive">{error}</Text>
@@ -273,7 +396,7 @@ export default function RoutinesScreen() {
 					</Box>
 				}
 				ListEmptyComponent={
-					loading || editingRoutineId !== null ? (
+					loading ? (
 						<Box className="items-center gap-2 rounded-xl bg-card px-4 py-8">
 							<ActivityIndicator accessibilityLabel="Loading routines" />
 							<Text className="text-muted-foreground">Loading Routines…</Text>
@@ -316,7 +439,44 @@ export default function RoutinesScreen() {
 					void deleteAfterConfirmation(routine);
 				}}
 			/>
+			{discardConfirmation}
 		</SafeAreaView>
+	);
+}
+
+function BuilderStateShell({ children }: { children: ReactNode }) {
+	return (
+		<SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right", "bottom"]}>
+			<Box className="mx-auto w-full max-w-[800px] flex-1 items-center justify-center gap-4 px-4">
+				{children}
+			</Box>
+		</SafeAreaView>
+	);
+}
+
+function BuilderLoadingState({ onCancel }: { onCancel: () => void }) {
+	return (
+		<BuilderStateShell>
+			<ActivityIndicator accessibilityLabel="Loading Routine" />
+			<Text className="text-muted-foreground">Loading Routine…</Text>
+			<Button variant="outline" onPress={onCancel} accessibilityLabel="Back to routines">
+				<ButtonText>Back</ButtonText>
+			</Button>
+		</BuilderStateShell>
+	);
+}
+
+function BuilderLoadError({ error, onRetry, onCancel }: { error: string; onRetry: () => void; onCancel: () => void }) {
+	return (
+		<BuilderStateShell>
+			<Box className="w-full gap-2 rounded-xl bg-muted p-4" accessibilityRole="alert">
+				<Text className="text-destructive">{error}</Text>
+				<Box className="flex-row gap-2">
+					<Button variant="outline" onPress={onCancel} className="flex-1"><ButtonText>Back</ButtonText></Button>
+					<Button onPress={onRetry} className="flex-1"><ButtonText>Try again</ButtonText></Button>
+				</Box>
+			</Box>
+		</BuilderStateShell>
 	);
 }
 
@@ -330,7 +490,8 @@ type RoutineBuilderProps = {
 	defaultUnit: Unit;
 	onRefreshMovements: () => Promise<CatalogMovement[]>;
 	onCancel: () => void;
-	onSaved: () => void;
+	onDirtyChange: (dirty: boolean) => void;
+	onSaved: () => void | Promise<void>;
 };
 
 function RoutineBuilder({
@@ -343,8 +504,10 @@ function RoutineBuilder({
 	defaultUnit,
 	onRefreshMovements,
 	onCancel,
+	onDirtyChange,
 	onSaved,
 }: RoutineBuilderProps) {
+	const [initialDraft] = useState<RoutineDraft>(() => createDraft(routine?.routine.name ?? "", recordingScale, routine?.entries ?? []));
 	const [draft, setDraft] = useState<RoutineDraft>(() => createDraft(routine?.routine.name ?? "", recordingScale, routine?.entries ?? []));
 	const [pendingEntry, setPendingEntry] = useState<RoutineEntryDraft | null>(null);
 	const [pickerVisible, setPickerVisible] = useState(false);
@@ -358,13 +521,22 @@ function RoutineBuilder({
 	const pendingRevealRef = useRef<number | null>(null);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const validation = validateDraft(draft);
+	const validationDraft = draft.recordingScale === recordingScale ? draft : { ...draft, recordingScale };
+	const validation = validateDraft(validationDraft);
 	const selectedIds = useMemo(() => draft.entries.map((entry) => entry.movementId), [draft.entries]);
 	const selectedMovements = draft.entries
 		.map((entry) => movementOptions.find((movement) => movement.id === entry.movementId))
 		.filter((movement): movement is CatalogMovement => movement !== undefined);
 	const pendingMovement = pendingEntry && movementOptions.find((movement) => movement.id === pendingEntry.movementId);
 	const pendingErrors = pendingEntry ? validateEntry(pendingEntry, recordingScale) : [];
+	const dirty = isRoutineDraftDirty(draft, initialDraft)
+		|| pendingEntry !== null
+		|| isQuickCreateDraftDirty(quickCreate, defaultUnit);
+
+	useEffect(() => {
+		onDirtyChange(dirty);
+	}, [dirty, onDirtyChange]);
+
 
 	const updateDraft = (next: RoutineDraft) => {
 		setDraft(next);
@@ -393,7 +565,7 @@ function RoutineBuilder({
 	};
 	const startQuickCreate = (name: string) => {
 		setCreatedMovementId(null);
-		dispatchQuickCreate({ type: "quickCreateStarted", name });
+		if (!quickCreate.draft) dispatchQuickCreate({ type: "quickCreateStarted", name });
 		setQuickCreateSession((session) => session + 1);
 		setQuickCreateVisible(true);
 	};
@@ -454,7 +626,7 @@ function RoutineBuilder({
 		setSaving(true);
 		setError(null);
 		try {
-			const input = draftToInput(draft);
+			const input = draftToInput({ ...draft, recordingScale });
 			if (routine) await updateRoutine(getDb(), routine.routine.id, input);
 			else await createRoutine(getDb(), input);
 			onSaved();
@@ -471,7 +643,7 @@ function RoutineBuilder({
 				<Box className="flex-row items-center justify-between">
 					<Button variant="ghost" onPress={onCancel} accessibilityLabel="Back to routines"><ButtonText>Back</ButtonText></Button>
 					<Text size="2xl" bold>{routine ? "Edit Routine" : "New Routine"}</Text>
-					<Box className="w-16" />
+					<Button variant="ghost" onPress={onCancel} accessibilityLabel="Close Routine builder"><ButtonText>Close</ButtonText></Button>
 				</Box>
 
 				<Box className="gap-2">
@@ -497,7 +669,10 @@ function RoutineBuilder({
 						<Text size="sm" className="text-muted-foreground">{movementCountLabel(draft.entries.length)}</Text>
 					</Box>
 					{selectedMovements.length === 0 ? (
-						<Text className="py-4 text-muted-foreground">No Movements added yet.</Text>
+						<Box className="gap-2 py-4">
+							<Text className="text-muted-foreground">No Movements added yet.</Text>
+							{validation.entriesError && <Text size="sm" className="text-destructive">{validation.entriesError}</Text>}
+						</Box>
 					) : selectedMovements.map((movement, index) => (
 						<RoutineEntryRow
 							key={movement.id}
@@ -548,14 +723,28 @@ function RoutineBuilder({
 				>
 					<ButtonText>{movementsLoading ? "Loading movements…" : "Add movement"}</ButtonText>
 				</Button>
-				{movementsError && <Text className="text-destructive">{movementsError}</Text>}
+				{movementsError && (
+					<Box className="gap-2 rounded-xl bg-muted px-4 py-4" accessibilityRole="alert">
+						<Text className="text-destructive">{movementsError}</Text>
+						<Button variant="outline" size="sm" onPress={() => void onRefreshMovements()}>
+							<ButtonText>Try again</ButtonText>
+						</Button>
+					</Box>
+				)}
 				{draft.lastRemoved && (
 					<Box className="flex-row items-center gap-2 rounded-xl bg-muted px-4 py-4" accessibilityLiveRegion="polite">
 						<Text className="min-w-0 flex-1">{movementName(draft.lastRemoved.entry.movementId, movementOptions)} removed.</Text>
 						<Button variant="link" size="sm" className="px-0" onPress={() => updateDraft(undoDraftRemoval(draft))} accessibilityLabel="Undo removed movement"><ButtonText>Undo</ButtonText></Button>
 					</Box>
 				)}
-				{error && <Box className="rounded-xl bg-muted px-4 py-2" accessibilityRole="alert"><Text className="text-destructive">{error}</Text></Box>}
+				{error && (
+					<Box className="gap-2 rounded-xl bg-muted px-4 py-4" accessibilityRole="alert">
+						<Text className="text-destructive">{error}</Text>
+						<Button variant="outline" size="sm" onPress={() => void save()} disabled={saving}>
+							<ButtonText>Try again</ButtonText>
+						</Button>
+					</Box>
+				)}
 				<Button onPress={() => void save()} disabled={!validation.valid || saving} accessibilityLabel="Save routine">
 					<ButtonText>{saving ? "Saving…" : routine ? "Save changes" : "Save routine"}</ButtonText>
 				</Button>
