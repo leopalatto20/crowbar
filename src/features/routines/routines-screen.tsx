@@ -685,12 +685,12 @@ function RoutineBuilder({
 	};
 
 	return (
-		<SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right", "bottom"]}>
-			<ScrollView ref={ledgerScrollRef} contentContainerClassName="mx-auto w-full max-w-[800px] gap-4 px-4 pb-28 pt-4" keyboardShouldPersistTaps="handled">
-				<Box className="flex-row items-center justify-between">
+		<SafeAreaView className="bg-background" style={{ flex: 1 }} edges={["top", "left", "right", "bottom"]}>
+			<Box style={{ flex: 1 }}>
+				<ScrollView ref={ledgerScrollRef} contentContainerClassName="mx-auto w-full max-w-[800px] gap-4 px-4 pb-28 pt-4" keyboardShouldPersistTaps="handled">
+				<Box className="flex-row items-center gap-4">
 					<Button variant="ghost" onPress={onCancel} accessibilityLabel="Back to routines"><ButtonText>Back</ButtonText></Button>
-					<Text size="2xl" bold>{routine ? "Edit Routine" : "New Routine"}</Text>
-					<Button variant="ghost" onPress={onCancel} accessibilityLabel="Close Routine builder"><ButtonText>Close</ButtonText></Button>
+					<Text size="2xl" bold className="min-w-0 flex-1 text-center">{routine ? "Edit Routine" : "New Routine"}</Text>
 				</Box>
 
 				<Box className="gap-2">
@@ -801,7 +801,8 @@ function RoutineBuilder({
 						</Button>
 					</Box>
 				)}
-			</ScrollView>
+				</ScrollView>
+			</Box>
 			<Box className="border-t border-border bg-background px-4 py-3">
 				<Box className="mx-auto w-full max-w-[800px] flex-row items-center gap-3">
 					<Box className="min-w-0 flex-1 gap-0.5">
@@ -918,12 +919,12 @@ function RoutineTargetFields({ entry, recordingScale, errors, onChange, onFieldB
 	const fields = (
 		<>
 			<TargetField compact={compact} label="Sets" value={entry.workingSetCount} error={errors.find((error) => error.startsWith("Working-set"))} onChange={(value) => onChange("workingSetCount", value)} onBlur={() => onFieldBlur?.("workingSetCount")} onClear={() => onChange("workingSetCount", "")} keyboardType="number-pad" />
-			<Box className={compact ? "min-w-0 flex-1 gap-1" : "gap-2"}>
+			<Box className={compact ? "basis-1/2 min-w-0 flex-1 gap-1 rounded-md bg-muted p-2" : "gap-2"}>
 				<Box className="flex-row items-center justify-between">
-					<Text size="sm" bold>Reps</Text>
+					<Text size="sm" bold className={compact ? "flex-1 text-center" : undefined}>Reps</Text>
 					{!compact && onClearRepRange && (entry.repMin !== "" || entry.repMax !== "") && <Button variant="link" size="sm" className="min-h-11 min-w-11 px-2" onPress={onClearRepRange} accessibilityLabel="Clear rep range"><ButtonText>Clear</ButtonText></Button>}
 				</Box>
-				<Box className="flex-row gap-1">
+				<Box className="flex-row gap-2">
 					<Box className="min-w-0 flex-1"><Input isInvalid={repError}><InputField value={entry.repMin} onChangeText={(value) => onChange("repMin", value)} onBlur={() => onFieldBlur?.("repMin")} placeholder="Min" accessibilityLabel="Minimum reps" keyboardType="number-pad" textAlign="center" /></Input></Box>
 					<Box className="min-w-0 flex-1"><Input isInvalid={repError}><InputField value={entry.repMax} onChangeText={(value) => onChange("repMax", value)} onBlur={() => onFieldBlur?.("repMax")} placeholder="Max" accessibilityLabel="Maximum reps" keyboardType="number-pad" textAlign="center" /></Input></Box>
 				</Box>

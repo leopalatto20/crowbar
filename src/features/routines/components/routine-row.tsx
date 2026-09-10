@@ -19,7 +19,7 @@ export function RoutineRow({ routine, expanded, archiveBusy, onOpen, onMore, onA
 			<Box className="flex-row items-center gap-2 px-4 py-4">
 				<Button
 					variant="ghost"
-					className="min-w-0 flex-1 justify-start px-0 py-0"
+					className="min-h-11 min-w-0 flex-1 justify-start px-0 py-0"
 					onPress={onOpen}
 					accessibilityLabel={`Edit ${routine.name}`}
 				>
