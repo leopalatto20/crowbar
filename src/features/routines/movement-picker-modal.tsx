@@ -62,6 +62,7 @@ export function MovementPickerModal({
 						/>
 					</Input>
 					<FlatList
+						className="flex-1"
 						contentContainerClassName="gap-2 pb-8"
 						data={filteredOptions}
 						keyExtractor={(movement) => String(movement.id)}
