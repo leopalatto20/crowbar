@@ -1,9 +1,16 @@
 import { eq } from 'drizzle-orm';
 
-import { createRoutine, listMovements, listRoutines, schema } from '@/db';
+import {
+	createRoutine,
+	getRoutine,
+	listMovements,
+	listRoutines,
+	schema,
+	updateRoutine,
+} from '@/db';
 
 import { freshDb } from '@/test/helpers/db';
-import { makeMovement } from '@/test/helpers/fixtures';
+import { makeGym, makeMovement } from '@/test/helpers/fixtures';
 
 describe('Routine create and list read path', () => {
 	let db: Awaited<ReturnType<typeof freshDb>>;
@@ -71,6 +78,73 @@ describe('Routine create and list read path', () => {
 
 		expect(await listRoutines(db)).toEqual([]);
 		expect((await listMovements(db)).map((row) => row.id)).not.toContain(movement.id);
+	});
+
+	test('persists optional targets and rejects invalid targets atomically', async () => {
+		const movement = await makeMovement(db, { name: 'Targeted press' });
+		const saved = await createRoutine(db, {
+			name: 'Targeted routine',
+			entries: [{
+				movementId: movement.id,
+				workingSetCount: 4,
+				repMin: 6,
+				repMax: 8,
+				proximityValue: 2,
+				proximityScale: 'rpe',
+				tempo: '3-1-1-0',
+			}],
+		});
+		expect(saved.entries[0]).toMatchObject({
+			workingSetCount: 4,
+			repMin: 6,
+			repMax: 8,
+			proximityValue: 2,
+			proximityScale: 'rpe',
+			tempo: '3-1-1-0',
+		});
+
+		await expect(createRoutine(db, {
+			name: 'Invalid targets',
+			entries: [{ movementId: movement.id, workingSetCount: 0 }],
+		})).rejects.toThrow('Working-set count');
+		expect(await listRoutines(db)).toHaveLength(1);
+	});
+
+	test('updates a Routine and its entries atomically without touching Sub-routines', async () => {
+		const first = await makeMovement(db, { name: 'First movement' });
+		const second = await makeMovement(db, { name: 'Second movement' });
+		const gym = await makeGym(db, 'Routine gym');
+		const saved = await createRoutine(db, {
+			name: 'Editable routine',
+			movementIds: [first.id, second.id],
+		});
+		await db.insert(schema.subRoutines).values({ routineId: saved.routine.id, gymId: gym.id });
+		const updated = await updateRoutine(db, saved.routine.id, {
+			name: 'Edited routine',
+			entries: [{ movementId: second.id, workingSetCount: 3 }],
+		});
+
+		expect(updated.routine.name).toBe('Edited routine');
+		expect(await db.select().from(schema.subRoutines)).toHaveLength(1);
+		expect(updated.entries.map((entry) => entry.movementId)).toEqual([second.id]);
+		expect((await getRoutine(db, saved.routine.id))?.entries[0]).toMatchObject({
+		movementId: second.id,
+		workingSetCount: 3,
+		position: 0,
+	});
+	});
+
+	test('rejects duplicate entries and duplicate Routine names', async () => {
+		const movement = await makeMovement(db, { name: 'Unique movement' });
+		await createRoutine(db, { name: 'Morning Push', movementIds: [movement.id] });
+		await expect(createRoutine(db, {
+			name: 'morning push',
+			movementIds: [movement.id],
+		})).rejects.toThrow('already exists');
+		await expect(createRoutine(db, {
+			name: 'Another routine',
+			movementIds: [movement.id, movement.id],
+		})).rejects.toThrow('same Movement twice');
 	});
 
 	test('rejects invalid drafts atomically', async () => {

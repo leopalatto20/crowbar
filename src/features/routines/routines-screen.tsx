@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { ActivityIndicator, FlatList, ScrollView } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, FlatList, PanResponder, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Box } from "@/components/ui/box";
@@ -8,13 +8,33 @@ import { Input, InputField } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
 import {
 	createRoutine,
+	getRecordingScale,
+	getRoutine,
 	getDb,
 	listMovements,
 	listRoutines,
+	updateRoutine,
 	type CatalogMovement,
 	type RoutineSummary,
+	type RoutineWithEntries,
 } from "@/db";
+import type { RecordingScale } from "@/db/constants";
 
+import {
+	addRoutineEntry as addDraftEntry,
+	createRoutineDraft as createDraft,
+	createRoutineEntryDraft as createDraftEntry,
+	removeRoutineEntry as removeDraftEntry,
+	reorderRoutineEntry as reorderDraftEntry,
+	routineDraftToInput as draftToInput,
+	undoRoutineEntryRemoval as undoDraftRemoval,
+	updateRoutineEntryTarget as updateDraftTarget,
+	validateRoutineDraft as validateDraft,
+	validateRoutineEntry as validateEntry,
+	type RoutineDraft,
+	type RoutineEntryDraft,
+	type RoutineEntryTargetField,
+} from "./routine-builder-state";
 import { MovementPickerModal } from "./movement-picker-modal";
 
 type View = "list" | "builder";
@@ -29,6 +49,9 @@ export default function RoutinesScreen() {
 	const [movementOptions, setMovementOptions] = useState<CatalogMovement[]>([]);
 	const [movementsLoading, setMovementsLoading] = useState(false);
 	const [movementsError, setMovementsError] = useState<string | null>(null);
+	const [recordingScale, setRecordingScale] = useState<RecordingScale>("rpe");
+	const [editingRoutine, setEditingRoutine] = useState<RoutineWithEntries | null>(null);
+	const [editingRoutineId, setEditingRoutineId] = useState<number | null>(null);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -57,6 +80,10 @@ export default function RoutinesScreen() {
 	}, [refreshToken]);
 
 	useEffect(() => {
+		getRecordingScale(getDb()).then(setRecordingScale).catch(() => undefined);
+	}, []);
+
+	useEffect(() => {
 		if (view !== "builder") return;
 		let cancelled = false;
 		Promise.resolve()
@@ -64,15 +91,13 @@ export default function RoutinesScreen() {
 				if (cancelled) return undefined;
 				setMovementsLoading(true);
 				setMovementsError(null);
-				return listMovements(getDb());
+				return listMovements(getDb(), { includeArchived: editingRoutine !== null });
 			})
 			.then((movements) => {
 				if (!cancelled && movements) setMovementOptions(movements);
 			})
 			.catch((loadError) => {
-				if (!cancelled) {
-					setMovementsError(errorMessage(loadError, "Unable to load active Movements."));
-				}
+				if (!cancelled) setMovementsError(errorMessage(loadError, "Unable to load active Movements."));
 			})
 			.finally(() => {
 				if (!cancelled) setMovementsLoading(false);
@@ -80,22 +105,47 @@ export default function RoutinesScreen() {
 		return () => {
 			cancelled = true;
 		};
-	}, [view]);
+	}, [editingRoutine, view]);
 
-	const openBuilder = () => {
+	const openCreate = () => {
 		setError(null);
+		setEditingRoutine(null);
 		setView("builder");
+	};
+
+	const openEdit = async (routineId: number) => {
+		setError(null);
+		setEditingRoutineId(routineId);
+		try {
+			const routine = await getRoutine(getDb(), routineId);
+			if (!routine) throw new Error("Routine no longer exists.");
+			setEditingRoutine(routine);
+			setView("builder");
+		} catch (loadError) {
+			setError(errorMessage(loadError, "Unable to open Routine."));
+		} finally {
+			setEditingRoutineId(null);
+		}
+	};
+
+	const closeBuilder = () => {
+		setView("list");
+		setEditingRoutine(null);
+		setMovementOptions([]);
 	};
 
 	if (view === "builder") {
 		return (
 			<RoutineBuilder
+				key={`${editingRoutine?.routine.id ?? "new"}-${recordingScale}`}
+				routine={editingRoutine}
+				recordingScale={recordingScale}
 				movementOptions={movementOptions}
 				movementsLoading={movementsLoading}
 				movementsError={movementsError}
-				onCancel={() => setView("list")}
+				onCancel={closeBuilder}
 				onSaved={() => {
-					setView("list");
+					closeBuilder();
 					setRefreshToken((token) => token + 1);
 				}}
 			/>
@@ -113,11 +163,9 @@ export default function RoutinesScreen() {
 				ListHeaderComponent={
 					<Box className="gap-4">
 						<Box className="flex-row items-center justify-between">
-							<Text size="5xl" bold>
-								Routines
-							</Text>
+							<Text size="5xl" bold>Routines</Text>
 							{!empty && (
-								<Button onPress={openBuilder} accessibilityLabel="Create routine">
+								<Button onPress={openCreate} accessibilityLabel="Create routine">
 									<ButtonText>Create routine</ButtonText>
 								</Button>
 							)}
@@ -133,7 +181,7 @@ export default function RoutinesScreen() {
 					</Box>
 				}
 				ListEmptyComponent={
-					loading ? (
+					loading || editingRoutineId !== null ? (
 						<Box className="items-center gap-2 rounded-xl bg-card px-4 py-8">
 							<ActivityIndicator accessibilityLabel="Loading routines" />
 							<Text className="text-muted-foreground">Loading Routines…</Text>
@@ -141,28 +189,25 @@ export default function RoutinesScreen() {
 					) : empty && !error ? (
 						<Box className="items-center gap-4 rounded-xl bg-card px-4 py-8">
 							<Box className="items-center gap-2">
-								<Text size="xl" bold>
-									No Routines yet
-								</Text>
-								<Text className="text-center text-muted-foreground">
-									Build a simple ledger for your next session.
-								</Text>
+								<Text size="xl" bold>No Routines yet</Text>
+								<Text className="text-center text-muted-foreground">Build a simple ledger for your next session.</Text>
 							</Box>
-							<Button onPress={openBuilder} accessibilityLabel="Create routine">
+							<Button onPress={openCreate} accessibilityLabel="Create routine">
 								<ButtonText>Create routine</ButtonText>
 							</Button>
 						</Box>
 					) : null
 				}
 				renderItem={({ item }) => (
-					<Box className="flex-row items-center justify-between rounded-xl bg-card px-4 py-4">
-						<Text size="lg" bold className="min-w-0 flex-1">
-							{item.name}
-						</Text>
-						<Text size="sm" className="text-muted-foreground">
-							{movementCountLabel(item.movementCount)}
-						</Text>
-					</Box>
+					<Button
+						variant="ghost"
+						onPress={() => void openEdit(item.id)}
+						className="w-full flex-row items-center justify-between rounded-xl bg-card px-4 py-4"
+						accessibilityLabel={`Edit ${item.name}`}
+					>
+						<ButtonText className="min-w-0 flex-1 justify-start text-left" numberOfLines={1}>{item.name}</ButtonText>
+						<Text size="sm" className="text-muted-foreground">{movementCountLabel(item.movementCount)}</Text>
+					</Button>
 				)}
 			/>
 		</SafeAreaView>
@@ -170,6 +215,8 @@ export default function RoutinesScreen() {
 }
 
 type RoutineBuilderProps = {
+	routine: RoutineWithEntries | null;
+	recordingScale: RecordingScale;
 	movementOptions: CatalogMovement[];
 	movementsLoading: boolean;
 	movementsError: string | null;
@@ -178,37 +225,56 @@ type RoutineBuilderProps = {
 };
 
 function RoutineBuilder({
+	routine,
+	recordingScale,
 	movementOptions,
 	movementsLoading,
 	movementsError,
 	onCancel,
 	onSaved,
 }: RoutineBuilderProps) {
-	const [name, setName] = useState("");
-	const [movementIds, setMovementIds] = useState<number[]>([]);
+	const [draft, setDraft] = useState<RoutineDraft>(() => createDraft(routine?.routine.name ?? "", recordingScale, routine?.entries ?? []));
+	const [pendingEntry, setPendingEntry] = useState<RoutineEntryDraft | null>(null);
 	const [pickerVisible, setPickerVisible] = useState(false);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const selectedMovements = movementIds
-		.map((id) => movementOptions.find((movement) => movement.id === id))
+	const validation = validateDraft(draft);
+	const selectedIds = useMemo(() => draft.entries.map((entry) => entry.movementId), [draft.entries]);
+	const selectedMovements = draft.entries
+		.map((entry) => movementOptions.find((movement) => movement.id === entry.movementId))
 		.filter((movement): movement is CatalogMovement => movement !== undefined);
-	const canSave = name.trim().length > 0 && selectedMovements.length > 0 && !saving;
+	const pendingMovement = pendingEntry && movementOptions.find((movement) => movement.id === pendingEntry.movementId);
+	const pendingErrors = pendingEntry ? validateEntry(pendingEntry, recordingScale) : [];
 
-	const addMovement = (movement: CatalogMovement) => {
-		setMovementIds((ids) => (ids.includes(movement.id) ? ids : [...ids, movement.id]));
+	const updateDraft = (next: RoutineDraft) => {
+		setDraft(next);
+		setError(null);
+	};
+	const updatePending = (field: RoutineEntryTargetField, value: string) => {
+		setPendingEntry((entry) => entry ? { ...entry, [field]: value } : entry);
+	};
+	const addPending = () => {
+		if (!pendingEntry || pendingErrors.length > 0) return;
+		const added = addDraftEntry(draft, pendingEntry.movementId);
+		updateDraft({
+			...added,
+			entries: added.entries.map((entry) => entry.movementId === pendingEntry.movementId ? pendingEntry : entry),
+		});
+		setPendingEntry(null);
+	};
+	const chooseMovement = (movement: CatalogMovement) => {
+		if (movement.archived || selectedIds.includes(movement.id)) return;
+		setPendingEntry(createDraftEntry(movement.id));
 		setPickerVisible(false);
 	};
-
-	const removeMovement = (movementId: number) => {
-		setMovementIds((ids) => ids.filter((id) => id !== movementId));
-	};
-
 	const save = async () => {
-		if (!canSave) return;
+		if (!validation.valid || saving) return;
 		setSaving(true);
 		setError(null);
 		try {
-			await createRoutine(getDb(), { name, movementIds });
+			const input = draftToInput(draft);
+			if (routine) await updateRoutine(getDb(), routine.routine.id, input);
+			else await createRoutine(getDb(), input);
 			onSaved();
 		} catch (saveError) {
 			setError(errorMessage(saveError, "Unable to save Routine."));
@@ -221,87 +287,191 @@ function RoutineBuilder({
 		<SafeAreaView className="flex-1 bg-background" edges={["top", "left", "right", "bottom"]}>
 			<ScrollView contentContainerClassName="mx-auto w-full max-w-[800px] gap-4 px-4 pb-28 pt-4" keyboardShouldPersistTaps="handled">
 				<Box className="flex-row items-center justify-between">
-					<Button variant="ghost" onPress={onCancel} accessibilityLabel="Back to routines">
-						<ButtonText>Back</ButtonText>
-					</Button>
-					<Text size="2xl" bold>
-						New Routine
-					</Text>
+					<Button variant="ghost" onPress={onCancel} accessibilityLabel="Back to routines"><ButtonText>Back</ButtonText></Button>
+					<Text size="2xl" bold>{routine ? "Edit Routine" : "New Routine"}</Text>
 					<Box className="w-16" />
 				</Box>
 
 				<Box className="gap-2">
-					<Text size="sm" bold>
-						Routine name
-					</Text>
-					<Input>
+					<Text size="sm" bold>Routine name</Text>
+					<Input isInvalid={Boolean(validation.nameError)}>
 						<InputField
-							value={name}
-							onChangeText={setName}
+							value={draft.name}
+							onChangeText={(name) => updateDraft({ ...draft, name })}
 							placeholder="e.g. Upper body"
 							accessibilityLabel="Routine name"
 							autoCapitalize="sentences"
 						/>
 					</Input>
+					{validation.nameError && <Text size="sm" className="text-destructive">{validation.nameError}</Text>}
 				</Box>
 
 				<Box className="gap-4 rounded-xl bg-card p-4">
 					<Box className="flex-row items-center justify-between">
-						<Text size="lg" bold>
-							Ledger
-						</Text>
-						<Text size="sm" className="text-muted-foreground">
-							{movementCountLabel(selectedMovements.length)}
-						</Text>
+						<Text size="lg" bold>Ledger</Text>
+						<Text size="sm" className="text-muted-foreground">{movementCountLabel(draft.entries.length)}</Text>
 					</Box>
 					{selectedMovements.length === 0 ? (
 						<Text className="py-4 text-muted-foreground">No Movements added yet.</Text>
-					) : (
-						selectedMovements.map((movement, index) => (
-							<Box key={movement.id} className="flex-row items-center gap-2 border-t border-border py-2">
-								<Text size="sm" className="w-6 text-muted-foreground">
-									{index + 1}
-								</Text>
-								<Text className="min-w-0 flex-1">{movement.name}</Text>
-								<Button
-									variant="ghost"
-									onPress={() => removeMovement(movement.id)}
-									accessibilityLabel={`Remove ${movement.name}`}
-								>
-									<ButtonText>Remove</ButtonText>
-								</Button>
-							</Box>
-						))
-					)}
+					) : selectedMovements.map((movement, index) => (
+						<RoutineEntryRow
+							key={movement.id}
+							index={index}
+							entryCount={draft.entries.length}
+							movement={movement}
+							entry={draft.entries.find((entry) => entry.movementId === movement.id)!}
+							recordingScale={recordingScale}
+							errors={validation.entryErrors[movement.id] ?? []}
+							onTargetChange={(field, value) => updateDraft(updateDraftTarget(draft, movement.id, field, value))}
+							onClearRepRange={() => updateDraft({ ...draft, entries: draft.entries.map((entry) => entry.movementId === movement.id ? { ...entry, repMin: "", repMax: "" } : entry) })}
+							onMove={(from, to) => updateDraft(reorderDraftEntry(draft, from, to))}
+							onMoveUp={() => updateDraft(moveDraftEntry(draft, movement.id, "up"))}
+							onMoveDown={() => updateDraft(moveDraftEntry(draft, movement.id, "down"))}
+							onRemove={() => updateDraft(removeDraftEntry(draft, movement.id))}
+						/>
+					))}
 				</Box>
+
+				{pendingEntry && pendingMovement && (
+					<Box className="gap-4 rounded-xl bg-card p-4">
+						<Box className="flex-row items-center justify-between">
+							<Box className="min-w-0 flex-1 gap-1">
+								<Text size="lg" bold>Configure Movement</Text>
+								<Text className="text-muted-foreground">{pendingMovement.name}</Text>
+							</Box>
+							<Button variant="ghost" onPress={() => setPendingEntry(null)} accessibilityLabel="Cancel movement setup"><ButtonText>Cancel</ButtonText></Button>
+						</Box>
+						<RoutineTargetFields entry={pendingEntry} recordingScale={recordingScale} errors={pendingErrors} onChange={updatePending} onClearRepRange={() => setPendingEntry((entry) => entry ? { ...entry, repMin: "", repMax: "" } : entry)} />
+						<Button variant="outline" onPress={addPending} disabled={pendingErrors.length > 0} accessibilityLabel={`Add ${pendingMovement.name} to routine`}>
+							<ButtonText>Add to ledger</ButtonText>
+						</Button>
+					</Box>
+				)}
 
 				<Button
 					variant="outline"
 					onPress={() => setPickerVisible(true)}
-					disabled={movementsLoading || movementOptions.length === 0}
+					disabled={movementsLoading || movementOptions.filter((movement) => !movement.archived && !selectedIds.includes(movement.id)).length === 0}
 					accessibilityLabel="Add movement to routine"
 				>
 					<ButtonText>{movementsLoading ? "Loading movements…" : "Add movement"}</ButtonText>
 				</Button>
 				{movementsError && <Text className="text-destructive">{movementsError}</Text>}
-				{error && (
-					<Box className="rounded-xl bg-muted px-4 py-2" accessibilityRole="alert">
-						<Text className="text-destructive">{error}</Text>
+				{draft.lastRemoved && (
+					<Box className="flex-row items-center gap-2 rounded-xl bg-muted px-4 py-4" accessibilityLiveRegion="polite">
+						<Text className="min-w-0 flex-1">{movementName(draft.lastRemoved.entry.movementId, movementOptions)} removed.</Text>
+						<Button variant="link" size="sm" className="px-0" onPress={() => updateDraft(undoDraftRemoval(draft))} accessibilityLabel="Undo removed movement"><ButtonText>Undo</ButtonText></Button>
 					</Box>
 				)}
-				<Button onPress={() => void save()} disabled={!canSave} accessibilityLabel="Save routine">
-					<ButtonText>{saving ? "Saving…" : "Save routine"}</ButtonText>
+				{error && <Box className="rounded-xl bg-muted px-4 py-2" accessibilityRole="alert"><Text className="text-destructive">{error}</Text></Box>}
+				<Button onPress={() => void save()} disabled={!validation.valid || saving} accessibilityLabel="Save routine">
+					<ButtonText>{saving ? "Saving…" : routine ? "Save changes" : "Save routine"}</ButtonText>
 				</Button>
 			</ScrollView>
 			<MovementPickerModal
 				visible={pickerVisible}
 				options={movementOptions}
-				selectedIds={movementIds}
+				selectedIds={selectedIds}
 				onClose={() => setPickerVisible(false)}
-				onSelect={addMovement}
+				onSelect={chooseMovement}
 			/>
 		</SafeAreaView>
 	);
+}
+
+type RoutineEntryRowProps = {
+	index: number;
+	entryCount: number;
+	movement: CatalogMovement;
+	entry: RoutineEntryDraft;
+	recordingScale: RecordingScale;
+	errors: string[];
+	onTargetChange: (field: RoutineEntryTargetField, value: string) => void;
+	onClearRepRange: () => void;
+	onMove: (from: number, to: number) => void;
+	onMoveUp: () => void;
+	onMoveDown: () => void;
+	onRemove: () => void;
+};
+
+function RoutineEntryRow({ index, entryCount, movement, entry, recordingScale, errors, onTargetChange, onClearRepRange, onMove, onMoveUp, onMoveDown, onRemove }: RoutineEntryRowProps) {
+	return (
+		<Box className={movement.archived ? "gap-2 border-t border-border py-4 opacity-50" : "gap-2 border-t border-border py-4"}>
+			<Box className="flex-row items-start gap-2">
+				<DragHandle index={index} label={movement.name} onMove={onMove} />
+				<Box className="min-w-0 flex-1 gap-1">
+					<Text size="sm" className="text-muted-foreground">{index + 1}</Text>
+					<Text bold>{movement.name}</Text>
+					{movement.archived && <Text size="sm" bold className="uppercase text-muted-foreground">Archived</Text>}
+				</Box>
+				<Box className="flex-row gap-1">
+					<Button variant="ghost" size="sm" onPress={onMoveUp} disabled={index === 0} accessibilityLabel={`Move ${movement.name} up`}><ButtonText>↑</ButtonText></Button>
+					<Button variant="ghost" size="sm" onPress={onMoveDown} disabled={index === entryCount - 1} accessibilityLabel={`Move ${movement.name} down`}><ButtonText>↓</ButtonText></Button>
+				</Box>
+			</Box>
+			<RoutineTargetFields
+				entry={entry}
+				recordingScale={recordingScale}
+				errors={errors}
+				onChange={onTargetChange}
+				onClearRepRange={onClearRepRange}
+			/>
+			<Button variant="link" size="sm" className="self-start px-0" onPress={onRemove} accessibilityLabel={`Remove ${movement.name}`}><ButtonText>Remove</ButtonText></Button>
+		</Box>
+	);
+}
+
+function DragHandle({ index, label, onMove }: { index: number; label: string; onMove: (from: number, to: number) => void }) {
+	const responder = useMemo(() => PanResponder.create({
+		onStartShouldSetPanResponder: () => true,
+		onMoveShouldSetPanResponder: () => true,
+		onPanResponderRelease: (_, gesture) => {
+			const offset = gesture.dy > 96 ? 1 : gesture.dy < -96 ? -1 : 0;
+			if (offset) onMove(index, index + offset);
+		},
+	}), [index, onMove]);
+	return (
+		<Button {...responder.panHandlers} variant="ghost" size="icon" accessibilityLabel={`Drag ${label}`} className="bg-muted">
+			<ButtonText className="text-muted-foreground">≡</ButtonText>
+		</Button>
+	);
+}
+
+function RoutineTargetFields({ entry, recordingScale, errors, onChange, onClearRepRange }: { entry: RoutineEntryDraft; recordingScale: RecordingScale; errors: string[]; onChange: (field: RoutineEntryTargetField, value: string) => void; onClearRepRange: () => void }) {
+	return (
+		<Box className="gap-2">
+			<TargetField label="Working sets" value={entry.workingSetCount} error={errors.find((error) => error.startsWith("Working-set"))} onChange={(value) => onChange("workingSetCount", value)} onClear={() => onChange("workingSetCount", "")} keyboardType="number-pad" />
+			<Box className="gap-2">
+				<Text size="sm" bold>Rep range</Text>
+				<Box className="flex-row gap-2">
+					<Box className="min-w-0 flex-1"><Input isInvalid={Boolean(errors.some((error) => error.includes("Rep")))}><InputField value={entry.repMin} onChangeText={(value) => onChange("repMin", value)} placeholder="Min" accessibilityLabel="Minimum reps" keyboardType="number-pad" /></Input></Box>
+					<Box className="min-w-0 flex-1"><Input isInvalid={Boolean(errors.some((error) => error.includes("Rep")))}><InputField value={entry.repMax} onChangeText={(value) => onChange("repMax", value)} placeholder="Max" accessibilityLabel="Maximum reps" keyboardType="number-pad" /></Input></Box>
+					<Button variant="link" size="sm" className="px-0" onPress={onClearRepRange} accessibilityLabel="Clear rep range"><ButtonText>Clear</ButtonText></Button>
+				</Box>
+				{errors.filter((error) => error.includes("Rep")).map((error) => <Text key={error} size="sm" className="text-destructive">{error}</Text>)}
+			</Box>
+			<TargetField label={`${recordingScale.toUpperCase()} target`} value={entry.proximityValue} error={errors.find((error) => error.includes("target must"))} onChange={(value) => onChange("proximityValue", value)} onClear={() => onChange("proximityValue", "")} keyboardType="decimal-pad" />
+			<TargetField label="Tempo" value={entry.tempo} error={errors.find((error) => error.startsWith("Tempo"))} onChange={(value) => onChange("tempo", value)} onClear={() => onChange("tempo", "")} placeholder="3-1-1-0" />
+		</Box>
+	);
+}
+
+type TargetFieldProps = { label: string; value: string; error?: string; onChange: (value: string) => void; onClear: () => void; placeholder?: string; keyboardType?: "number-pad" | "decimal-pad" };
+function TargetField({ label, value, error, onChange, onClear, placeholder, keyboardType }: TargetFieldProps) {
+	return (
+		<Box className="gap-2">
+			<Box className="flex-row items-center justify-between">
+				<Text size="sm" bold>{label}</Text>
+				{value !== "" && <Button variant="link" size="sm" className="px-0" onPress={onClear} accessibilityLabel={`Clear ${label}`}><ButtonText>Clear</ButtonText></Button>}
+			</Box>
+			<Input isInvalid={Boolean(error)}><InputField value={value} onChangeText={onChange} placeholder={placeholder} accessibilityLabel={label} keyboardType={keyboardType} /></Input>
+			{error && <Text size="sm" className="text-destructive">{error}</Text>}
+		</Box>
+	);
+}
+
+function movementName(id: number, options: CatalogMovement[]): string {
+	return options.find((movement) => movement.id === id)?.name ?? "Movement";
 }
 
 function errorMessage(error: unknown, fallback: string): string {
@@ -310,4 +480,9 @@ function errorMessage(error: unknown, fallback: string): string {
 
 function movementCountLabel(count: number): string {
 	return `${count} ${count === 1 ? "Movement" : "Movements"}`;
+}
+
+function moveDraftEntry(draft: RoutineDraft, movementId: number, direction: "up" | "down"): RoutineDraft {
+	const index = draft.entries.findIndex((entry) => entry.movementId === movementId);
+	return reorderDraftEntry(draft, index, direction === "up" ? index - 1 : index + 1);
 }

@@ -1,9 +1,11 @@
 import { and, count, desc, eq, gte, inArray, lt, sql } from 'drizzle-orm';
 
 import {
+	DEFAULT_RECORDING_SCALE,
 	DEFAULT_UNIT,
 	EQUIPMENT_CLASSES,
 	MUSCLE_GROUPS,
+	RECORDING_SCALES,
 	UNITS,
 	type EquipmentClass,
 	type RecordingScale,
@@ -405,9 +407,27 @@ export async function deleteMovement(db: DB, id: number): Promise<MovementDelete
 export type Routine = typeof routines.$inferSelect;
 export type RoutineEntry = typeof routineEntries.$inferSelect;
 
+export type RoutineEntryInput = {
+	movementId: number;
+	workingSetCount?: number | null;
+	repMin?: number | null;
+	repMax?: number | null;
+	proximityValue?: number | null;
+	proximityScale?: RecordingScale | null;
+	tempo?: string | null;
+};
+
 export type NewRoutine = {
 	name: string;
-	movementIds: number[];
+	/** Legacy convenience shape retained for the minimal builder API. */
+	movementIds?: number[];
+	entries?: RoutineEntryInput[];
+};
+
+export type UpdateRoutine = {
+	name: string;
+	movementIds?: number[];
+	entries?: RoutineEntryInput[];
 };
 
 /** The compact row shown in the active Routine list. */
@@ -417,57 +437,152 @@ export type RoutineSummary = {
 	movementCount: number;
 };
 
+export type RoutineWithEntries = { routine: Routine; entries: RoutineEntry[] };
+
 function assertRoutineName(name: string): string {
 	const trimmed = name.trim();
 	if (!trimmed) throw new Error('Routine name cannot be blank.');
 	return trimmed;
 }
 
+/** Routine names ignore case and surrounding whitespace for uniqueness. */
 function routineNameKey(name: string): string {
 	return name.trim().toLowerCase();
 }
 
-/**
- * Saves a Routine and all of its ordered entries as one transaction. Only active
- * Movements can be planned, and a Movement can appear at most once in a Routine.
- */
-export async function createRoutine(db: DB, input: NewRoutine): Promise<{ routine: Routine; entries: RoutineEntry[] }> {
+function routineEntriesFromInput(input: { movementIds?: number[]; entries?: RoutineEntryInput[] }): RoutineEntryInput[] {
+	if (input.entries) return input.entries;
+	return (input.movementIds ?? []).map((movementId) => ({ movementId }));
+}
+
+function validateRoutineTargets(
+	tx: DB,
+	entries: RoutineEntryInput[],
+	{ requireActive, existingMovementIds = new Set<number>() }: { requireActive: boolean; existingMovementIds?: Set<number> },
+): void {
+	if (entries.length === 0) throw new Error('A Routine needs at least one Movement.');
+	if (new Set(entries.map((entry) => entry.movementId)).size !== entries.length) {
+		throw new Error('A Routine cannot contain the same Movement twice.');
+	}
+
+	const movementRows = tx
+		.select({ id: movements.id, archived: movements.archived })
+		.from(movements)
+		.where(inArray(movements.id, entries.map((entry) => entry.movementId)))
+		.all();
+	if (movementRows.length !== entries.length) throw new Error('Every Routine Movement must exist.');
+	if (requireActive && movementRows.some((movement) => movement.archived === 1)) {
+		throw new Error('Every Routine Movement must be active.');
+	}
+	if (!requireActive && movementRows.some((movement) => movement.archived === 1 && !existingMovementIds.has(movement.id))) {
+		throw new Error('Every new Routine Movement must be active.');
+	}
+
+	const recordingScale = getRecordingScaleSync(tx);
+	for (const entry of entries) {
+		const workingSetCount = entry.workingSetCount;
+		if (workingSetCount !== null && workingSetCount !== undefined && (!Number.isInteger(workingSetCount) || workingSetCount <= 0)) {
+			throw new Error('Working-set count must be a positive whole number.');
+		}
+		const repMin = entry.repMin ?? null;
+		const repMax = entry.repMax ?? null;
+		if ((repMin === null) !== (repMax === null)) {
+			throw new Error('Enter both a minimum and maximum rep target.');
+		}
+		if (repMin !== null && repMax !== null && (!Number.isInteger(repMin) || repMin <= 0 || !Number.isInteger(repMax) || repMax <= 0)) {
+			throw new Error('Rep targets must be positive whole numbers.');
+		}
+		if (repMin !== null && repMax !== null && repMin > repMax) throw new Error('Rep minimum cannot exceed rep maximum.');
+
+		const proximityValue = entry.proximityValue ?? null;
+		const proximityScale = entry.proximityScale ?? null;
+		if (proximityValue === null && proximityScale !== null) throw new Error('A proximity scale requires a proximity target.');
+		if (proximityValue !== null) {
+			const minimum = recordingScale === 'rir' ? 0 : 1;
+			const targetScale = proximityScale ?? recordingScale;
+			if (targetScale !== recordingScale) throw new Error(`Proximity target must use the app Recording scale (${recordingScale.toUpperCase()}).`);
+			if (!Number.isFinite(proximityValue) || proximityValue < minimum || proximityValue > 10) {
+				throw new Error(`${recordingScale.toUpperCase()} target must be between ${minimum} and 10.`);
+			}
+		}
+		if (entry.tempo !== null && entry.tempo !== undefined && entry.tempo.trim() && !/^\d+-\d+-\d+-\d+$/.test(entry.tempo.trim())) {
+			throw new Error('Tempo must use four-part notation, for example 3-1-1-0.');
+		}
+	}
+}
+
+function getRecordingScaleSync(db: DB): RecordingScale {
+	const row = db.select({ value: settings.value }).from(settings).where(eq(settings.key, 'recording_scale')).limit(1).all()[0];
+	return row && RECORDING_SCALES.includes(row.value) ? row.value as RecordingScale : DEFAULT_RECORDING_SCALE as RecordingScale;
+}
+
+export async function getRecordingScale(db: DB): Promise<RecordingScale> {
+	return getRecordingScaleSync(db);
+}
+
+function entryValues(entry: RoutineEntryInput, routineId: number, position: number, recordingScale: RecordingScale) {
+	const proximityValue = entry.proximityValue ?? null;
+	return {
+		routineId,
+		position,
+		movementId: entry.movementId,
+		workingSetCount: entry.workingSetCount ?? null,
+		repMin: entry.repMin ?? null,
+		repMax: entry.repMax ?? null,
+		proximityValue,
+		proximityScale: proximityValue === null ? null : (entry.proximityScale ?? recordingScale),
+		tempo: entry.tempo?.trim() || null,
+	};
+}
+
+function saveEntries(tx: DB, routineId: number, entries: RoutineEntryInput[]): RoutineEntry[] {
+	const recordingScale = getRecordingScaleSync(tx);
+	return tx.insert(routineEntries).values(entries.map((entry, position) => entryValues(entry, routineId, position, recordingScale))).returning().all();
+}
+
+/** Saves a new Routine and all ordered entries in one transaction. */
+export async function createRoutine(db: DB, input: NewRoutine): Promise<RoutineWithEntries> {
 	return db.transaction((tx) => {
 		const name = assertRoutineName(input.name);
-		if (input.movementIds.length === 0) {
-			throw new Error('A Routine needs at least one Movement.');
-		}
-		if (new Set(input.movementIds).size !== input.movementIds.length) {
-			throw new Error('A Routine cannot contain the same Movement twice.');
-		}
-
-		const activeMovements = tx
-			.select({ id: movements.id })
-			.from(movements)
-			.where(and(inArray(movements.id, input.movementIds), eq(movements.archived, 0)))
-			.all();
-		if (activeMovements.length !== input.movementIds.length) {
-			throw new Error('Every Routine Movement must be active.');
-		}
-
+		const entries = routineEntriesFromInput(input);
+		validateRoutineTargets(tx, entries, { requireActive: true });
 		const existingNames = tx.select({ name: routines.name }).from(routines).all();
 		if (existingNames.some((row) => routineNameKey(row.name) === routineNameKey(name))) {
 			throw new Error('A Routine with that name already exists.');
 		}
-
 		const routine = tx.insert(routines).values({ name }).returning().all()[0];
-		const entries = tx
-			.insert(routineEntries)
-			.values(
-				input.movementIds.map((movementId, position) => ({
-					routineId: routine.id,
-					position,
-					movementId,
-				})),
-			)
-			.returning()
-			.all();
-		return { routine, entries };
+		return { routine, entries: saveEntries(tx, routine.id, entries) };
+	});
+}
+
+/** Reads a Routine and its entries in execution order. */
+export async function getRoutine(db: DB, routineId: number): Promise<RoutineWithEntries | null> {
+	const routine = (await db.select().from(routines).where(eq(routines.id, routineId)).limit(1))[0];
+	if (!routine) return null;
+	const entries = await db.select().from(routineEntries).where(eq(routineEntries.routineId, routineId)).orderBy(routineEntries.position);
+	return { routine, entries };
+}
+
+/** Replaces a Routine's ordered entries atomically; Sub-routines are untouched. */
+export async function updateRoutine(db: DB, routineId: number, input: UpdateRoutine): Promise<RoutineWithEntries> {
+	return db.transaction((tx) => {
+		const existing = tx.select().from(routines).where(eq(routines.id, routineId)).limit(1).all()[0];
+		if (!existing) throw new Error(`Routine ${routineId} does not exist.`);
+		const name = assertRoutineName(input.name);
+		const entries = routineEntriesFromInput(input);
+		const existingEntries = tx.select({ movementId: routineEntries.movementId }).from(routineEntries).where(eq(routineEntries.routineId, routineId)).all();
+		validateRoutineTargets(tx, entries, {
+			requireActive: false,
+			existingMovementIds: new Set(existingEntries.map((entry) => entry.movementId)),
+		});
+		const otherNames = tx.select({ id: routines.id, name: routines.name }).from(routines).all();
+		if (otherNames.some((row) => row.id !== routineId && routineNameKey(row.name) === routineNameKey(name))) {
+			throw new Error('A Routine with that name already exists.');
+		}
+		tx.update(routines).set({ name }).where(eq(routines.id, routineId)).run();
+		tx.delete(routineEntries).where(eq(routineEntries.routineId, routineId)).run();
+		const routine = tx.select().from(routines).where(eq(routines.id, routineId)).limit(1).all()[0];
+		return { routine, entries: saveEntries(tx, routineId, entries) };
 	});
 }
 
