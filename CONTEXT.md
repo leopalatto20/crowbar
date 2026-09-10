@@ -17,7 +17,7 @@ A movement's personal user notes — free multi-line text the lifter writes for 
 _Avoid_: description, cue card, coaching text
 
 **Archived**:
-The lifecycle for a movement (or gym) that has history. Archive excludes the movement from *pickers only* — existing routine entries, sub-routine bindings, and history persist untouched, and history still counts in landmarks. **Delete is allowed only when a movement has zero history AND zero references** (sets, routine/sub-routine/session entries); otherwise delete is blocked and the references are shown. Archive is always available, even with zero history — it is the escape hatch; un-archive clears the flag.
+The lifecycle for a movement, gym, or Routine that should remain available without appearing in active pickers or lists. For Movements, archive leaves routine entries, sub-routine bindings, and history untouched, and history still counts in landmarks; un-archive clears the flag. Permanent deletion is allowed only when the archived item has zero history and zero references, otherwise deletion is blocked and references are shown.
 _Avoid_: deleted, removed
 
 **Equipment class**:
@@ -33,7 +33,7 @@ A location context the lifter trains in. Gyms declare nothing — a gym is whate
 _Avoid_: location, venue
 
 **Routine**:
-A gym-agnostic, ordered list of movements, each entry carrying optional targets — working-set count, rep range, RIR/RPE target (on the recording scale), tempo target. Defined once, executed anywhere.
+A gym-agnostic, ordered list of movements, each entry carrying optional targets — working-set count, rep range, RIR/RPE target (on the recording scale), tempo target. Routine names are unique; a Routine is defined once and executed anywhere.
 _Avoid_: program, plan, template, workout
 
 **Routine entry**:
@@ -45,7 +45,7 @@ The place where a lifter defines or changes a Routine's name, ordered entries, a
 _Avoid_: routine editor, workout builder
 
 **Sub-routine**:
-A routine as adapted to a specific gym — the recorded binding of each movement to the exercise (equipment) the lifter used there. One per Routine × Gym, auto-created from the first completed session there. A deviating session does not change it; the lifter is asked at the end whether to update the sub-routine or keep the original.
+A routine as adapted to a specific gym — the recorded binding of each movement to the exercise (equipment) the lifter used there. One per Routine × Gym, auto-created from the first completed session there. A deviating session does not change it; the lifter is asked at the end whether to update the sub-routine or keep the original. Editing a Routine does not mutate existing Sub-routines automatically; reconciliation is an explicit future flow.
 _Avoid_: gym variant, adapted routine
 
 **Session**:
