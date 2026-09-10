@@ -435,6 +435,7 @@ export type RoutineSummary = {
 	id: number;
 	name: string;
 	movementCount: number;
+	archived: boolean;
 };
 
 export type RoutineWithEntries = { routine: Routine; entries: RoutineEntry[] };
@@ -586,19 +587,101 @@ export async function updateRoutine(db: DB, routineId: number, input: UpdateRout
 	});
 }
 
-/** Lists active Routines in deterministic case-insensitive A–Z order. */
-export async function listRoutines(db: DB): Promise<RoutineSummary[]> {
-	return db
+async function setRoutineArchived(db: DB, id: number, archived: 0 | 1): Promise<Routine> {
+	const updated = (await db.update(routines).set({ archived }).where(eq(routines.id, id)).returning())[0];
+	if (!updated) throw new Error(`Routine ${id} does not exist.`);
+	return updated;
+}
+
+export function archiveRoutine(db: DB, id: number): Promise<Routine> {
+	return setRoutineArchived(db, id, 1);
+}
+
+export function unarchiveRoutine(db: DB, id: number): Promise<Routine> {
+	return setRoutineArchived(db, id, 0);
+}
+
+/** All Sub-routines and session history that keep a Routine from being deleted. */
+export type RoutineDeleteReferences = {
+	subRoutines: Reference[];
+	sessions: Reference[];
+};
+
+export type RoutineDeleteBlocked = {
+	deleted: false;
+	references: RoutineDeleteReferences;
+};
+
+export type RoutineDeleteResult = { deleted: true } | RoutineDeleteBlocked;
+
+export function hasRoutineReferences(references: RoutineDeleteReferences): boolean {
+	return references.subRoutines.length > 0 || references.sessions.length > 0;
+}
+
+function readRoutineDeleteReferences(db: DB, id: number): RoutineDeleteReferences {
+	const routine = db.select({ id: routines.id }).from(routines).where(eq(routines.id, id)).limit(1).all()[0];
+	if (!routine) throw new Error(`Routine ${id} does not exist.`);
+
+	const subRoutineRows = db
+		.select({ id: subRoutines.id, gymId: gyms.id, gymName: gyms.name })
+		.from(subRoutines)
+		.innerJoin(gyms, eq(gyms.id, subRoutines.gymId))
+		.where(eq(subRoutines.routineId, id))
+		.orderBy(subRoutines.id)
+		.all();
+
+	const sessionRows = db
+		.select({ id: sessions.id, name: gyms.name, date: sessions.startedAt })
+		.from(sessions)
+		.innerJoin(subRoutines, eq(subRoutines.id, sessions.subRoutineId))
+		.innerJoin(gyms, eq(gyms.id, sessions.gymId))
+		.where(eq(subRoutines.routineId, id))
+		.groupBy(sessions.id, gyms.name, sessions.startedAt)
+		.orderBy(sessions.id)
+		.all();
+
+	return {
+		subRoutines: subRoutineRows.map((row) => ({
+			id: row.id,
+			name: row.gymName,
+			routineId: id,
+			gymId: row.gymId,
+		})),
+		sessions: sessionRows,
+	};
+}
+
+export async function getRoutineDeleteReferences(db: DB, id: number): Promise<RoutineDeleteReferences> {
+	return readRoutineDeleteReferences(db, id);
+}
+
+/** Permanently deletes only a Routine without Sub-routines or session history. */
+export async function deleteRoutine(db: DB, id: number): Promise<RoutineDeleteResult> {
+	return db.transaction((tx) => {
+		const references = readRoutineDeleteReferences(tx, id);
+		if (hasRoutineReferences(references)) return { deleted: false, references };
+
+		tx.delete(routines).where(eq(routines.id, id)).run();
+		return { deleted: true };
+	});
+}
+
+/** Lists active Routines by default; archived rows are included only when revealed. */
+export async function listRoutines(db: DB, { includeArchived = false } = {}): Promise<RoutineSummary[]> {
+	const conditions = includeArchived ? [] : [eq(routines.archived, 0)];
+	const rows = await db
 		.select({
 			id: routines.id,
 			name: routines.name,
 			movementCount: count(routineEntries.id),
+			archived: routines.archived,
 		})
 		.from(routines)
 		.leftJoin(routineEntries, eq(routineEntries.routineId, routines.id))
-		.where(eq(routines.archived, 0))
-		.groupBy(routines.id, routines.name)
+		.where(and(...conditions))
+		.groupBy(routines.id, routines.name, routines.archived)
 		.orderBy(sql`lower(${routines.name})`, routines.id);
+	return rows.map((row) => ({ ...row, archived: row.archived === 1 }));
 }
 
 /* --------------------------- Sessions & sets --------------------------- */

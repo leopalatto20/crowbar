@@ -5,19 +5,26 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Box } from "@/components/ui/box";
 import { Button, ButtonText } from "@/components/ui/button";
 import { Input, InputField } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Text } from "@/components/ui/text";
 import {
+	archiveRoutine,
 	createRoutine,
+	deleteRoutine,
 	getDefaultUnit,
 	getRecordingScale,
 	getRoutine,
+	getRoutineDeleteReferences,
 	getDb,
+	hasRoutineReferences,
 	listMovements,
 	listMuscleGroups,
 	listRoutines,
+	unarchiveRoutine,
 	updateRoutine,
 	type CatalogMovement,
 	type Movement,
+	type RoutineDeleteReferences,
 	type RoutineSummary,
 	type RoutineWithEntries,
 } from "@/db";
@@ -45,12 +52,23 @@ import {
 } from "@/features/catalog/quick-create-state";
 import { MovementPickerModal } from "./movement-picker-modal";
 import { canSelectMovement } from "./movement-picker-state";
+import { RoutineDeleteConfirmationModal } from "./components/routine-delete-confirmation-modal";
+import { RoutineReferencesModal } from "./components/routine-references-modal";
+import { RoutineRow } from "./components/routine-row";
 
 type View = "list" | "builder";
 
 export default function RoutinesScreen() {
 	const [view, setView] = useState<View>("list");
 	const [rows, setRows] = useState<RoutineSummary[]>([]);
+	const [showArchived, setShowArchived] = useState(false);
+	const [expandedRow, setExpandedRow] = useState<number | null>(null);
+	const [archiveBusyId, setArchiveBusyId] = useState<number | null>(null);
+	const [referencePanel, setReferencePanel] = useState<{
+		routineName: string;
+		references: RoutineDeleteReferences;
+	} | null>(null);
+	const [deleteConfirmation, setDeleteConfirmation] = useState<RoutineSummary | null>(null);
 	const [loaded, setLoaded] = useState(false);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -76,7 +94,7 @@ export default function RoutinesScreen() {
 				if (cancelled) return undefined;
 				setLoading(true);
 				setError(null);
-				return listRoutines(getDb());
+				return listRoutines(getDb(), { includeArchived: showArchived });
 			})
 			.then((routines) => {
 				if (!cancelled && routines) {
@@ -93,7 +111,7 @@ export default function RoutinesScreen() {
 		return () => {
 			cancelled = true;
 		};
-	}, [refreshToken]);
+	}, [refreshToken, showArchived]);
 
 	useEffect(() => {
 		getRecordingScale(getDb()).then(setRecordingScale).catch(() => undefined);
@@ -126,6 +144,53 @@ export default function RoutinesScreen() {
 		};
 	}, [editingRoutine, refreshMovementOptions, view]);
 
+	const refresh = () => setRefreshToken((token) => token + 1);
+
+	const updateArchive = async (routine: RoutineSummary) => {
+		if (archiveBusyId !== null) return;
+		setArchiveBusyId(routine.id);
+		try {
+			if (routine.archived) await unarchiveRoutine(getDb(), routine.id);
+			else await archiveRoutine(getDb(), routine.id);
+			setExpandedRow(null);
+			setError(null);
+			refresh();
+		} catch (mutationError) {
+			setError(errorMessage(mutationError, "Unable to update Routine."));
+		} finally {
+			setArchiveBusyId(null);
+		}
+	};
+
+	const confirmDelete = async (routine: RoutineSummary) => {
+		try {
+			const references = await getRoutineDeleteReferences(getDb(), routine.id);
+			if (hasRoutineReferences(references)) {
+				setExpandedRow(null);
+				setReferencePanel({ routineName: routine.name, references });
+				return;
+			}
+			setDeleteConfirmation(routine);
+		} catch (mutationError) {
+			setError(errorMessage(mutationError, "Unable to check Routine references."));
+		}
+	};
+
+	const deleteAfterConfirmation = async (routine: RoutineSummary) => {
+		try {
+			const result = await deleteRoutine(getDb(), routine.id);
+			setExpandedRow(null);
+			if (result.deleted) {
+				setError(null);
+				refresh();
+			} else {
+				setReferencePanel({ routineName: routine.name, references: result.references });
+			}
+		} catch (mutationError) {
+			setError(errorMessage(mutationError, "Unable to delete Routine."));
+		}
+	};
+
 	const openCreate = () => {
 		setError(null);
 		setEditingRoutine(null);
@@ -134,6 +199,7 @@ export default function RoutinesScreen() {
 
 	const openEdit = async (routineId: number) => {
 		setError(null);
+		setExpandedRow(null);
 		setEditingRoutineId(routineId);
 		try {
 			const routine = await getRoutine(getDb(), routineId);
@@ -192,10 +258,14 @@ export default function RoutinesScreen() {
 								</Button>
 							)}
 						</Box>
+						<Box className="min-h-9 flex-row items-center gap-2">
+							<Switch value={showArchived} onValueChange={setShowArchived} accessibilityLabel="Show archived" />
+							<Text size="sm" className="text-muted-foreground">Show archived</Text>
+						</Box>
 						{error && (
 							<Box className="gap-2 rounded-xl bg-muted px-4 py-4" accessibilityRole="alert">
 								<Text className="text-destructive">{error}</Text>
-								<Button variant="outline" onPress={() => setRefreshToken((token) => token + 1)}>
+								<Button variant="outline" onPress={refresh}>
 									<ButtonText>Try again</ButtonText>
 								</Button>
 							</Box>
@@ -221,16 +291,30 @@ export default function RoutinesScreen() {
 					) : null
 				}
 				renderItem={({ item }) => (
-					<Button
-						variant="ghost"
-						onPress={() => void openEdit(item.id)}
-						className="w-full flex-row items-center justify-between rounded-xl bg-card px-4 py-4"
-						accessibilityLabel={`Edit ${item.name}`}
-					>
-						<ButtonText className="min-w-0 flex-1 justify-start text-left" numberOfLines={1}>{item.name}</ButtonText>
-						<Text size="sm" className="text-muted-foreground">{movementCountLabel(item.movementCount)}</Text>
-					</Button>
+					<RoutineRow
+						routine={item}
+						expanded={expandedRow === item.id}
+						archiveBusy={archiveBusyId === item.id}
+						onOpen={() => void openEdit(item.id)}
+						onMore={() => setExpandedRow((current) => current === item.id ? null : item.id)}
+						onArchive={() => void updateArchive(item)}
+						onDelete={() => void confirmDelete(item)}
+					/>
 				)}
+			/>
+			<RoutineReferencesModal
+				panel={referencePanel}
+				onClose={() => setReferencePanel(null)}
+			/>
+			<RoutineDeleteConfirmationModal
+				routine={deleteConfirmation}
+				onCancel={() => setDeleteConfirmation(null)}
+				onConfirm={() => {
+					if (!deleteConfirmation) return;
+					const routine = deleteConfirmation;
+					setDeleteConfirmation(null);
+					void deleteAfterConfirmation(routine);
+				}}
 			/>
 		</SafeAreaView>
 	);

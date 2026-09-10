@@ -1,11 +1,15 @@
 import { eq } from 'drizzle-orm';
 
 import {
+	archiveRoutine,
 	createRoutine,
+	deleteRoutine,
 	getRoutine,
+	getRoutineDeleteReferences,
 	listMovements,
 	listRoutines,
 	schema,
+	unarchiveRoutine,
 	updateRoutine,
 } from '@/db';
 
@@ -39,7 +43,7 @@ describe('Routine create and list read path', () => {
 			movementId: press.id,
 		});
 		expect(await listRoutines(db)).toEqual([
-			{ id: saved.routine.id, name: 'Push day', movementCount: 1 },
+			{ id: saved.routine.id, name: 'Push day', movementCount: 1, archived: false },
 		]);
 	});
 
@@ -70,14 +74,31 @@ describe('Routine create and list read path', () => {
 		]);
 	});
 
-	test('does not list archived Routines or archived Movements in the picker', async () => {
+	test('archives and restores a Routine without changing its entries or references', async () => {
 		const movement = await makeMovement(db, { name: 'Archived routine movement' });
+		const gym = await makeGym(db, 'Archived routine gym');
 		const saved = await createRoutine(db, { name: 'Archived routine', movementIds: [movement.id] });
-		await db.update(schema.routines).set({ archived: 1 }).where(eq(schema.routines.id, saved.routine.id));
-		await db.update(schema.movements).set({ archived: 1 }).where(eq(schema.movements.id, movement.id));
+		const subRoutine = (await db.insert(schema.subRoutines).values({ routineId: saved.routine.id, gymId: gym.id }).returning())[0];
+		const startedAt = 1_700_000_000_000;
+		const session = (await db.insert(schema.sessions).values({ gymId: gym.id, subRoutineId: subRoutine.id, startedAt }).returning())[0];
+		const references = await getRoutineDeleteReferences(db, saved.routine.id);
 
+		const archived = await archiveRoutine(db, saved.routine.id);
+		expect(archived.archived).toBe(1);
 		expect(await listRoutines(db)).toEqual([]);
-		expect((await listMovements(db)).map((row) => row.id)).not.toContain(movement.id);
+		expect(await listRoutines(db, { includeArchived: true })).toEqual([
+			{ id: saved.routine.id, name: 'Archived routine', movementCount: 1, archived: true },
+		]);
+		expect(await db.select().from(schema.routineEntries)).toHaveLength(1);
+		expect(await getRoutineDeleteReferences(db, saved.routine.id)).toEqual(references);
+		expect(await db.select().from(schema.subRoutines)).toEqual([subRoutine]);
+		expect(await db.select().from(schema.sessions)).toEqual([session]);
+
+		const restored = await unarchiveRoutine(db, saved.routine.id);
+		expect(restored.archived).toBe(0);
+		expect((await listRoutines(db))[0]).toMatchObject({ name: 'Archived routine', archived: false });
+		expect(await getRoutineDeleteReferences(db, saved.routine.id)).toEqual(references);
+		expect((await listMovements(db)).map((row) => row.id)).toContain(movement.id);
 	});
 
 	test('persists optional targets and rejects invalid targets atomically', async () => {
@@ -145,6 +166,41 @@ describe('Routine create and list read path', () => {
 			name: 'Another routine',
 			movementIds: [movement.id, movement.id],
 		})).rejects.toThrow('same Movement twice');
+	});
+
+	test('deletes a Routine with no Sub-routine or Session-history references', async () => {
+		const movement = await makeMovement(db, { name: 'Disposable routine movement' });
+		const saved = await createRoutine(db, { name: 'Disposable routine', movementIds: [movement.id] });
+
+		expect(await getRoutineDeleteReferences(db, saved.routine.id)).toEqual({
+			subRoutines: [],
+			sessions: [],
+		});
+		expect(await deleteRoutine(db, saved.routine.id)).toEqual({ deleted: true });
+		expect(await getRoutine(db, saved.routine.id)).toBeNull();
+		expect(await db.select().from(schema.routineEntries)).toEqual([]);
+	});
+
+	test('blocks Routine deletion and reports Sub-routine and Session-history references', async () => {
+		const movement = await makeMovement(db, { name: 'Referenced routine movement' });
+		const gym = await makeGym(db, 'Routine gym');
+		const saved = await createRoutine(db, { name: 'Referenced routine', movementIds: [movement.id] });
+		const subRoutine = (await db.insert(schema.subRoutines).values({ routineId: saved.routine.id, gymId: gym.id }).returning())[0];
+		const startedAt = 1_700_000_000_000;
+		const session = (await db.insert(schema.sessions).values({ gymId: gym.id, subRoutineId: subRoutine.id, startedAt }).returning())[0];
+
+		expect(await getRoutineDeleteReferences(db, saved.routine.id)).toEqual({
+			subRoutines: [{ id: subRoutine.id, name: 'Routine gym', routineId: saved.routine.id, gymId: gym.id }],
+			sessions: [{ id: session.id, name: 'Routine gym', date: startedAt }],
+		});
+		expect(await deleteRoutine(db, saved.routine.id)).toEqual({
+			deleted: false,
+			references: {
+				subRoutines: [{ id: subRoutine.id, name: 'Routine gym', routineId: saved.routine.id, gymId: gym.id }],
+				sessions: [{ id: session.id, name: 'Routine gym', date: startedAt }],
+			},
+		});
+		expect(await getRoutine(db, saved.routine.id)).not.toBeNull();
 	});
 
 	test('rejects invalid drafts atomically', async () => {
