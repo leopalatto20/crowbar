@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { FlatList, Modal, SafeAreaView } from "react-native";
+import { FlatList, Modal } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Box } from "@/components/ui/box";
 import { Button, ButtonText } from "@/components/ui/button";
