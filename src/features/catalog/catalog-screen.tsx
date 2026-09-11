@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, FlatList } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, FlatList } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Box } from "@/components/ui/box";
-import { Button, ButtonText } from "@/components/ui/button";
-import { Input, InputField } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Text } from "@/components/ui/text";
+import { Box } from '@/components/ui/box';
+import { Button, ButtonText } from '@/components/ui/button';
+import { Input, InputField } from '@/components/ui/input';
+import { Switch } from '@/components/ui/switch';
+import { Text } from '@/components/ui/text';
 import {
   archiveMovement,
   deleteMovement,
@@ -19,16 +19,16 @@ import {
   type CatalogMovement,
   type MovementDeleteReferences,
   unarchiveMovement,
-} from "@/db";
-import { DEFAULT_UNIT, type MuscleGroupName, type Unit } from "@/db/constants";
-import { normalizeErrorMessage } from "@/shared/error-message";
-import { MovementEditorModal } from "./movement-editor-modal";
-import { DeleteConfirmationModal } from "./components/delete-confirmation-modal";
-import { MovementRow } from "./components/movement-row";
-import { ReferencesModal } from "./components/references-modal";
-import { MuscleGroupPickerModal } from "./components/muscle-group-picker-modal";
+} from '@/db';
+import { DEFAULT_UNIT, type MuscleGroupName, type Unit } from '@/db/constants';
+import { normalizeErrorMessage } from '@/shared/error-message';
+import { MovementEditorModal } from './movement-editor-modal';
+import { DeleteConfirmationModal } from './components/delete-confirmation-modal';
+import { MovementRow } from './components/movement-row';
+import { ReferencesModal } from './components/references-modal';
+import { MuscleGroupPickerModal } from './components/muscle-group-picker-modal';
 
-const ALL = "All" as const;
+const ALL = 'All' as const;
 type Filter = typeof ALL | MuscleGroupName;
 type ArchiveUndo = { id: number; name: string; archived: boolean };
 
@@ -44,12 +44,10 @@ type ArchiveUndo = { id: number; name: string; archived: boolean };
  * catalog surface.
  */
 export default function CatalogScreen() {
-  const [groups, setGroups] = useState<{ id: number; name: MuscleGroupName }[]>(
-    [],
-  );
+  const [groups, setGroups] = useState<{ id: number; name: MuscleGroupName }[]>([]);
   const [filter, setFilter] = useState<Filter>(ALL);
   const [musclePickerVisible, setMusclePickerVisible] = useState(false);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [rows, setRows] = useState<CatalogMovement[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -58,36 +56,28 @@ export default function CatalogScreen() {
   const [catalogRefreshing, setCatalogRefreshing] = useState(false);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
-  const [editorMovement, setEditorMovement] = useState<CatalogMovement | null>(
-    null,
-  );
+  const [editorMovement, setEditorMovement] = useState<CatalogMovement | null>(null);
   const [editorVisible, setEditorVisible] = useState(false);
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
-  const [deleteBlockedRows, setDeleteBlockedRows] = useState<
-    Record<number, boolean>
-  >({});
+  const [deleteBlockedRows, setDeleteBlockedRows] = useState<Record<number, boolean>>({});
   const [referencePanel, setReferencePanel] = useState<{
     movementName: string;
     references: MovementDeleteReferences;
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [deleteConfirmation, setDeleteConfirmation] =
-    useState<CatalogMovement | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState<CatalogMovement | null>(null);
   const [defaultUnit, setDefaultUnit] = useState<Unit | undefined>();
   const [defaultUnitLoaded, setDefaultUnitLoaded] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [archiveUndo, setArchiveUndo] = useState<ArchiveUndo | null>(null);
   const [archiveBusyId, setArchiveBusyId] = useState<number | null>(null);
   const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const archiveUndoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null,
-  );
+  const archiveUndoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
       if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
-      if (archiveUndoTimerRef.current)
-        clearTimeout(archiveUndoTimerRef.current);
+      if (archiveUndoTimerRef.current) clearTimeout(archiveUndoTimerRef.current);
     };
   }, []);
 
@@ -97,7 +87,7 @@ export default function CatalogScreen() {
       .then((unit) => {
         if (!cancelled) setDefaultUnit(unit);
       })
-      .catch((e) => console.error("Unable to load default unit", e))
+      .catch((e) => console.error('Unable to load default unit', e))
       .finally(() => {
         if (!cancelled) setDefaultUnitLoaded(true);
       });
@@ -111,7 +101,7 @@ export default function CatalogScreen() {
             })),
           );
       })
-      .catch((e) => console.error("Unable to load muscle groups", e));
+      .catch((e) => console.error('Unable to load muscle groups', e));
     return () => {
       cancelled = true;
     };
@@ -141,7 +131,7 @@ export default function CatalogScreen() {
       })
       .catch((loadError) => {
         if (!cancelled) {
-          setCatalogError(normalizeErrorMessage(loadError, "Unable to load catalog."));
+          setCatalogError(normalizeErrorMessage(loadError, 'Unable to load catalog.'));
         }
       })
       .finally(() => {
@@ -194,19 +184,14 @@ export default function CatalogScreen() {
       return;
     }
     try {
-      const references = await getMovementDeleteReferences(
-        getDb(),
-        movement.id,
-      );
+      const references = await getMovementDeleteReferences(getDb(), movement.id);
       setDeleteBlockedRows((current) => ({
         ...current,
         [movement.id]: hasMovementReferences(references),
       }));
       setExpandedRow(movement.id);
     } catch (mutationError) {
-      setError(
-        normalizeErrorMessage(mutationError, "Unable to check movement references."),
-      );
+      setError(normalizeErrorMessage(mutationError, 'Unable to check movement references.'));
     }
   };
 
@@ -221,10 +206,10 @@ export default function CatalogScreen() {
       setExpandedRow(null);
       setError(null);
       offerArchiveUndo(movement, archived);
-      showFeedback(`${movement.name} ${archived ? "archived" : "restored"}.`);
+      showFeedback(`${movement.name} ${archived ? 'archived' : 'restored'}.`);
       refresh();
     } catch (mutationError) {
-      setError(normalizeErrorMessage(mutationError, "Unable to update movement."));
+      setError(normalizeErrorMessage(mutationError, 'Unable to update movement.'));
     } finally {
       setArchiveBusyId(null);
     }
@@ -241,10 +226,10 @@ export default function CatalogScreen() {
         : await archiveMovement(getDb(), pending.id);
       const archived = updated.archived === 1;
       setError(null);
-      showFeedback(`${pending.name} ${archived ? "archived" : "restored"}.`);
+      showFeedback(`${pending.name} ${archived ? 'archived' : 'restored'}.`);
       refresh();
     } catch (mutationError) {
-      setError(normalizeErrorMessage(mutationError, "Unable to undo archive change."));
+      setError(normalizeErrorMessage(mutationError, 'Unable to undo archive change.'));
     } finally {
       setArchiveBusyId(null);
     }
@@ -252,16 +237,11 @@ export default function CatalogScreen() {
 
   const showReferences = async (movement: CatalogMovement) => {
     try {
-      const references = await getMovementDeleteReferences(
-        getDb(),
-        movement.id,
-      );
+      const references = await getMovementDeleteReferences(getDb(), movement.id);
       setExpandedRow(null);
       setReferencePanel({ movementName: movement.name, references });
     } catch (mutationError) {
-      setError(
-        normalizeErrorMessage(mutationError, "Unable to check movement references."),
-      );
+      setError(normalizeErrorMessage(mutationError, 'Unable to check movement references.'));
     }
   };
 
@@ -281,25 +261,20 @@ export default function CatalogScreen() {
         });
       }
     } catch (mutationError) {
-      setError(normalizeErrorMessage(mutationError, "Unable to delete movement."));
+      setError(normalizeErrorMessage(mutationError, 'Unable to delete movement.'));
     }
   };
 
   const confirmDelete = async (movement: CatalogMovement) => {
     try {
-      const references = await getMovementDeleteReferences(
-        getDb(),
-        movement.id,
-      );
+      const references = await getMovementDeleteReferences(getDb(), movement.id);
       if (hasMovementReferences(references)) {
         setExpandedRow(null);
         setReferencePanel({ movementName: movement.name, references });
         return;
       }
     } catch (mutationError) {
-      setError(
-        normalizeErrorMessage(mutationError, "Unable to check movement references."),
-      );
+      setError(normalizeErrorMessage(mutationError, 'Unable to check movement references.'));
       return;
     }
 
@@ -308,16 +283,13 @@ export default function CatalogScreen() {
 
   const empty = loaded && rows.length === 0;
   const filterOptions = [ALL, ...groups.map((group) => group.name)] as Filter[];
-  const hasActiveFilters =
-    filter !== ALL || query.trim().length > 0 || showArchived;
-  const resultCountLabel = catalogLoading
-    ? "Loading…"
-    : movementCountLabel(rows.length);
+  const hasActiveFilters = filter !== ALL || query.trim().length > 0 || showArchived;
+  const resultCountLabel = catalogLoading ? 'Loading…' : movementCountLabel(rows.length);
 
   return (
     <SafeAreaView
       className="flex-1 web:max-w-[800px] web:mx-auto"
-      edges={["top", "left", "right", "bottom"]}
+      edges={['top', 'left', 'right', 'bottom']}
     >
       <FlatList
         contentContainerClassName="gap-4 px-4 pb-28 pt-4"
@@ -359,18 +331,16 @@ export default function CatalogScreen() {
               </Text>
               <Box className="flex-row items-center gap-3">
                 <Button
-                  variant={filter === ALL ? "outline" : "default"}
+                  variant={filter === ALL ? 'outline' : 'default'}
                   size="sm"
                   className="min-w-0 flex-1 justify-start"
                   onPress={() => setMusclePickerVisible(true)}
-                  accessibilityLabel={`Filter by muscle group: ${filter === ALL ? "All muscle groups" : filter}`}
+                  accessibilityLabel={`Filter by muscle group: ${filter === ALL ? 'All muscle groups' : filter}`}
                   accessibilityState={{
                     expanded: musclePickerVisible,
                   }}
                 >
-                  <ButtonText>
-                    {filter === ALL ? "All muscle groups" : filter}
-                  </ButtonText>
+                  <ButtonText>{filter === ALL ? 'All muscle groups' : filter}</ButtonText>
                 </Button>
                 <Text size="sm" className="text-muted-foreground">
                   {resultCountLabel}
@@ -396,7 +366,7 @@ export default function CatalogScreen() {
                   className="px-0"
                   onPress={() => {
                     setFilter(ALL);
-                    setQuery("");
+                    setQuery('');
                     setShowArchived(false);
                     setMusclePickerVisible(false);
                   }}
@@ -431,12 +401,7 @@ export default function CatalogScreen() {
                 accessibilityRole="alert"
               >
                 <Text className="min-w-0 flex-1 text-destructive">{error}</Text>
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="px-0"
-                  onPress={() => setError(null)}
-                >
+                <Button variant="link" size="sm" className="px-0" onPress={() => setError(null)}>
                   <ButtonText>Dismiss</ButtonText>
                 </Button>
               </Box>
@@ -444,21 +409,14 @@ export default function CatalogScreen() {
             {catalogRefreshing && (
               <Box className="flex-row items-center gap-2 rounded-xl bg-muted px-4 py-3">
                 <ActivityIndicator size="small" />
-                <Text className="text-muted-foreground">
-                  Refreshing catalog…
-                </Text>
+                <Text className="text-muted-foreground">Refreshing catalog…</Text>
               </Box>
             )}
             {catalogError && (
-              <Box
-                className="gap-3 rounded-xl bg-muted px-4 py-4"
-                accessibilityRole="alert"
-              >
+              <Box className="gap-3 rounded-xl bg-muted px-4 py-4" accessibilityRole="alert">
                 <Text className="text-destructive">{catalogError}</Text>
                 {loaded && (
-                  <Text className="text-muted-foreground">
-                    Showing the last saved results.
-                  </Text>
+                  <Text className="text-muted-foreground">Showing the last saved results.</Text>
                 )}
                 <Button
                   variant="outline"
@@ -478,9 +436,7 @@ export default function CatalogScreen() {
             <Box className="items-center gap-3 rounded-xl bg-card px-4 py-8">
               <ActivityIndicator accessibilityLabel="Loading movements" />
               <Text className="text-muted-foreground">
-                {catalogRefreshing
-                  ? "Refreshing catalog…"
-                  : "Loading movements…"}
+                {catalogRefreshing ? 'Refreshing catalog…' : 'Loading movements…'}
               </Text>
             </Box>
           ) : empty && !catalogError ? (
@@ -507,7 +463,7 @@ export default function CatalogScreen() {
         )}
       />
       <MovementEditorModal
-        key={`${editorVisible}-${editorMovement?.id ?? "new"}`}
+        key={`${editorVisible}-${editorMovement?.id ?? 'new'}`}
         visible={editorVisible}
         movement={editorMovement}
         muscleGroups={groups}
@@ -528,7 +484,7 @@ export default function CatalogScreen() {
         }}
       />
       <MuscleGroupPickerModal
-        key={musclePickerVisible ? "open" : "closed"}
+        key={musclePickerVisible ? 'open' : 'closed'}
         visible={musclePickerVisible}
         options={filterOptions}
         selected={filter}
@@ -538,10 +494,7 @@ export default function CatalogScreen() {
           setMusclePickerVisible(false);
         }}
       />
-      <ReferencesModal
-        panel={referencePanel}
-        onClose={() => setReferencePanel(null)}
-      />
+      <ReferencesModal panel={referencePanel} onClose={() => setReferencePanel(null)} />
       <DeleteConfirmationModal
         movement={deleteConfirmation}
         onCancel={() => setDeleteConfirmation(null)}
@@ -557,5 +510,5 @@ export default function CatalogScreen() {
 }
 
 function movementCountLabel(count: number): string {
-  return `${count} ${count === 1 ? "movement" : "movements"}`;
+  return `${count} ${count === 1 ? 'movement' : 'movements'}`;
 }

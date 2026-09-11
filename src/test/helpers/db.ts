@@ -10,11 +10,11 @@ import { migrateDb, schema } from '@/db';
  * (@types/better-sqlite3 is a legacy stub).
  */
 export interface SqliteClient {
-	close(): void;
-	prepare(source: string): {
-		get(...params: unknown[]): unknown;
-		all(...params: unknown[]): unknown[];
-	};
+  close(): void;
+  prepare(source: string): {
+    get(...params: unknown[]): unknown;
+    all(...params: unknown[]): unknown[];
+  };
 }
 
 /** The test driver's exact type: better-sqlite3-backed Drizzle over our schema. */
@@ -27,15 +27,15 @@ export type TestDb = BetterSQLite3Database<typeof schema> & { $client: SqliteCli
  * one schema and one migration source for both worlds.
  */
 export function openDb(): TestDb {
-	const config: DrizzleConfig<typeof schema> = { schema };
-	return drizzle(new Database(':memory:'), config);
+  const config: DrizzleConfig<typeof schema> = { schema };
+  return drizzle(new Database(':memory:'), config);
 }
 
 /** Open a fresh in-memory database, migrated from empty to the current schema. */
 export async function freshDb(): Promise<TestDb> {
-	const db = openDb();
-	await migrateDb(db);
-	return db;
+  const db = openDb();
+  await migrateDb(db);
+  return db;
 }
 
 /**
@@ -44,13 +44,13 @@ export async function freshDb(): Promise<TestDb> {
  * production storage.
  */
 export async function freshFileDb(path: string): Promise<TestDb> {
-	const config: DrizzleConfig<typeof schema> = { schema };
-	const db = drizzle(new Database(path), config);
-	await migrateDb(db);
-	return db;
+  const config: DrizzleConfig<typeof schema> = { schema };
+  const db = drizzle(new Database(path), config);
+  await migrateDb(db);
+  return db;
 }
 
 /** Close the underlying better-sqlite3 file handle. */
 export function closeDb(db: TestDb): void {
-	db.$client.close();
+  db.$client.close();
 }

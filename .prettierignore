@@ -1,0 +1,14 @@
+node_modules/
+.expo/
+dist/
+web-build/
+ios/
+android/
+package-lock.json
+expo-env.d.ts
+nativewind-env.d.ts
+src/db/migrations/
+
+# Agent-generated local artifacts
+.impeccable/
+.lavish/

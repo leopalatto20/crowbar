@@ -6,13 +6,13 @@
 
 /** Closed set of Equipment classes (ADR 0001, glossary). */
 export const EQUIPMENT_CLASSES = [
-	'barbell',
-	'dumbbell',
-	'machine',
-	'cable',
-	'smith',
-	'bodyweight',
-	'other',
+  'barbell',
+  'dumbbell',
+  'machine',
+  'cable',
+  'smith',
+  'bodyweight',
+  'other',
 ];
 
 /** The single, app-wide Recording scale ('rir' | 'rpe'). */
@@ -23,20 +23,20 @@ export const UNITS = ['kg', 'lb'];
 
 /** Closed canonical set of primary Muscle groups (glossary). */
 export const MUSCLE_GROUPS = [
-	'Chest',
-	'Back',
-	'Shoulders',
-	'Biceps',
-	'Triceps',
-	'Forearms',
-	'Core',
-	'Obliques',
-	'Traps',
-	'Quads',
-	'Adductors',
-	'Hamstrings',
-	'Glutes',
-	'Calves',
+  'Chest',
+  'Back',
+  'Shoulders',
+  'Biceps',
+  'Triceps',
+  'Forearms',
+  'Core',
+  'Obliques',
+  'Traps',
+  'Quads',
+  'Adductors',
+  'Hamstrings',
+  'Glutes',
+  'Calves',
 ];
 
 /** Uniform default weekly Volume landmark (counted sets) per muscle group. */

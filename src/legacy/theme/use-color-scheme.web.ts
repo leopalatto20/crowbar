@@ -8,6 +8,8 @@ export function useColorScheme() {
   const [hasHydrated, setHasHydrated] = useState(false);
 
   useEffect(() => {
+    // The client-only update prevents a server/client color-scheme mismatch.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydration state is intentionally client-only
     setHasHydrated(true);
   }, []);
 

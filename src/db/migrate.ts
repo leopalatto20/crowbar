@@ -17,5 +17,5 @@ import * as schema from './schema';
  * in tests (ticket #3).
  */
 export async function migrateDb(db: DB): Promise<void> {
-	await migrate(db as ExpoSQLiteDatabase<typeof schema>, migrations);
+  await migrate(db as ExpoSQLiteDatabase<typeof schema>, migrations);
 }

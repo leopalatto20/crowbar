@@ -1,3 +1,3 @@
-import RoutinesScreen from "@/features/routines/routines-screen";
+import RoutinesScreen from '@/features/routines/routines-screen';
 
 export default RoutinesScreen;

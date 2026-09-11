@@ -7,10 +7,12 @@ import {
   TabTriggerSlotProps,
   TabListProps,
 } from 'expo-router/ui';
+import { BookOpen, ListChecks, type LucideIcon } from 'lucide-react-native';
 import { Pressable, View, StyleSheet } from 'react-native';
 
 import { ThemedText } from '@/legacy/theme/themed-text';
 import { ThemedView } from '@/legacy/theme/themed-view';
+import { useTheme } from '@/legacy/theme/use-theme';
 
 import { MaxContentWidth, Spacing } from '@/legacy/theme/theme';
 
@@ -21,10 +23,10 @@ export default function AppTabs() {
       <TabList asChild>
         <CustomTabList>
           <TabTrigger name="index" href="/" asChild>
-            <TabButton>Catalog</TabButton>
+            <TabButton icon={BookOpen}>Catalog</TabButton>
           </TabTrigger>
-          <TabTrigger name="routines" href={"/routines" as Href} asChild>
-            <TabButton>Routines</TabButton>
+          <TabTrigger name="routines" href={'/routines' as Href} asChild>
+            <TabButton icon={ListChecks}>Routines</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>
@@ -32,13 +34,22 @@ export default function AppTabs() {
   );
 }
 
-export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
+type TabButtonProps = TabTriggerSlotProps & {
+  icon: LucideIcon;
+};
+
+export function TabButton({ children, icon: Icon, isFocused, ...props }: TabButtonProps) {
+  const theme = useTheme();
+  const themeColor = isFocused ? 'text' : 'textSecondary';
+
   return (
     <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
       <ThemedView
         type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
-        style={styles.tabButtonView}>
-        <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
+        style={styles.tabButtonView}
+      >
+        <Icon color={theme[themeColor]} size={16} strokeWidth={2} aria-hidden />
+        <ThemedText type="small" themeColor={themeColor}>
           {children}
         </ThemedText>
       </ThemedView>
@@ -88,5 +99,8 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.three,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
   },
 });

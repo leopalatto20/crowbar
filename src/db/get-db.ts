@@ -26,8 +26,8 @@ let cached: DB | undefined;
  * so the next `getDb()` reflects the swap.
  */
 export function setDbFactory(next: DbFactory | undefined): void {
-	factory = next;
-	cached = undefined;
+  factory = next;
+  cached = undefined;
 }
 
 /**
@@ -36,10 +36,8 @@ export function setDbFactory(next: DbFactory | undefined): void {
  * and finds its data intact.
  */
 export function getDb(): DB {
-	if (!cached) {
-		cached = factory
-			? factory()
-			: drizzle(SQLite.openDatabaseSync('crowbar.db'), { schema });
-	}
-	return cached;
+  if (!cached) {
+    cached = factory ? factory() : drizzle(SQLite.openDatabaseSync('crowbar.db'), { schema });
+  }
+  return cached;
 }
