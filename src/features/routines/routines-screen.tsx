@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type Rea
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { AccessibilityInfo, ActivityIndicator, FlatList, PanResponder, ScrollView, type LayoutChangeEvent } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Check, ChevronDown, ChevronUp, GripVertical, Pencil } from "lucide-react-native";
 
 import { Box } from "@/components/ui/box";
-import { Button, ButtonText } from "@/components/ui/button";
+import { Button, ButtonIcon, ButtonText } from "@/components/ui/button";
 import { Input, InputField } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Text } from "@/components/ui/text";
@@ -533,6 +534,8 @@ function RoutineBuilder({
 	const [draft, setDraft] = useState<RoutineDraft>(() => createDraft(routine?.routine.name ?? "", recordingScale, routine?.entries ?? []));
 	const [pendingEntry, setPendingEntry] = useState<RoutineEntryDraft | null>(null);
 	const [pendingEntrySource, setPendingEntrySource] = useState<"picker" | "quickCreate" | null>(null);
+	const [editingName, setEditingName] = useState(() => !routine);
+	const [editingEntryId, setEditingEntryId] = useState<number | null>(null);
 	const [pickerVisible, setPickerVisible] = useState(false);
 	const [quickCreateVisible, setQuickCreateVisible] = useState(false);
 	const [quickCreateSession, setQuickCreateSession] = useState(0);
@@ -669,7 +672,14 @@ function RoutineBuilder({
 	const save = async () => {
 		if (saving) return;
 		setSaveAttempted(true);
-		if (!validation.valid) return;
+		if (!validation.valid) {
+			if (validation.nameError) setEditingName(true);
+			else {
+				const firstInvalidEntry = draft.entries.find((entry) => (validation.entryErrors[entry.movementId]?.length ?? 0) > 0);
+				if (firstInvalidEntry) setEditingEntryId(firstInvalidEntry.movementId);
+			}
+			return;
+		}
 		setSaving(true);
 		setError(null);
 		try {
@@ -693,19 +703,52 @@ function RoutineBuilder({
 					<Text size="2xl" bold className="min-w-0 flex-1 text-center">{routine ? "Edit Routine" : "New Routine"}</Text>
 				</Box>
 
-				<Box className="gap-2">
-					<Text size="sm" bold>Routine name</Text>
-					<Input isInvalid={Boolean(validation.nameError && isValidationVisible("name"))}>
-						<InputField
-							value={draft.name}
-							onChangeText={(name) => { markFieldTouched("name"); updateDraft({ ...draft, name }); }}
-							onBlur={() => markFieldTouched("name")}
-							placeholder="e.g. Upper body"
-							accessibilityLabel="Routine name"
-							autoCapitalize="sentences"
-						/>
-					</Input>
-					{validation.nameError && isValidationVisible("name") && <Text size="sm" className="text-destructive">{validation.nameError}</Text>}
+				<Box className="rounded-xl bg-card px-4 py-3">
+					{editingName ? (
+						<Box className="gap-2">
+							<Box className="flex-row items-center justify-between gap-2">
+								<Text size="sm" bold>Routine name</Text>
+								<Button
+									variant="ghost"
+									size="icon"
+									className="min-h-11 min-w-11"
+									onPress={() => setEditingName(false)}
+									accessibilityLabel="Done editing routine name"
+								>
+									<ButtonIcon as={Check} />
+								</Button>
+							</Box>
+							<Input isInvalid={Boolean(validation.nameError && isValidationVisible("name"))}>
+								<InputField
+									value={draft.name}
+									onChangeText={(name) => { markFieldTouched("name"); updateDraft({ ...draft, name }); }}
+									onBlur={() => markFieldTouched("name")}
+									onSubmitEditing={() => setEditingName(false)}
+									placeholder="e.g. Upper body"
+									accessibilityLabel="Routine name"
+									autoCapitalize="sentences"
+									autoFocus={!routine}
+								/>
+							</Input>
+							{validation.nameError && isValidationVisible("name") && <Text size="sm" className="text-destructive">{validation.nameError}</Text>}
+						</Box>
+					) : (
+						<Box className="flex-row items-center gap-3">
+							<Box className="min-w-0 flex-1 gap-1">
+								<Text size="xs" bold className="text-muted-foreground">Routine name</Text>
+								<Text size="lg" bold numberOfLines={1}>{draft.name || "Unnamed routine"}</Text>
+							</Box>
+							<Button
+								variant="ghost"
+								size="icon"
+								className="min-h-11 min-w-11"
+								onPress={() => setEditingName(true)}
+								accessibilityLabel="Edit routine name"
+							>
+								<ButtonIcon as={Pencil} />
+							</Button>
+						</Box>
+					)}
 				</Box>
 
 				<Box
@@ -729,10 +772,12 @@ function RoutineBuilder({
 							entry={draft.entries.find((entry) => entry.movementId === movement.id)!}
 							recordingScale={recordingScale}
 							errors={visibleEntryErrors(movement.id, validation.entryErrors[movement.id] ?? [])}
+							editing={editingEntryId === movement.id}
+							onEdit={() => setEditingEntryId((current) => current === movement.id ? null : movement.id)}
 							onTargetChange={(field, value) => { markFieldTouched(entryFieldKey(movement.id, field)); updateDraft(updateDraftTarget(draft, movement.id, field, value)); }}
 							onTargetBlur={(field) => markFieldTouched(entryFieldKey(movement.id, field))}
 							onMove={(from, to) => updateDraft(reorderDraftEntry(draft, from, to))}
-							onRemove={() => updateDraft(removeDraftEntry(draft, movement.id))}
+							onRemove={() => { setEditingEntryId(null); updateDraft(removeDraftEntry(draft, movement.id)); }}
 							onLayout={(event) => {
 								ledgerLayoutsRef.current[movement.id] = ledgerOffsetRef.current + event.nativeEvent.layout.y;
 								if (pendingRevealRef.current === movement.id) {
@@ -809,7 +854,7 @@ function RoutineBuilder({
 						<Text size="sm" bold>{saving ? "Saving…" : validation.valid ? "Ready to save" : "Finish setup"}</Text>
 						<Text size="xs" className="text-muted-foreground" numberOfLines={1}>
 							{validation.valid
-								? `${movementCountLabel(draft.entries.length)} · targets editable inline`
+								? `${movementCountLabel(draft.entries.length)} · edit targets from each row`
 								: (validation.nameError && isValidationVisible("name") ? validation.nameError : null)
 									?? (validation.entriesError && saveAttempted ? validation.entriesError : null)
 									?? (saveAttempted ? "Review the highlighted targets." : "Add a routine name and a Movement to begin.")}
@@ -856,6 +901,8 @@ type RoutineEntryRowProps = {
 	entry: RoutineEntryDraft;
 	recordingScale: RecordingScale;
 	errors: string[];
+	editing: boolean;
+	onEdit: () => void;
 	onTargetChange: (field: RoutineEntryTargetField, value: string) => void;
 	onTargetBlur: (field: RoutineEntryTargetField) => void;
 	onMove: (from: number, to: number) => void;
@@ -863,33 +910,71 @@ type RoutineEntryRowProps = {
 	onLayout: (event: LayoutChangeEvent) => void;
 };
 
-function RoutineEntryRow({ index, entryCount, movement, entry, recordingScale, errors, onTargetChange, onTargetBlur, onMove, onRemove, onLayout }: RoutineEntryRowProps) {
+function RoutineEntryRow({ index, entryCount, movement, entry, recordingScale, errors, editing, onEdit, onTargetChange, onTargetBlur, onMove, onRemove, onLayout }: RoutineEntryRowProps) {
 	const moveTo = (from: number, to: number) => {
 		if (to < 0 || to >= entryCount || from === to) return;
 		onMove(from, to);
 		AccessibilityInfo.announceForAccessibility(`Moved ${movement.name} to position ${to + 1} of ${entryCount}.`);
 	};
 	return (
-		<Box onLayout={onLayout} className={movement.archived ? "gap-2 border-t border-border py-3 opacity-50" : "gap-2 border-t border-border py-3"}>
+		<Box onLayout={onLayout} className={movement.archived ? "gap-3 border-t border-border py-3 opacity-50" : "gap-3 border-t border-border py-3"}>
 			<Box className="flex-row items-center gap-2">
 				<DragHandle index={index} label={movement.name} onMove={moveTo} />
 				<Text size="xs" className="text-muted-foreground">{String(index + 1).padStart(2, "0")}</Text>
-				<Text bold className="min-w-0 flex-1" numberOfLines={1}>{movement.name}</Text>
-				{movement.archived && <Text size="xs" bold className="uppercase text-muted-foreground">Archived</Text>}
-				<Box className="flex-row gap-2">
-					<Button variant="ghost" size="sm" className="min-h-11 min-w-11 px-2" onPress={() => moveTo(index, index - 1)} disabled={index === 0} accessibilityLabel={`Move ${movement.name} up`} accessibilityHint="Moves this movement earlier in the routine"><ButtonText>Up</ButtonText></Button>
-					<Button variant="ghost" size="sm" className="min-h-11 min-w-11 px-2" onPress={() => moveTo(index, index + 1)} disabled={index === entryCount - 1} accessibilityLabel={`Move ${movement.name} down`} accessibilityHint="Moves this movement later in the routine"><ButtonText>Down</ButtonText></Button>
+				<Box className="min-w-0 flex-1 gap-1">
+					<Box className="flex-row items-center gap-2">
+						<Text bold className="min-w-0 flex-1" numberOfLines={1}>{movement.name}</Text>
+						{movement.archived && <Text size="xs" bold className="uppercase text-muted-foreground">Archived</Text>}
+					</Box>
+					{!editing && <RoutineEntrySummary entry={entry} recordingScale={recordingScale} />}
 				</Box>
+				<Button
+					variant="ghost"
+					size="icon"
+					className="min-h-11 min-w-11"
+					onPress={onEdit}
+					accessibilityLabel={`${editing ? "Done editing" : "Edit targets for"} ${movement.name}`}
+					accessibilityHint={editing ? "Hides the target fields" : "Shows the target fields"}
+				>
+					<ButtonIcon as={editing ? Check : Pencil} />
+				</Button>
 			</Box>
-			<RoutineTargetFields
-				entry={entry}
-				recordingScale={recordingScale}
-				errors={errors}
-				onChange={onTargetChange}
-				onFieldBlur={onTargetBlur}
-				compact
-			/>
-			<Button variant="link" size="sm" className="self-start min-h-11 min-w-11 px-2" onPress={onRemove} accessibilityLabel={`Remove ${movement.name}`}><ButtonText>Remove movement</ButtonText></Button>
+			{editing && (
+				<>
+					<RoutineTargetFields
+						entry={entry}
+						recordingScale={recordingScale}
+						errors={errors}
+						onChange={onTargetChange}
+						onFieldBlur={onTargetBlur}
+						compact
+					/>
+					<Box className="flex-row items-center gap-2">
+						<Button variant="ghost" size="icon" className="min-h-11 min-w-11" onPress={() => moveTo(index, index - 1)} disabled={index === 0} accessibilityLabel={`Move ${movement.name} up`} accessibilityHint="Moves this movement earlier in the routine">
+							<ButtonIcon as={ChevronUp} />
+						</Button>
+						<Button variant="ghost" size="icon" className="min-h-11 min-w-11" onPress={() => moveTo(index, index + 1)} disabled={index === entryCount - 1} accessibilityLabel={`Move ${movement.name} down`} accessibilityHint="Moves this movement later in the routine">
+							<ButtonIcon as={ChevronDown} />
+						</Button>
+						<Button variant="link" size="sm" className="ml-auto min-h-11 px-2" onPress={onRemove} accessibilityLabel={`Remove ${movement.name}`}><ButtonText>Remove movement</ButtonText></Button>
+					</Box>
+				</>
+			)}
+			{!editing && errors.length > 0 && <Text size="sm" className="text-destructive">{errors[0]} Edit targets to fix.</Text>}
+		</Box>
+	);
+}
+
+function RoutineEntrySummary({ entry, recordingScale }: { entry: RoutineEntryDraft; recordingScale: RecordingScale }) {
+	const items = [
+		entry.workingSetCount.trim() ? `${entry.workingSetCount} ${entry.workingSetCount === "1" ? "set" : "sets"}` : "Sets not set",
+		entry.repMin.trim() && entry.repMax.trim() ? `${entry.repMin}–${entry.repMax} reps` : "Reps not set",
+		entry.proximityValue.trim() ? `${recordingScale.toUpperCase()} ${entry.proximityValue}` : `${recordingScale.toUpperCase()} not set`,
+		entry.tempo.trim() ? `Tempo ${entry.tempo}` : "Tempo not set",
+	];
+	return (
+		<Box className="flex-row flex-wrap gap-x-2 gap-y-1">
+			{items.map((item) => <Text key={item} size="sm" numberOfLines={1} className="shrink-0 text-muted-foreground">{item}</Text>)}
 		</Box>
 	);
 }
@@ -905,11 +990,7 @@ function DragHandle({ index, label, onMove }: { index: number; label: string; on
 	}), [index, onMove]);
 	return (
 		<Button {...responder.panHandlers} variant="ghost" size="icon" accessibilityLabel={`Drag ${label}`} accessibilityHint="Drag vertically to reorder this movement" className="min-h-11 min-w-11 bg-muted">
-			<Box className="gap-0.5">
-				<Box className="h-0.5 w-3 rounded-full bg-muted-foreground" />
-				<Box className="h-0.5 w-3 rounded-full bg-muted-foreground" />
-				<Box className="h-0.5 w-3 rounded-full bg-muted-foreground" />
-			</Box>
+			<ButtonIcon as={GripVertical} />
 		</Button>
 	);
 }
@@ -919,13 +1000,14 @@ function RoutineTargetFields({ entry, recordingScale, errors, onChange, onFieldB
 	const fields = (
 		<>
 			<TargetField compact={compact} label="Sets" value={entry.workingSetCount} error={errors.find((error) => error.startsWith("Working-set"))} onChange={(value) => onChange("workingSetCount", value)} onBlur={() => onFieldBlur?.("workingSetCount")} onClear={() => onChange("workingSetCount", "")} keyboardType="number-pad" />
-			<Box className={compact ? "basis-1/2 min-w-0 flex-1 gap-1 rounded-md bg-muted p-2" : "gap-2"}>
+			<Box className={compact ? "basis-1/2 min-w-0 flex-1 gap-1" : "gap-2"}>
 				<Box className="flex-row items-center justify-between">
-					<Text size="sm" bold className={compact ? "flex-1 text-center" : undefined}>Reps</Text>
+					<Text size="xs" bold className={compact ? "flex-1 text-center" : undefined}>Reps</Text>
 					{!compact && onClearRepRange && (entry.repMin !== "" || entry.repMax !== "") && <Button variant="link" size="sm" className="min-h-11 min-w-11 px-2" onPress={onClearRepRange} accessibilityLabel="Clear rep range"><ButtonText>Clear</ButtonText></Button>}
 				</Box>
-				<Box className="flex-row gap-2">
+				<Box className="flex-row items-center gap-2">
 					<Box className="min-w-0 flex-1"><Input isInvalid={repError}><InputField value={entry.repMin} onChangeText={(value) => onChange("repMin", value)} onBlur={() => onFieldBlur?.("repMin")} placeholder="Min" accessibilityLabel="Minimum reps" keyboardType="number-pad" textAlign="center" /></Input></Box>
+					<Text size="sm" className="text-muted-foreground">–</Text>
 					<Box className="min-w-0 flex-1"><Input isInvalid={repError}><InputField value={entry.repMax} onChangeText={(value) => onChange("repMax", value)} onBlur={() => onFieldBlur?.("repMax")} placeholder="Max" accessibilityLabel="Maximum reps" keyboardType="number-pad" textAlign="center" /></Input></Box>
 				</Box>
 				{errors.filter((error) => error.includes("Rep")).map((error) => <Text key={error} size="sm" className="text-destructive">{error}</Text>)}
