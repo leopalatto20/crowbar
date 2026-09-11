@@ -698,9 +698,9 @@ function RoutineBuilder({
 		<SafeAreaView className="bg-background" style={{ flex: 1 }} edges={["top", "left", "right", "bottom"]}>
 			<Box style={{ flex: 1 }}>
 				<ScrollView ref={ledgerScrollRef} contentContainerClassName="mx-auto w-full max-w-[800px] gap-4 px-4 pb-28 pt-4" keyboardShouldPersistTaps="handled">
-				<Box className="flex-row items-center gap-4">
+				<Box className="flex-row items-center justify-between gap-4">
+					<Text size="2xl" bold className="min-w-0 flex-1">{routine ? "Edit Routine" : "New Routine"}</Text>
 					<Button variant="ghost" onPress={onCancel} accessibilityLabel="Back to routines"><ButtonText>Back</ButtonText></Button>
-					<Text size="2xl" bold className="min-w-0 flex-1 text-center">{routine ? "Edit Routine" : "New Routine"}</Text>
 				</Box>
 
 				<Box className="rounded-xl bg-card px-4 py-3">
