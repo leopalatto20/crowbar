@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-
+import {
+  ArchiveVisibilityToggle,
+  EntityListScreen,
+  EntityListTitle,
+} from '@/components/app/entity-list-screen';
 import { Box } from '@/components/ui/box';
 import { Button, ButtonText } from '@/components/ui/button';
 import { Input, InputField } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
 import {
   archiveMovement,
@@ -281,27 +282,30 @@ export default function CatalogScreen() {
     setDeleteConfirmation(movement);
   };
 
-  const empty = loaded && rows.length === 0;
   const filterOptions = [ALL, ...groups.map((group) => group.name)] as Filter[];
   const hasActiveFilters = filter !== ALL || query.trim().length > 0 || showArchived;
   const resultCountLabel = catalogLoading ? 'Loading…' : movementCountLabel(rows.length);
 
   return (
-    <SafeAreaView
-      className="flex-1 web:max-w-[800px] web:mx-auto"
-      edges={['top', 'left', 'right', 'bottom']}
-    >
-      <FlatList
-        contentContainerClassName="gap-4 px-4 pb-28 pt-4"
-        data={rows}
-        keyExtractor={(r) => String(r.id)}
-        keyboardShouldPersistTaps="handled"
-        ListHeaderComponent={
-          <Box className="gap-4">
-            <Box className="flex-row items-center justify-between">
-              <Text size="5xl" bold>
-                Catalog
-              </Text>
+    <EntityListScreen
+      data={rows}
+      keyExtractor={(r) => String(r.id)}
+      keyboardShouldPersistTaps="handled"
+      loaded={loaded}
+      loading={catalogLoading}
+      refreshing={catalogRefreshing}
+      loadError={catalogError}
+      loadingLabel="Loading movements…"
+      loadingAccessibilityLabel="Loading movements"
+      refreshingLabel="Refreshing catalog…"
+      refreshingAccessibilityLabel="Refreshing catalog"
+      staleDataMessage="Showing the last saved results."
+      retryAccessibilityLabel="Retry loading catalog"
+      onRetry={refresh}
+      header={
+        <Box className="gap-4">
+          <EntityListTitle
+            action={
               <Button
                 variant="outline"
                 size="icon"
@@ -311,55 +315,51 @@ export default function CatalogScreen() {
               >
                 <ButtonText>+</ButtonText>
               </Button>
-            </Box>
+            }
+          >
+            Catalog
+          </EntityListTitle>
 
-            <Input className="rounded-xl border-0 bg-card">
-              <InputField
-                value={query}
-                onChangeText={setQuery}
-                placeholder="Search movements"
-                accessibilityLabel="Search movements"
-                autoCorrect={false}
-                autoCapitalize="none"
-                clearButtonMode="while-editing"
-              />
-            </Input>
+          <Input className="rounded-xl border-0 bg-card">
+            <InputField
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search movements"
+              accessibilityLabel="Search movements"
+              autoCorrect={false}
+              autoCapitalize="none"
+              clearButtonMode="while-editing"
+            />
+          </Input>
 
-            <Box className="gap-2">
-              <Text size="sm" bold>
-                Muscle group
+          <Box className="gap-2">
+            <Text size="sm" bold>
+              Muscle group
+            </Text>
+            <Box className="flex-row items-center gap-3">
+              <Button
+                variant={filter === ALL ? 'outline' : 'default'}
+                size="sm"
+                className="min-w-0 flex-1 justify-start"
+                onPress={() => setMusclePickerVisible(true)}
+                accessibilityLabel={`Filter by muscle group: ${filter === ALL ? 'All muscle groups' : filter}`}
+                accessibilityState={{
+                  expanded: musclePickerVisible,
+                }}
+              >
+                <ButtonText>{filter === ALL ? 'All muscle groups' : filter}</ButtonText>
+              </Button>
+              <Text size="sm" className="text-muted-foreground">
+                {resultCountLabel}
               </Text>
-              <Box className="flex-row items-center gap-3">
-                <Button
-                  variant={filter === ALL ? 'outline' : 'default'}
-                  size="sm"
-                  className="min-w-0 flex-1 justify-start"
-                  onPress={() => setMusclePickerVisible(true)}
-                  accessibilityLabel={`Filter by muscle group: ${filter === ALL ? 'All muscle groups' : filter}`}
-                  accessibilityState={{
-                    expanded: musclePickerVisible,
-                  }}
-                >
-                  <ButtonText>{filter === ALL ? 'All muscle groups' : filter}</ButtonText>
-                </Button>
-                <Text size="sm" className="text-muted-foreground">
-                  {resultCountLabel}
-                </Text>
-              </Box>
             </Box>
+          </Box>
 
-            <Box className="min-h-9 flex-row items-center justify-between gap-3">
-              <Box className="flex-row items-center gap-2">
-                <Switch
-                  value={showArchived}
-                  onValueChange={setShowArchived}
-                  accessibilityLabel="Show archived"
-                />
-                <Text size="sm" className="text-muted-foreground">
-                  Show archived
-                </Text>
-              </Box>
-              {hasActiveFilters && (
+          <ArchiveVisibilityToggle
+            value={showArchived}
+            onValueChange={setShowArchived}
+            trailingAction={
+              hasActiveFilters ? (
                 <Button
                   variant="link"
                   size="sm"
@@ -374,94 +374,63 @@ export default function CatalogScreen() {
                 >
                   <ButtonText>Clear filters</ButtonText>
                 </Button>
+              ) : undefined
+            }
+          />
+          {feedback && (
+            <Box
+              className="flex-row items-center gap-3 rounded-xl bg-muted px-4 py-3"
+              accessibilityLiveRegion="polite"
+            >
+              <Text className="min-w-0 flex-1">{feedback}</Text>
+              {archiveUndo && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="px-0"
+                  onPress={() => void undoArchive()}
+                  disabled={archiveBusyId !== null}
+                >
+                  <ButtonText>Undo</ButtonText>
+                </Button>
               )}
             </Box>
-            {feedback && (
-              <Box
-                className="flex-row items-center gap-3 rounded-xl bg-muted px-4 py-3"
-                accessibilityLiveRegion="polite"
-              >
-                <Text className="min-w-0 flex-1">{feedback}</Text>
-                {archiveUndo && (
-                  <Button
-                    variant="link"
-                    size="sm"
-                    className="px-0"
-                    onPress={() => void undoArchive()}
-                    disabled={archiveBusyId !== null}
-                  >
-                    <ButtonText>Undo</ButtonText>
-                  </Button>
-                )}
-              </Box>
-            )}
-            {error && (
-              <Box
-                className="flex-row items-center gap-3 rounded-xl bg-muted px-4 py-4"
-                accessibilityRole="alert"
-              >
-                <Text className="min-w-0 flex-1 text-destructive">{error}</Text>
-                <Button variant="link" size="sm" className="px-0" onPress={() => setError(null)}>
-                  <ButtonText>Dismiss</ButtonText>
-                </Button>
-              </Box>
-            )}
-            {catalogRefreshing && (
-              <Box className="flex-row items-center gap-2 rounded-xl bg-muted px-4 py-3">
-                <ActivityIndicator size="small" />
-                <Text className="text-muted-foreground">Refreshing catalog…</Text>
-              </Box>
-            )}
-            {catalogError && (
-              <Box className="gap-3 rounded-xl bg-muted px-4 py-4" accessibilityRole="alert">
-                <Text className="text-destructive">{catalogError}</Text>
-                {loaded && (
-                  <Text className="text-muted-foreground">Showing the last saved results.</Text>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onPress={refresh}
-                  disabled={catalogLoading || catalogRefreshing}
-                  accessibilityLabel="Retry loading catalog"
-                >
-                  <ButtonText>Try again</ButtonText>
-                </Button>
-              </Box>
-            )}
-          </Box>
-        }
-        ListEmptyComponent={
-          catalogLoading || catalogRefreshing ? (
-            <Box className="items-center gap-3 rounded-xl bg-card px-4 py-8">
-              <ActivityIndicator accessibilityLabel="Loading movements" />
-              <Text className="text-muted-foreground">
-                {catalogRefreshing ? 'Refreshing catalog…' : 'Loading movements…'}
-              </Text>
+          )}
+          {error && (
+            <Box
+              className="flex-row items-center gap-3 rounded-xl bg-muted px-4 py-4"
+              accessibilityRole="alert"
+            >
+              <Text className="min-w-0 flex-1 text-destructive">{error}</Text>
+              <Button variant="link" size="sm" className="px-0" onPress={() => setError(null)}>
+                <ButtonText>Dismiss</ButtonText>
+              </Button>
             </Box>
-          ) : empty && !catalogError ? (
-            <Box className="items-center rounded-xl bg-card px-4 py-8">
-              <Text className="text-muted-foreground">No movements match</Text>
-            </Box>
-          ) : null
-        }
-        renderItem={({ item }) => (
-          <MovementRow
-            movement={item}
-            expanded={expandedRow === item.id}
-            deleteBlocked={deleteBlockedRows[item.id] ?? false}
-            archiveBusy={archiveBusyId === item.id}
-            onOpen={() => {
-              setEditorMovement(item);
-              setEditorVisible(true);
-            }}
-            onMore={() => void toggleActions(item)}
-            onArchive={() => void updateArchive(item)}
-            onDelete={() => void confirmDelete(item)}
-            onShowReferences={() => void showReferences(item)}
-          />
-        )}
-      />
+          )}
+        </Box>
+      }
+      emptyState={
+        <Box className="items-center rounded-xl bg-card px-4 py-8">
+          <Text className="text-muted-foreground">No movements match</Text>
+        </Box>
+      }
+      renderItem={({ item }) => (
+        <MovementRow
+          movement={item}
+          expanded={expandedRow === item.id}
+          deleteBlocked={deleteBlockedRows[item.id] ?? false}
+          archiveBusy={archiveBusyId === item.id}
+          onOpen={() => {
+            setEditorMovement(item);
+            setEditorVisible(true);
+          }}
+          onMore={() => void toggleActions(item)}
+          onArchive={() => void updateArchive(item)}
+          onDelete={() => void confirmDelete(item)}
+          onShowReferences={() => void showReferences(item)}
+        />
+      )}
+    >
       <MovementEditorModal
         key={`${editorVisible}-${editorMovement?.id ?? 'new'}`}
         visible={editorVisible}
@@ -505,7 +474,7 @@ export default function CatalogScreen() {
           void deleteAfterConfirmation(movement);
         }}
       />
-    </SafeAreaView>
+    </EntityListScreen>
   );
 }
 

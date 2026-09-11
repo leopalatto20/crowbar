@@ -11,7 +11,6 @@ import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import {
   AccessibilityInfo,
   ActivityIndicator,
-  FlatList,
   PanResponder,
   ScrollView,
   type LayoutChangeEvent,
@@ -19,10 +18,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Check, ChevronDown, ChevronUp, GripVertical, Pencil } from 'lucide-react-native';
 
+import {
+  ArchiveVisibilityToggle,
+  EntityListScreen,
+  EntityListTitle,
+} from '@/components/app/entity-list-screen';
 import { Box } from '@/components/ui/box';
 import { Button, ButtonIcon, ButtonText } from '@/components/ui/button';
 import { Input, InputField } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
 import {
   archiveRoutine,
@@ -418,99 +421,68 @@ export default function RoutinesScreen() {
 
   const empty = loaded && rows.length === 0;
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top', 'left', 'right', 'bottom']}>
-      <FlatList
-        className="w-full web:mx-auto web:max-w-[800px]"
-        contentContainerClassName="gap-4 px-4 pb-28 pt-4"
-        data={rows}
-        keyExtractor={(routine) => String(routine.id)}
-        ListHeaderComponent={
-          <Box className="gap-4">
-            <Box className="flex-row items-center justify-between">
-              <Text size="5xl" bold>
-                Routines
-              </Text>
-              {!empty && (
+    <EntityListScreen
+      data={rows}
+      keyExtractor={(routine) => String(routine.id)}
+      loaded={loaded}
+      loading={loading}
+      refreshing={refreshing}
+      loadError={error}
+      loadingLabel="Loading Routines…"
+      loadingAccessibilityLabel="Loading routines"
+      refreshingLabel="Refreshing routines…"
+      refreshingAccessibilityLabel="Refreshing routines"
+      staleDataMessage="Showing the last saved routines."
+      retryAccessibilityLabel="Retry loading routines"
+      onRetry={refresh}
+      header={
+        <Box className="gap-4">
+          <EntityListTitle
+            action={
+              !empty ? (
                 <Button onPress={openCreate} accessibilityLabel="Create routine">
                   <ButtonText>Create routine</ButtonText>
                 </Button>
-              )}
+              ) : undefined
+            }
+          >
+            Routines
+          </EntityListTitle>
+          <ArchiveVisibilityToggle value={showArchived} onValueChange={setShowArchived} />
+          {successMessage && (
+            <Box className="rounded-xl bg-muted px-4 py-2" accessibilityLiveRegion="polite">
+              <Text>{successMessage}</Text>
             </Box>
-            <Box className="min-h-9 flex-row items-center gap-2">
-              <Switch
-                value={showArchived}
-                onValueChange={setShowArchived}
-                accessibilityLabel="Show archived"
-              />
-              <Text size="sm" className="text-muted-foreground">
-                Show archived
-              </Text>
-            </Box>
-            {successMessage && (
-              <Box className="rounded-xl bg-muted px-4 py-2" accessibilityLiveRegion="polite">
-                <Text>{successMessage}</Text>
-              </Box>
-            )}
-            {refreshing && (
-              <Box
-                className="flex-row items-center gap-2 rounded-xl bg-muted px-4 py-3"
-                accessibilityLiveRegion="polite"
-              >
-                <ActivityIndicator size="small" />
-                <Text className="text-muted-foreground">Refreshing routines…</Text>
-              </Box>
-            )}
-            {error && (
-              <Box className="gap-2 rounded-xl bg-muted px-4 py-4" accessibilityRole="alert">
-                <Text className="text-destructive">{error}</Text>
-                {loaded && (
-                  <Text className="text-muted-foreground">Showing the last saved routines.</Text>
-                )}
-                <Button variant="outline" onPress={refresh} disabled={loading || refreshing}>
-                  <ButtonText>Try again</ButtonText>
-                </Button>
-              </Box>
-            )}
+          )}
+        </Box>
+      }
+      emptyState={
+        <Box className="items-center gap-4 rounded-xl bg-card px-4 py-8">
+          <Box className="items-center gap-2">
+            <Text size="xl" bold>
+              No Routines yet
+            </Text>
+            <Text className="text-center text-muted-foreground">
+              Build a simple ledger for your next session.
+            </Text>
           </Box>
-        }
-        ListEmptyComponent={
-          loading || refreshing ? (
-            <Box className="items-center gap-2 rounded-xl bg-card px-4 py-8">
-              <ActivityIndicator
-                accessibilityLabel={refreshing ? 'Refreshing routines' : 'Loading routines'}
-              />
-              <Text className="text-muted-foreground">
-                {refreshing ? 'Refreshing routines…' : 'Loading Routines…'}
-              </Text>
-            </Box>
-          ) : empty && !error ? (
-            <Box className="items-center gap-4 rounded-xl bg-card px-4 py-8">
-              <Box className="items-center gap-2">
-                <Text size="xl" bold>
-                  No Routines yet
-                </Text>
-                <Text className="text-center text-muted-foreground">
-                  Build a simple ledger for your next session.
-                </Text>
-              </Box>
-              <Button onPress={openCreate} accessibilityLabel="Create routine">
-                <ButtonText>Create routine</ButtonText>
-              </Button>
-            </Box>
-          ) : null
-        }
-        renderItem={({ item }) => (
-          <RoutineRow
-            routine={item}
-            expanded={expandedRow === item.id}
-            archiveBusy={archiveBusyId === item.id}
-            onOpen={() => void openEdit(item.id)}
-            onMore={() => setExpandedRow((current) => (current === item.id ? null : item.id))}
-            onArchive={() => void updateArchive(item)}
-            onDelete={() => void confirmDelete(item)}
-          />
-        )}
-      />
+          <Button onPress={openCreate} accessibilityLabel="Create routine">
+            <ButtonText>Create routine</ButtonText>
+          </Button>
+        </Box>
+      }
+      renderItem={({ item }) => (
+        <RoutineRow
+          routine={item}
+          expanded={expandedRow === item.id}
+          archiveBusy={archiveBusyId === item.id}
+          onOpen={() => void openEdit(item.id)}
+          onMore={() => setExpandedRow((current) => (current === item.id ? null : item.id))}
+          onArchive={() => void updateArchive(item)}
+          onDelete={() => void confirmDelete(item)}
+        />
+      )}
+    >
       <RoutineReferencesModal panel={referencePanel} onClose={() => setReferencePanel(null)} />
       <RoutineDeleteConfirmationModal
         routine={deleteConfirmation}
@@ -523,7 +495,7 @@ export default function RoutinesScreen() {
         }}
       />
       {discardConfirmation}
-    </SafeAreaView>
+    </EntityListScreen>
   );
 }
 

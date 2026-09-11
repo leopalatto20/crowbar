@@ -231,6 +231,13 @@ The floating web navigation is a documented implementation exception: its outer 
 - **Web:** A floating centered pill up to 800px wide. The current implementation uses legacy theme constants: light `#F0F0F3`/`#E0E1E6`, dark `#212225`/`#2E3135`, and muted tab text. The outer container is 32px radius; the active tab is 16px radius; pressed rows drop to 70% opacity.
 - **Native:** Expo router tabs use the same legacy navigation color roles and platform-native tab behavior.
 
+### Entity Lists
+
+- **Shared shell:** Catalog-style entity ledgers use `EntityListScreen` from `src/components/app/entity-list-screen.tsx` for safe-area handling, the 800px web measure, list spacing, loading and refresh feedback, stale-data errors, retry behavior, and empty-state placement.
+- **Shared header:** Use `EntityListTitle` for the screen title and optional primary action so entity ledgers retain one title scale and aligned action placement.
+- **Archive filter:** Use `ArchiveVisibilityToggle` for the standard “Show archived” control. A feature may supply one trailing action, such as clearing active filters.
+- **Feature ownership:** Search, domain filters, mutation feedback, row actions, empty-state copy, and overlays remain with the feature screen; the shared components own only the repeated browse-and-refresh flow.
+
 ## Do's and Don'ts
 
 ### Do:
