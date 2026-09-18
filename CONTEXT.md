@@ -13,7 +13,7 @@ A reusable training plan containing movement prescriptions. A routine is indepen
 _Avoid_: Workout, program, template
 
 **Workout**:
-One occasion on which a trainee performs movements from a routine.
+One occasion on which a trainee performs movements from a routine and records the resulting sets.
 _Avoid_: Session, routine
 
 **Movement**:
@@ -24,6 +24,10 @@ _Avoid_: Exercise, machine, equipment
 The planned instruction for performing a movement within a routine, such as a target number of sets, repetitions, or effort.
 _Avoid_: Movement, performance
 
+**Set**:
+One performed bout of a movement within a workout. A set is the atomic training record and captures repetitions, load, and optional effort.
+_Avoid_: Performance record, result
+
 **Gym**:
 A training location containing machines on which a trainee performs movements.
 _Avoid_: Location, facility
@@ -31,10 +35,6 @@ _Avoid_: Location, facility
 **Machine**:
 A specific piece of training equipment at a gym on which a movement is performed.
 _Avoid_: Equipment, station
-
-**Performance record**:
-The observed result of a movement performed by a trainee on a specific machine at a specific gym.
-_Avoid_: Result, history, workout record
 
 **Load representation**:
 The way a machine's load is recorded: kilograms, pounds, or plate count.
