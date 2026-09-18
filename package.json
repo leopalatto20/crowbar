@@ -58,8 +58,10 @@
     "eslint-config-expo": "~57.0.2",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.6",
+    "husky": "^9.1.7",
     "jest": "~29.7.0",
     "jest-expo": "~57.0.5",
+    "lint-staged": "^17.5.1",
     "prettier": "^3.9.8",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.3"
@@ -72,9 +74,14 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "lint:fix": "expo lint --fix",
+    "lint:staged": "lint-staged",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "jest --watchAll"
+    "typecheck": "tsc --noEmit",
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watchAll",
+    "prepare": "husky",
+    "doctor": "npx react-doctor@latest"
   },
   "private": true,
   "overrides": {
@@ -85,5 +92,9 @@
   },
   "jest": {
     "preset": "jest-expo"
+  },
+  "lint-staged": {
+    "{components,src}/**/*.{js,jsx,ts,tsx}": "eslint --max-warnings=0",
+    "*.{css,js,jsx,json,jsonc,md,mjs,ts,tsx,yaml,yml}": "prettier --check"
   }
 }
