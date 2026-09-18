@@ -13,40 +13,15 @@ Accepted rules are part of the current product model. Open decisions must be res
 - [BR-005: Different load representations are not directly comparable by default](adr/0005-load-representations-not-comparable.md)
 - [BR-006: The trainee chooses one effort metric](adr/0006-one-effort-metric.md)
 - [BR-007: Routine maintenance is centralized](adr/0007-centralized-routine-maintenance.md)
+- [BR-008: A started workout keeps its routine snapshot](adr/0008-started-workout-keeps-snapshot.md)
+- [BR-009: Sets retain their recorded effort metric](adr/0009-sets-retain-effort-metric.md)
+- [BR-010: A load representation change starts a new machine](adr/0010-load-representation-change-starts-new-machine.md)
+- [BR-011: Machine history is trainee-managed](adr/0011-machine-history-is-trainee-managed.md)
+- [BR-012: A workout snapshots complete movement prescriptions](adr/0012-workout-snapshots-complete-prescriptions.md)
 
 ## Open Decisions
 
-These are not settled rules. Resolve them before building behavior that would make the choice expensive to change.
-
-### OPEN-001: What does a routine change do to an in-progress workout?
-
-If a trainee starts a workout and then changes its routine, does the in-progress workout keep the earlier movement prescriptions, adopt the new ones, or require an explicit refresh?
-
-**Scenario**: The trainee starts Monday's workout, changes the routine's set target, then returns to the unfinished workout.
-
-### OPEN-002: What is preserved when a trainee changes effort metric?
-
-When a trainee switches from RPE to RIR, do previous sets retain their original metric, get displayed through a conversion, or become mixed history with an explicit metric label?
-
-**Scenario**: A trainee has six months of RPE history and switches to RIR before the next workout.
-
-### OPEN-003: Can a machine's load representation change?
-
-If a machine changes from pounds to kilograms, or from a numbered scale to plate count, does that create a new machine identity, a new configuration period, or a mutation of the existing machine?
-
-**Scenario**: A gym replaces a machine but keeps it in the same physical location.
-
-### OPEN-004: What identifies a machine over time?
-
-Is a machine the physical apparatus, the gym's named equipment entry, or the combination of a gym and an equipment configuration?
-
-**Scenario**: Two identical leg-press machines exist at one gym, or one machine is replaced by an identical model.
-
-### OPEN-005: Which routine details are copied into a workout?
-
-When a workout begins, which movement-prescription details become fixed historical facts and which remain linked to the routine?
-
-**Scenario**: A routine's target repetitions change after a completed workout has been recorded.
+None.
 
 ## Enforcement
 

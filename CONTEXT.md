@@ -33,8 +33,8 @@ A training location containing machines on which a trainee performs movements.
 _Avoid_: Location, facility
 
 **Machine**:
-A specific piece of training equipment at a gym on which a movement is performed.
-_Avoid_: Equipment, station
+A trainee-managed, gym-specific history for equipment considered comparable under one load representation. Same-model equipment shares a machine by default, but the trainee may split equipment or attach a replacement.
+_Avoid_: Physical apparatus, equipment item, station
 
 **Load representation**:
 The way a machine's load is recorded: kilograms, pounds, or plate count.
