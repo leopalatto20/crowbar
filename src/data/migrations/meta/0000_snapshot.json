@@ -1,0 +1,1006 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "d16e1eb8-0ba7-4806-8322-8db6e4aa56ee",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "tables": {
+    "effort_metrics": {
+      "name": "effort_metrics",
+      "columns": {
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "gyms": {
+      "name": "gyms",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "trainee_id": {
+          "name": "trainee_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "gyms_by_trainee": {
+          "name": "gyms_by_trainee",
+          "columns": ["trainee_id", "archived_at", "name"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "gyms_trainee_id_trainees_id_fk": {
+          "name": "gyms_trainee_id_trainees_id_fk",
+          "tableFrom": "gyms",
+          "tableTo": "trainees",
+          "columnsFrom": ["trainee_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "load_representations": {
+      "name": "load_representations",
+      "columns": {
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "machines": {
+      "name": "machines",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "gym_id": {
+          "name": "gym_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "load_representation_code": {
+          "name": "load_representation_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "machines_by_gym": {
+          "name": "machines_by_gym",
+          "columns": ["gym_id", "archived_at", "name"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "machines_gym_id_gyms_id_fk": {
+          "name": "machines_gym_id_gyms_id_fk",
+          "tableFrom": "machines",
+          "tableTo": "gyms",
+          "columnsFrom": ["gym_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "machines_load_representation_code_load_representations_code_fk": {
+          "name": "machines_load_representation_code_load_representations_code_fk",
+          "tableFrom": "machines",
+          "tableTo": "load_representations",
+          "columnsFrom": ["load_representation_code"],
+          "columnsTo": ["code"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "movement_prescriptions": {
+      "name": "movement_prescriptions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "routine_id": {
+          "name": "routine_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "movement_id": {
+          "name": "movement_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "instructions": {
+          "name": "instructions",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "movement_prescriptions_routine_id_position_unique": {
+          "name": "movement_prescriptions_routine_id_position_unique",
+          "columns": ["routine_id", "position"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "movement_prescriptions_routine_id_routines_id_fk": {
+          "name": "movement_prescriptions_routine_id_routines_id_fk",
+          "tableFrom": "movement_prescriptions",
+          "tableTo": "routines",
+          "columnsFrom": ["routine_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "movement_prescriptions_movement_id_movements_id_fk": {
+          "name": "movement_prescriptions_movement_id_movements_id_fk",
+          "tableFrom": "movement_prescriptions",
+          "tableTo": "movements",
+          "columnsFrom": ["movement_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "movement_prescriptions_position_check": {
+          "name": "movement_prescriptions_position_check",
+          "value": "\"movement_prescriptions\".\"position\" >= 0"
+        }
+      }
+    },
+    "movements": {
+      "name": "movements",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "trainee_id": {
+          "name": "trainee_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "movements_by_trainee": {
+          "name": "movements_by_trainee",
+          "columns": ["trainee_id", "archived_at", "name"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "movements_trainee_id_trainees_id_fk": {
+          "name": "movements_trainee_id_trainees_id_fk",
+          "tableFrom": "movements",
+          "tableTo": "trainees",
+          "columnsFrom": ["trainee_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "performed_sets": {
+      "name": "performed_sets",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "workout_movement_prescription_id": {
+          "name": "workout_movement_prescription_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "workout_prescribed_set_id": {
+          "name": "workout_prescribed_set_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "machine_id": {
+          "name": "machine_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "repetitions": {
+          "name": "repetitions",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "load_value": {
+          "name": "load_value",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "effort_value": {
+          "name": "effort_value",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "performed_at": {
+          "name": "performed_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "performed_sets_by_machine": {
+          "name": "performed_sets_by_machine",
+          "columns": ["machine_id", "\"performed_at\" desc"],
+          "isUnique": false
+        },
+        "performed_sets_workout_movement_prescription_id_position_unique": {
+          "name": "performed_sets_workout_movement_prescription_id_position_unique",
+          "columns": ["workout_movement_prescription_id", "position"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "performed_sets_workout_movement_prescription_id_workout_movement_prescriptions_id_fk": {
+          "name": "performed_sets_workout_movement_prescription_id_workout_movement_prescriptions_id_fk",
+          "tableFrom": "performed_sets",
+          "tableTo": "workout_movement_prescriptions",
+          "columnsFrom": ["workout_movement_prescription_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "performed_sets_machine_id_machines_id_fk": {
+          "name": "performed_sets_machine_id_machines_id_fk",
+          "tableFrom": "performed_sets",
+          "tableTo": "machines",
+          "columnsFrom": ["machine_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "performed_sets_workout_prescribed_set_id_workout_movement_prescription_id_workout_prescribed_sets_id_workout_movement_prescription_id_fk": {
+          "name": "performed_sets_workout_prescribed_set_id_workout_movement_prescription_id_workout_prescribed_sets_id_workout_movement_prescription_id_fk",
+          "tableFrom": "performed_sets",
+          "tableTo": "workout_prescribed_sets",
+          "columnsFrom": [
+            "workout_prescribed_set_id",
+            "workout_movement_prescription_id"
+          ],
+          "columnsTo": ["id", "workout_movement_prescription_id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "performed_sets_position_check": {
+          "name": "performed_sets_position_check",
+          "value": "\"performed_sets\".\"position\" >= 0"
+        },
+        "performed_sets_repetitions_check": {
+          "name": "performed_sets_repetitions_check",
+          "value": "\"performed_sets\".\"repetitions\" >= 0"
+        },
+        "performed_sets_load_value_check": {
+          "name": "performed_sets_load_value_check",
+          "value": "\"performed_sets\".\"load_value\" >= 0"
+        }
+      }
+    },
+    "prescribed_sets": {
+      "name": "prescribed_sets",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "movement_prescription_id": {
+          "name": "movement_prescription_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "target_repetitions_min": {
+          "name": "target_repetitions_min",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "target_repetitions_max": {
+          "name": "target_repetitions_max",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "target_effort_metric_code": {
+          "name": "target_effort_metric_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "target_effort_min": {
+          "name": "target_effort_min",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "target_effort_max": {
+          "name": "target_effort_max",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "prescribed_sets_movement_prescription_id_position_unique": {
+          "name": "prescribed_sets_movement_prescription_id_position_unique",
+          "columns": ["movement_prescription_id", "position"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "prescribed_sets_movement_prescription_id_movement_prescriptions_id_fk": {
+          "name": "prescribed_sets_movement_prescription_id_movement_prescriptions_id_fk",
+          "tableFrom": "prescribed_sets",
+          "tableTo": "movement_prescriptions",
+          "columnsFrom": ["movement_prescription_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "prescribed_sets_target_effort_metric_code_effort_metrics_code_fk": {
+          "name": "prescribed_sets_target_effort_metric_code_effort_metrics_code_fk",
+          "tableFrom": "prescribed_sets",
+          "tableTo": "effort_metrics",
+          "columnsFrom": ["target_effort_metric_code"],
+          "columnsTo": ["code"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "prescribed_sets_position_check": {
+          "name": "prescribed_sets_position_check",
+          "value": "\"prescribed_sets\".\"position\" >= 0"
+        },
+        "prescribed_sets_target_repetitions_min_check": {
+          "name": "prescribed_sets_target_repetitions_min_check",
+          "value": "\"prescribed_sets\".\"target_repetitions_min\" IS NULL OR \"prescribed_sets\".\"target_repetitions_min\" >= 0"
+        },
+        "prescribed_sets_target_repetitions_max_check": {
+          "name": "prescribed_sets_target_repetitions_max_check",
+          "value": "\"prescribed_sets\".\"target_repetitions_max\" IS NULL OR \"prescribed_sets\".\"target_repetitions_max\" >= 0"
+        },
+        "prescribed_sets_target_repetitions_order_check": {
+          "name": "prescribed_sets_target_repetitions_order_check",
+          "value": "\"prescribed_sets\".\"target_repetitions_min\" IS NULL OR \"prescribed_sets\".\"target_repetitions_max\" IS NULL OR \"prescribed_sets\".\"target_repetitions_max\" >= \"prescribed_sets\".\"target_repetitions_min\""
+        },
+        "prescribed_sets_target_effort_presence_check": {
+          "name": "prescribed_sets_target_effort_presence_check",
+          "value": "(\n        (\"prescribed_sets\".\"target_effort_metric_code\" IS NULL AND \"prescribed_sets\".\"target_effort_min\" IS NULL AND \"prescribed_sets\".\"target_effort_max\" IS NULL)\n        OR\n        (\"prescribed_sets\".\"target_effort_metric_code\" IS NOT NULL AND (\"prescribed_sets\".\"target_effort_min\" IS NOT NULL OR \"prescribed_sets\".\"target_effort_max\" IS NOT NULL))\n      )"
+        },
+        "prescribed_sets_target_effort_order_check": {
+          "name": "prescribed_sets_target_effort_order_check",
+          "value": "\"prescribed_sets\".\"target_effort_min\" IS NULL OR \"prescribed_sets\".\"target_effort_max\" IS NULL OR \"prescribed_sets\".\"target_effort_max\" >= \"prescribed_sets\".\"target_effort_min\""
+        }
+      }
+    },
+    "routines": {
+      "name": "routines",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "trainee_id": {
+          "name": "trainee_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "routines_by_trainee": {
+          "name": "routines_by_trainee",
+          "columns": ["trainee_id", "archived_at", "name"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "routines_trainee_id_trainees_id_fk": {
+          "name": "routines_trainee_id_trainees_id_fk",
+          "tableFrom": "routines",
+          "tableTo": "trainees",
+          "columnsFrom": ["trainee_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "trainees": {
+      "name": "trainees",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "current_effort_metric_code": {
+          "name": "current_effort_metric_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "trainees_current_effort_metric_code_effort_metrics_code_fk": {
+          "name": "trainees_current_effort_metric_code_effort_metrics_code_fk",
+          "tableFrom": "trainees",
+          "tableTo": "effort_metrics",
+          "columnsFrom": ["current_effort_metric_code"],
+          "columnsTo": ["code"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "workout_movement_prescriptions": {
+      "name": "workout_movement_prescriptions",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "workout_id": {
+          "name": "workout_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "movement_id": {
+          "name": "movement_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "movement_name_snapshot": {
+          "name": "movement_name_snapshot",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "instructions_snapshot": {
+          "name": "instructions_snapshot",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "workout_prescriptions_by_movement": {
+          "name": "workout_prescriptions_by_movement",
+          "columns": ["movement_id", "workout_id"],
+          "isUnique": false
+        },
+        "workout_movement_prescriptions_workout_id_position_unique": {
+          "name": "workout_movement_prescriptions_workout_id_position_unique",
+          "columns": ["workout_id", "position"],
+          "isUnique": true
+        },
+        "workout_movement_prescriptions_id_workout_id_unique": {
+          "name": "workout_movement_prescriptions_id_workout_id_unique",
+          "columns": ["id", "workout_id"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "workout_movement_prescriptions_workout_id_workouts_id_fk": {
+          "name": "workout_movement_prescriptions_workout_id_workouts_id_fk",
+          "tableFrom": "workout_movement_prescriptions",
+          "tableTo": "workouts",
+          "columnsFrom": ["workout_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "workout_movement_prescriptions_movement_id_movements_id_fk": {
+          "name": "workout_movement_prescriptions_movement_id_movements_id_fk",
+          "tableFrom": "workout_movement_prescriptions",
+          "tableTo": "movements",
+          "columnsFrom": ["movement_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "workout_movement_prescriptions_position_check": {
+          "name": "workout_movement_prescriptions_position_check",
+          "value": "\"workout_movement_prescriptions\".\"position\" >= 0"
+        }
+      }
+    },
+    "workout_prescribed_sets": {
+      "name": "workout_prescribed_sets",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "workout_movement_prescription_id": {
+          "name": "workout_movement_prescription_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "target_repetitions_min": {
+          "name": "target_repetitions_min",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "target_repetitions_max": {
+          "name": "target_repetitions_max",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "target_effort_min": {
+          "name": "target_effort_min",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "target_effort_max": {
+          "name": "target_effort_max",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "workout_prescribed_sets_workout_movement_prescription_id_position_unique": {
+          "name": "workout_prescribed_sets_workout_movement_prescription_id_position_unique",
+          "columns": ["workout_movement_prescription_id", "position"],
+          "isUnique": true
+        },
+        "workout_prescribed_sets_id_workout_movement_prescription_id_unique": {
+          "name": "workout_prescribed_sets_id_workout_movement_prescription_id_unique",
+          "columns": ["id", "workout_movement_prescription_id"],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "workout_prescribed_sets_workout_movement_prescription_id_workout_movement_prescriptions_id_fk": {
+          "name": "workout_prescribed_sets_workout_movement_prescription_id_workout_movement_prescriptions_id_fk",
+          "tableFrom": "workout_prescribed_sets",
+          "tableTo": "workout_movement_prescriptions",
+          "columnsFrom": ["workout_movement_prescription_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "workout_prescribed_sets_position_check": {
+          "name": "workout_prescribed_sets_position_check",
+          "value": "\"workout_prescribed_sets\".\"position\" >= 0"
+        },
+        "workout_prescribed_sets_target_repetitions_min_check": {
+          "name": "workout_prescribed_sets_target_repetitions_min_check",
+          "value": "\"workout_prescribed_sets\".\"target_repetitions_min\" IS NULL OR \"workout_prescribed_sets\".\"target_repetitions_min\" >= 0"
+        },
+        "workout_prescribed_sets_target_repetitions_max_check": {
+          "name": "workout_prescribed_sets_target_repetitions_max_check",
+          "value": "\"workout_prescribed_sets\".\"target_repetitions_max\" IS NULL OR \"workout_prescribed_sets\".\"target_repetitions_max\" >= 0"
+        },
+        "workout_prescribed_sets_target_repetitions_order_check": {
+          "name": "workout_prescribed_sets_target_repetitions_order_check",
+          "value": "\"workout_prescribed_sets\".\"target_repetitions_min\" IS NULL OR \"workout_prescribed_sets\".\"target_repetitions_max\" IS NULL OR \"workout_prescribed_sets\".\"target_repetitions_max\" >= \"workout_prescribed_sets\".\"target_repetitions_min\""
+        },
+        "workout_prescribed_sets_target_effort_order_check": {
+          "name": "workout_prescribed_sets_target_effort_order_check",
+          "value": "\"workout_prescribed_sets\".\"target_effort_min\" IS NULL OR \"workout_prescribed_sets\".\"target_effort_max\" IS NULL OR \"workout_prescribed_sets\".\"target_effort_max\" >= \"workout_prescribed_sets\".\"target_effort_min\""
+        }
+      }
+    },
+    "workouts": {
+      "name": "workouts",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "routine_id": {
+          "name": "routine_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "gym_id": {
+          "name": "gym_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "routine_name_snapshot": {
+          "name": "routine_name_snapshot",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "effort_metric_code": {
+          "name": "effort_metric_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "workouts_by_gym": {
+          "name": "workouts_by_gym",
+          "columns": ["gym_id", "\"started_at\" desc"],
+          "isUnique": false
+        },
+        "workouts_by_routine": {
+          "name": "workouts_by_routine",
+          "columns": ["routine_id", "\"started_at\" desc"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "workouts_routine_id_routines_id_fk": {
+          "name": "workouts_routine_id_routines_id_fk",
+          "tableFrom": "workouts",
+          "tableTo": "routines",
+          "columnsFrom": ["routine_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "workouts_gym_id_gyms_id_fk": {
+          "name": "workouts_gym_id_gyms_id_fk",
+          "tableFrom": "workouts",
+          "tableTo": "gyms",
+          "columnsFrom": ["gym_id"],
+          "columnsTo": ["id"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "workouts_effort_metric_code_effort_metrics_code_fk": {
+          "name": "workouts_effort_metric_code_effort_metrics_code_fk",
+          "tableFrom": "workouts",
+          "tableTo": "effort_metrics",
+          "columnsFrom": ["effort_metric_code"],
+          "columnsTo": ["code"],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {
+      "performed_sets_by_machine": {
+        "columns": {
+          "\"performed_at\" desc": {
+            "isExpression": true
+          }
+        }
+      },
+      "workouts_by_gym": {
+        "columns": {
+          "\"started_at\" desc": {
+            "isExpression": true
+          }
+        }
+      },
+      "workouts_by_routine": {
+        "columns": {
+          "\"started_at\" desc": {
+            "isExpression": true
+          }
+        }
+      }
+    }
+  }
+}
