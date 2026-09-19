@@ -9,9 +9,13 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v57.0.0/ before 
 
 ## Architecture
 
+- Keep application TypeScript, TSX, and colocated tests under `src`.
 - Keep Expo Router route files thin. Routes compose feature components and navigation; they do not contain business rules or persistence logic.
+- Put generated and shared presentational UI in `src/components/ui`.
+- Put stateful workflows in `src/features/<feature>`. Start feature directories flat; add internal `components`, `hooks`, or `stores` directories only when the feature has enough files to need them.
 - Put domain types and business rules in `src/domain`. Domain code must not import React, React Native, Expo, database, or UI modules.
 - Put database access behind repositories in `src/data`. UI components must not query SQLite directly.
+- Put localization setup, resources, and regional formatting in `src/i18n`.
 - Keep Zustand limited to drafts, timers, and transient UI state. Persisted application data belongs in SQLite.
 - Prefer pure functions for domain decisions and calculations.
 - Dependencies should point inward: UI and data may depend on domain code, but domain code must not depend on them.

@@ -72,8 +72,8 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint",
-    "lint:fix": "expo lint --fix",
+    "lint": "expo lint src",
+    "lint:fix": "expo lint src --fix",
     "lint:staged": "lint-staged",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -94,7 +94,7 @@
     "preset": "jest-expo"
   },
   "lint-staged": {
-    "{components,src}/**/*.{js,jsx,ts,tsx}": "eslint --max-warnings=0",
+    "src/**/*.{js,jsx,ts,tsx}": "eslint --max-warnings=0",
     "*.{css,js,jsx,json,jsonc,md,mjs,ts,tsx,yaml,yml}": "prettier --check"
   }
 }
