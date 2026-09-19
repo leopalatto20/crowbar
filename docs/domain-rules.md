@@ -21,7 +21,7 @@ Accepted rules are part of the current product model. Open decisions must be res
 
 ## Open Decisions
 
-None.
+- Decide what happens to current routine effort targets when a trainee switches between RPE and RIR. Historical workout targets and performed-set effort values must retain their recorded metric and must not be converted or reinterpreted.
 
 ## Enforcement
 

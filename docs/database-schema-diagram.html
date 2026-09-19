@@ -1,0 +1,891 @@
+<!doctype html>
+<html lang="en" data-theme="luxury">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Crowbar SQL Structure</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/daisyui.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/themes.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      :where(.grid, .flex) > * {
+        min-width: 0;
+      }
+
+      :where(p, h1, h2, h3, li, dd, figcaption, .badge) {
+        overflow-wrap: anywhere;
+      }
+
+      body {
+        min-height: 100vh;
+        background:
+          radial-gradient(
+            circle at 8% 0%,
+            color-mix(in oklab, var(--color-primary) 15%, transparent),
+            transparent 28rem
+          ),
+          var(--color-base-200);
+      }
+
+      .diagram-shell {
+        overflow-x: auto;
+        border: 1px solid color-mix(in oklab, currentColor 13%, transparent);
+        border-radius: 1rem;
+        background: color-mix(in oklab, var(--color-base-100) 95%, transparent);
+      }
+
+      .diagram-shell svg {
+        display: block;
+        width: 100%;
+        min-width: 52rem;
+        height: auto;
+      }
+
+      .diagram-shell .node rect,
+      .diagram-shell .node path {
+        transition:
+          opacity 160ms ease,
+          stroke-width 160ms ease,
+          filter 160ms ease;
+      }
+
+      .diagram-shell .node:hover rect,
+      .diagram-shell .node:hover path {
+        stroke-width: 3;
+        filter: drop-shadow(0 7px 10px rgb(0 0 0 / 0.2));
+      }
+
+      .svg-label {
+        fill: var(--color-base-content);
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .svg-small {
+        fill: color-mix(in oklab, var(--color-base-content) 72%, transparent);
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        font-size: 12px;
+      }
+
+      .svg-section {
+        fill: var(--color-base-content);
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+
+      .plan-node rect {
+        fill: color-mix(in oklab, var(--color-info) 16%, var(--color-base-100));
+        stroke: var(--color-info);
+      }
+
+      .snapshot-node rect {
+        fill: color-mix(
+          in oklab,
+          var(--color-success) 14%,
+          var(--color-base-100)
+        );
+        stroke: var(--color-success);
+      }
+
+      .context-node rect {
+        fill: color-mix(
+          in oklab,
+          var(--color-warning) 14%,
+          var(--color-base-100)
+        );
+        stroke: var(--color-warning);
+      }
+
+      .reference-node rect {
+        fill: color-mix(
+          in oklab,
+          var(--color-secondary) 13%,
+          var(--color-base-100)
+        );
+        stroke: var(--color-secondary);
+      }
+
+      .node rect {
+        stroke-width: 2;
+      }
+
+      .edge {
+        fill: none;
+        stroke: color-mix(in oklab, var(--color-base-content) 55%, transparent);
+        stroke-width: 2;
+        marker-end: url(#arrow);
+      }
+
+      .edge-copy {
+        fill: none;
+        stroke: var(--color-primary);
+        stroke-dasharray: 8 6;
+        stroke-width: 3;
+        marker-end: url(#arrow-primary);
+      }
+
+      .edge-check {
+        fill: none;
+        stroke: var(--color-warning);
+        stroke-dasharray: 5 5;
+        stroke-width: 2.5;
+        marker-end: url(#arrow-warning);
+      }
+
+      .edge-label {
+        fill: color-mix(in oklab, var(--color-base-content) 72%, transparent);
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        font-size: 11px;
+        font-weight: 650;
+      }
+
+      .metric {
+        font-variant-numeric: tabular-nums;
+      }
+
+      @media (max-width: 640px) {
+        .diagram-shell svg {
+          min-width: 46rem;
+        }
+      }
+    </style>
+  </head>
+  <body class="text-base-content">
+    <main class="mx-auto max-w-7xl p-4 sm:p-7 lg:p-10">
+      <header
+        class="mb-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end"
+      >
+        <div>
+          <div class="mb-3 flex flex-wrap gap-2">
+            <span class="badge badge-primary badge-soft">Proposed schema</span>
+            <span class="badge badge-outline">SQLite + Drizzle</span>
+            <span class="badge badge-outline">BR-001 to BR-012</span>
+          </div>
+          <h1 class="max-w-4xl text-4xl font-black tracking-tight sm:text-6xl">
+            One live plan. One immutable training history.
+          </h1>
+          <p class="mt-4 max-w-3xl text-base-content/70 sm:text-lg">
+            Crowbar keeps routine maintenance centralized, then copies complete
+            prescriptions when a workout starts. Performed sets retain context
+            through protected relationships rather than duplicated columns.
+          </p>
+        </div>
+        <div
+          class="stats stats-vertical border border-base-content/10 bg-base-100 shadow-sm sm:stats-horizontal lg:stats-vertical"
+        >
+          <div class="stat py-4">
+            <div class="stat-title">Core tables</div>
+            <div class="stat-value metric text-3xl">13</div>
+          </div>
+          <div class="stat py-4">
+            <div class="stat-title">Generic JSON/EAV</div>
+            <div class="stat-value metric text-3xl text-success">0</div>
+          </div>
+        </div>
+      </header>
+
+      <section class="card card-border mb-8 bg-base-100 shadow-sm">
+        <div class="card-body gap-5">
+          <div class="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p
+                class="text-sm font-bold uppercase tracking-[0.18em] text-primary"
+              >
+                Diagram 1
+              </p>
+              <h2 class="card-title mt-1 text-2xl sm:text-3xl">
+                What happens when a workout starts?
+              </h2>
+            </div>
+            <div class="flex flex-wrap gap-2 text-xs">
+              <span class="badge badge-info badge-soft">Mutable plan</span>
+              <span class="badge badge-success badge-soft"
+                >Immutable snapshot</span
+              >
+              <span class="badge badge-warning badge-soft"
+                >Training context</span
+              >
+            </div>
+          </div>
+
+          <figure>
+            <div class="diagram-shell">
+              <svg
+                viewBox="0 0 1180 510"
+                role="img"
+                aria-labelledby="snapshot-title snapshot-desc"
+              >
+                <title id="snapshot-title">
+                  Routine to workout snapshot flow
+                </title>
+                <desc id="snapshot-desc">
+                  A mutable routine and its prescriptions are copied atomically
+                  into immutable workout snapshot tables. Performed sets then
+                  reference the snapshot and a gym-scoped machine.
+                </desc>
+                <defs>
+                  <marker
+                    id="arrow"
+                    viewBox="0 0 10 10"
+                    refX="9"
+                    refY="5"
+                    markerWidth="7"
+                    markerHeight="7"
+                    orient="auto-start-reverse"
+                  >
+                    <path
+                      d="M 0 0 L 10 5 L 0 10 z"
+                      fill="currentColor"
+                      opacity="0.7"
+                    />
+                  </marker>
+                  <marker
+                    id="arrow-primary"
+                    viewBox="0 0 10 10"
+                    refX="9"
+                    refY="5"
+                    markerWidth="7"
+                    markerHeight="7"
+                    orient="auto-start-reverse"
+                  >
+                    <path
+                      d="M 0 0 L 10 5 L 0 10 z"
+                      fill="var(--color-primary)"
+                    />
+                  </marker>
+                </defs>
+
+                <rect
+                  x="25"
+                  y="26"
+                  width="400"
+                  height="448"
+                  rx="22"
+                  fill="var(--color-base-200)"
+                  opacity="0.58"
+                />
+                <rect
+                  x="755"
+                  y="26"
+                  width="400"
+                  height="448"
+                  rx="22"
+                  fill="var(--color-base-200)"
+                  opacity="0.58"
+                />
+                <text x="52" y="65" class="svg-section">Planning graph</text>
+                <text x="782" y="65" class="svg-section">Workout history</text>
+                <text x="52" y="87" class="svg-small">
+                  Editable until the workout starts
+                </text>
+                <text x="782" y="87" class="svg-small">
+                  Independent from future routine edits
+                </text>
+
+                <g id="node-routine" class="node plan-node">
+                  <title>routines: trainee-owned reusable training plans</title>
+                  <rect x="93" y="120" width="264" height="72" rx="14" />
+                  <text x="225" y="151" text-anchor="middle" class="svg-label">
+                    routines
+                  </text>
+                  <text x="225" y="174" text-anchor="middle" class="svg-small">
+                    name + trainee_id
+                  </text>
+                </g>
+
+                <g id="node-movement-prescriptions" class="node plan-node">
+                  <title>
+                    movement_prescriptions: ordered movement instructions inside
+                    a routine
+                  </title>
+                  <rect x="93" y="239" width="264" height="78" rx="14" />
+                  <text x="225" y="270" text-anchor="middle" class="svg-label">
+                    movement_prescriptions
+                  </text>
+                  <text x="225" y="294" text-anchor="middle" class="svg-small">
+                    movement + position + instructions
+                  </text>
+                </g>
+
+                <g id="node-prescribed-sets" class="node plan-node">
+                  <title>
+                    prescribed_sets: one row for each planned set and its
+                    targets
+                  </title>
+                  <rect x="93" y="364" width="264" height="78" rx="14" />
+                  <text x="225" y="395" text-anchor="middle" class="svg-label">
+                    prescribed_sets
+                  </text>
+                  <text x="225" y="419" text-anchor="middle" class="svg-small">
+                    reps + qualified effort targets
+                  </text>
+                </g>
+
+                <path
+                  id="edge-routine-prescription"
+                  class="edge"
+                  d="M225 192 L225 239"
+                />
+                <text x="238" y="220" class="edge-label">contains</text>
+                <path
+                  id="edge-prescription-targets"
+                  class="edge"
+                  d="M225 317 L225 364"
+                />
+                <text x="238" y="345" class="edge-label">plans</text>
+
+                <g id="snapshot-transaction">
+                  <title>
+                    Exclusive transaction: creates the workout and copies all
+                    ordered prescriptions and targets atomically
+                  </title>
+                  <path
+                    d="M465 135 C555 70 625 70 715 135 L715 365 C625 430 555 430 465 365 Z"
+                    fill="color-mix(in oklab, var(--color-primary) 13%, var(--color-base-100))"
+                    stroke="var(--color-primary)"
+                    stroke-width="2"
+                  />
+                  <text
+                    x="590"
+                    y="209"
+                    text-anchor="middle"
+                    class="svg-section"
+                  >
+                    Start workout
+                  </text>
+                  <text x="590" y="238" text-anchor="middle" class="svg-small">
+                    one exclusive transaction
+                  </text>
+                  <text x="590" y="272" text-anchor="middle" class="svg-label">
+                    COPY
+                  </text>
+                  <text x="590" y="298" text-anchor="middle" class="svg-small">
+                    order + instructions + targets
+                  </text>
+                  <text x="590" y="321" text-anchor="middle" class="svg-small">
+                    effort metric + display names
+                  </text>
+                </g>
+
+                <path
+                  id="edge-plan-to-snapshot"
+                  class="edge-copy"
+                  d="M357 278 C410 278 423 250 465 250"
+                />
+                <path
+                  id="edge-transaction-to-history"
+                  class="edge-copy"
+                  d="M715 250 C742 250 745 250 773 250"
+                />
+
+                <g id="node-workouts" class="node snapshot-node">
+                  <title>
+                    workouts: immutable routine, gym, and effort metric context
+                    captured at start
+                  </title>
+                  <rect x="820" y="112" width="264" height="78" rx="14" />
+                  <text x="952" y="143" text-anchor="middle" class="svg-label">
+                    workouts
+                  </text>
+                  <text x="952" y="167" text-anchor="middle" class="svg-small">
+                    routine + gym + effort metric
+                  </text>
+                </g>
+
+                <g id="node-workout-prescriptions" class="node snapshot-node">
+                  <title>
+                    workout_movement_prescriptions: ordered immutable copies
+                    retaining movement references
+                  </title>
+                  <rect x="788" y="230" width="328" height="78" rx="14" />
+                  <text x="952" y="261" text-anchor="middle" class="svg-label">
+                    workout_movement_prescriptions
+                  </text>
+                  <text x="952" y="285" text-anchor="middle" class="svg-small">
+                    movement ref + copied display and instructions
+                  </text>
+                </g>
+
+                <g id="node-workout-prescribed-sets" class="node snapshot-node">
+                  <title>
+                    workout_prescribed_sets: immutable per-set target snapshots
+                  </title>
+                  <rect x="804" y="354" width="296" height="78" rx="14" />
+                  <text x="952" y="385" text-anchor="middle" class="svg-label">
+                    workout_prescribed_sets
+                  </text>
+                  <text x="952" y="409" text-anchor="middle" class="svg-small">
+                    copied reps and effort targets
+                  </text>
+                </g>
+
+                <path
+                  id="edge-workout-snapshot-prescription"
+                  class="edge"
+                  d="M952 190 L952 230"
+                />
+                <path
+                  id="edge-snapshot-targets"
+                  class="edge"
+                  d="M952 308 L952 354"
+                />
+              </svg>
+            </div>
+            <figcaption class="mt-3 text-sm text-base-content/60">
+              The live plan remains centralized. Snapshot rows are historical
+              facts, not redundant copies of current data.
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="card card-border mb-8 bg-base-100 shadow-sm">
+        <div class="card-body gap-5">
+          <div>
+            <p
+              class="text-sm font-bold uppercase tracking-[0.18em] text-primary"
+            >
+              Diagram 2
+            </p>
+            <h2 class="card-title mt-1 text-2xl sm:text-3xl">
+              How does one performed set retain all its meaning?
+            </h2>
+            <p class="mt-2 max-w-3xl text-base-content/65">
+              The set stores only its own measurements and foreign keys.
+              Protected relationships supply movement, workout, gym, metric,
+              machine, and load representation without update anomalies.
+            </p>
+          </div>
+
+          <figure>
+            <div class="diagram-shell">
+              <svg
+                viewBox="0 0 1180 650"
+                role="img"
+                aria-labelledby="context-title context-desc"
+              >
+                <title id="context-title">
+                  Performed set context relationship diagram
+                </title>
+                <desc id="context-desc">
+                  A performed set references a workout movement snapshot and a
+                  machine. Those paths lead to movement, workout, gym, effort
+                  metric, and load representation. A database trigger checks
+                  both gym paths agree.
+                </desc>
+                <defs>
+                  <marker
+                    id="arrow-context"
+                    viewBox="0 0 10 10"
+                    refX="9"
+                    refY="5"
+                    markerWidth="7"
+                    markerHeight="7"
+                    orient="auto-start-reverse"
+                  >
+                    <path
+                      d="M 0 0 L 10 5 L 0 10 z"
+                      fill="currentColor"
+                      opacity="0.7"
+                    />
+                  </marker>
+                  <marker
+                    id="arrow-warning"
+                    viewBox="0 0 10 10"
+                    refX="9"
+                    refY="5"
+                    markerWidth="7"
+                    markerHeight="7"
+                    orient="auto-start-reverse"
+                  >
+                    <path
+                      d="M 0 0 L 10 5 L 0 10 z"
+                      fill="var(--color-warning)"
+                    />
+                  </marker>
+                </defs>
+
+                <text x="42" y="52" class="svg-section">Snapshot path</text>
+                <text x="866" y="52" class="svg-section">Machine path</text>
+
+                <g id="context-workout" class="node snapshot-node">
+                  <title>
+                    workouts: supplies the gym and snapshotted effort metric
+                  </title>
+                  <rect x="75" y="92" width="250" height="82" rx="14" />
+                  <text x="200" y="125" text-anchor="middle" class="svg-label">
+                    workouts
+                  </text>
+                  <text x="200" y="150" text-anchor="middle" class="svg-small">
+                    gym_id + effort_metric_code
+                  </text>
+                </g>
+
+                <g id="context-effort-metric" class="node reference-node">
+                  <title>effort_metrics: RPE or RIR vocabulary</title>
+                  <rect x="75" y="230" width="250" height="74" rx="14" />
+                  <text x="200" y="260" text-anchor="middle" class="svg-label">
+                    effort_metrics
+                  </text>
+                  <text x="200" y="283" text-anchor="middle" class="svg-small">
+                    rpe | rir
+                  </text>
+                </g>
+
+                <g id="context-workout-prescription" class="node snapshot-node">
+                  <title>
+                    workout_movement_prescriptions: identifies the workout and
+                    abstract movement
+                  </title>
+                  <rect x="385" y="92" width="330" height="82" rx="14" />
+                  <text x="550" y="125" text-anchor="middle" class="svg-label">
+                    workout_movement_prescriptions
+                  </text>
+                  <text x="550" y="150" text-anchor="middle" class="svg-small">
+                    workout_id + movement_id
+                  </text>
+                </g>
+
+                <g id="context-movement" class="node reference-node">
+                  <title>
+                    movements: abstract exercise concept independent of
+                    equipment
+                  </title>
+                  <rect x="425" y="230" width="250" height="74" rx="14" />
+                  <text x="550" y="260" text-anchor="middle" class="svg-label">
+                    movements
+                  </text>
+                  <text x="550" y="283" text-anchor="middle" class="svg-small">
+                    abstract training concept
+                  </text>
+                </g>
+
+                <g id="context-performed-set" class="node context-node">
+                  <title>
+                    performed_sets: atomic record containing repetitions,
+                    recorded load, optional effort, time, snapshot reference,
+                    and machine reference
+                  </title>
+                  <rect x="395" y="382" width="310" height="116" rx="18" />
+                  <text x="550" y="420" text-anchor="middle" class="svg-label">
+                    performed_sets
+                  </text>
+                  <text x="550" y="448" text-anchor="middle" class="svg-small">
+                    repetitions + load_value
+                  </text>
+                  <text x="550" y="470" text-anchor="middle" class="svg-small">
+                    optional effort_value + performed_at
+                  </text>
+                </g>
+
+                <g id="context-machine" class="node context-node">
+                  <title>
+                    machines: trainee-managed, gym-scoped comparable equipment
+                    history
+                  </title>
+                  <rect x="845" y="382" width="260" height="90" rx="14" />
+                  <text x="975" y="417" text-anchor="middle" class="svg-label">
+                    machines
+                  </text>
+                  <text x="975" y="442" text-anchor="middle" class="svg-small">
+                    gym_id + representation
+                  </text>
+                </g>
+
+                <g id="context-gym" class="node reference-node">
+                  <title>gyms: training locations owned by the trainee</title>
+                  <rect x="845" y="92" width="260" height="74" rx="14" />
+                  <text x="975" y="122" text-anchor="middle" class="svg-label">
+                    gyms
+                  </text>
+                  <text x="975" y="145" text-anchor="middle" class="svg-small">
+                    trainee-owned location
+                  </text>
+                </g>
+
+                <g id="context-load-representation" class="node reference-node">
+                  <title>
+                    load_representations: kilograms, pounds, or plate count
+                  </title>
+                  <rect x="845" y="538" width="260" height="78" rx="14" />
+                  <text x="975" y="569" text-anchor="middle" class="svg-label">
+                    load_representations
+                  </text>
+                  <text x="975" y="593" text-anchor="middle" class="svg-small">
+                    kg | lb | plate_count
+                  </text>
+                </g>
+
+                <path
+                  id="context-edge-set-snapshot"
+                  class="edge"
+                  style="marker-end: url(#arrow-context)"
+                  d="M505 382 C505 325 525 235 540 174"
+                />
+                <text x="424" y="335" class="edge-label">belongs to</text>
+
+                <path
+                  id="context-edge-snapshot-workout"
+                  class="edge"
+                  style="marker-end: url(#arrow-context)"
+                  d="M385 133 L325 133"
+                />
+                <text x="332" y="119" class="edge-label">workout</text>
+
+                <path
+                  id="context-edge-snapshot-movement"
+                  class="edge"
+                  style="marker-end: url(#arrow-context)"
+                  d="M550 174 L550 230"
+                />
+                <text x="563" y="207" class="edge-label">movement</text>
+
+                <path
+                  id="context-edge-workout-effort"
+                  class="edge"
+                  style="marker-end: url(#arrow-context)"
+                  d="M200 174 L200 230"
+                />
+                <text x="213" y="207" class="edge-label">metric</text>
+
+                <path
+                  id="context-edge-workout-gym"
+                  class="edge"
+                  style="marker-end: url(#arrow-context)"
+                  d="M200 92 C320 15 780 15 930 92"
+                />
+                <text x="551" y="28" text-anchor="middle" class="edge-label">
+                  workout gym
+                </text>
+
+                <path
+                  id="context-edge-set-machine"
+                  class="edge"
+                  style="marker-end: url(#arrow-context)"
+                  d="M705 440 L845 430"
+                />
+                <text x="760" y="421" class="edge-label">performed on</text>
+
+                <path
+                  id="context-edge-machine-gym"
+                  class="edge"
+                  style="marker-end: url(#arrow-context)"
+                  d="M975 382 L975 166"
+                />
+                <text x="989" y="278" class="edge-label">scoped to</text>
+
+                <path
+                  id="context-edge-machine-load"
+                  class="edge"
+                  style="marker-end: url(#arrow-context)"
+                  d="M975 472 L975 538"
+                />
+                <text x="989" y="510" class="edge-label">records as</text>
+
+                <g id="context-gym-integrity-check">
+                  <title>
+                    Trigger: the machine gym must equal the workout gym
+                  </title>
+                  <path
+                    d="M765 205 L820 255 L765 305 L710 255 Z"
+                    fill="color-mix(in oklab, var(--color-warning) 18%, var(--color-base-100))"
+                    stroke="var(--color-warning)"
+                    stroke-width="2.5"
+                  />
+                  <text
+                    x="765"
+                    y="250"
+                    text-anchor="middle"
+                    class="svg-small"
+                    style="font-weight: 800"
+                  >
+                    same
+                  </text>
+                  <text
+                    x="765"
+                    y="268"
+                    text-anchor="middle"
+                    class="svg-small"
+                    style="font-weight: 800"
+                  >
+                    gym?
+                  </text>
+                </g>
+
+                <path
+                  id="context-edge-check-workout"
+                  class="edge-check"
+                  d="M710 238 C560 205 370 183 300 166"
+                />
+                <path
+                  id="context-edge-check-machine"
+                  class="edge-check"
+                  d="M790 291 C845 325 890 350 930 383"
+                />
+              </svg>
+            </div>
+            <figcaption class="mt-3 text-sm text-base-content/60">
+              Because machines never change gym or load representation,
+              historical set meaning remains stable. A trigger rejects a set
+              when its machine belongs to a different gym than its workout.
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="mb-8 grid gap-4 md:grid-cols-3">
+        <article class="card card-border bg-base-100 shadow-sm">
+          <div class="card-body">
+            <span class="badge badge-info badge-soft w-fit">Planning</span>
+            <h3 class="card-title">Safe to edit</h3>
+            <p class="text-sm text-base-content/65">
+              `routines`, `movement_prescriptions`, and `prescribed_sets`
+              describe the current plan. They never contain gym or machine data.
+            </p>
+          </div>
+        </article>
+        <article class="card card-border bg-base-100 shadow-sm">
+          <div class="card-body">
+            <span class="badge badge-success badge-soft w-fit">History</span>
+            <h3 class="card-title">Protected from edits</h3>
+            <p class="text-sm text-base-content/65">
+              Workout snapshot rows keep ordering, targets, instructions, names,
+              movement references, and the selected effort metric.
+            </p>
+          </div>
+        </article>
+        <article class="card card-border bg-base-100 shadow-sm">
+          <div class="card-body">
+            <span class="badge badge-warning badge-soft w-fit"
+              >Atomic record</span
+            >
+            <h3 class="card-title">Minimal set row</h3>
+            <p class="text-sm text-base-content/65">
+              A performed set owns repetitions, load, optional effort, ordering,
+              timestamp, and references. Context is retained through immutable
+              paths.
+            </p>
+          </div>
+        </article>
+      </section>
+
+      <section class="grid gap-6 lg:grid-cols-2">
+        <article class="card card-border bg-base-100 shadow-sm">
+          <div class="card-body">
+            <h2 class="card-title text-2xl">Database-enforced invariants</h2>
+            <ol class="mt-2 grid gap-3 text-sm">
+              <li class="flex gap-3">
+                <span class="badge badge-primary">1</span
+                ><span
+                  >Routine, gym, movement, and workout ownership must resolve to
+                  the same trainee.</span
+                >
+              </li>
+              <li class="flex gap-3">
+                <span class="badge badge-primary">2</span
+                ><span
+                  >A performed set's machine gym must equal its workout
+                  gym.</span
+                >
+              </li>
+              <li class="flex gap-3">
+                <span class="badge badge-primary">3</span
+                ><span
+                  >Machine gym and load representation are immutable. Changes
+                  create a new machine.</span
+                >
+              </li>
+              <li class="flex gap-3">
+                <span class="badge badge-primary">4</span
+                ><span
+                  >Workout source, gym, metric, and start time are immutable
+                  after creation.</span
+                >
+              </li>
+              <li class="flex gap-3">
+                <span class="badge badge-primary">5</span
+                ><span
+                  >Plate-count load values are whole numbers and are never
+                  inferred as weight.</span
+                >
+              </li>
+            </ol>
+          </div>
+        </article>
+
+        <article class="card card-border bg-base-100 shadow-sm">
+          <div class="card-body">
+            <h2 class="card-title text-2xl">Extension seams</h2>
+            <dl class="mt-2 grid gap-4 text-sm">
+              <div>
+                <dt class="font-bold">New prescription targets</dt>
+                <dd class="text-base-content/65">
+                  Add typed child tables and matching snapshot tables, not JSON
+                  or EAV rows.
+                </dd>
+              </div>
+              <div>
+                <dt class="font-bold">Machine calibration</dt>
+                <dd class="text-base-content/65">
+                  Add a separate calibration policy. Never rewrite plate-count
+                  history.
+                </dd>
+              </div>
+              <div>
+                <dt class="font-bold">Load comparison</dt>
+                <dd class="text-base-content/65">
+                  Add explicit policy tables. Reporting remains partitioned by
+                  representation by default.
+                </dd>
+              </div>
+              <div>
+                <dt class="font-bold">Backup and sync</dt>
+                <dd class="text-base-content/65">
+                  Application-generated UUIDs or ULIDs keep identities portable.
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </article>
+      </section>
+
+      <aside
+        role="alert"
+        class="alert alert-warning alert-soft mt-8 items-start"
+      >
+        <div>
+          <h2 class="font-bold">One product rule still needs resolution</h2>
+          <p class="mt-1 text-sm">
+            The ADRs do not define what happens to routine effort targets when
+            the trainee switches between RPE and RIR. The safe default is to
+            keep targets metric-qualified and require explicit re-authoring
+            instead of silently converting or reinterpreting them.
+          </p>
+        </div>
+      </aside>
+
+      <footer
+        class="mt-8 border-t border-base-content/10 pt-5 text-sm text-base-content/50"
+      >
+        Based on `CONTEXT.md`, accepted ADRs BR-001 through BR-012, and the
+        proposed Expo SQLite + Drizzle structure.
+      </footer>
+    </main>
+  </body>
+</html>
