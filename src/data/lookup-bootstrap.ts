@@ -1,9 +1,13 @@
 import type { ExpoSQLiteDatabase } from "drizzle-orm/expo-sqlite";
 
-import { effortMetrics, loadRepresentations } from "./schema";
-import * as schema from "./schema";
+import { effortMetrics } from "./schema/effort-metrics";
+import { loadRepresentations } from "./schema/load-representations";
 
-type AppDatabase = ExpoSQLiteDatabase<typeof schema>;
+type LookupSchema = {
+  effortMetrics: typeof effortMetrics;
+  loadRepresentations: typeof loadRepresentations;
+};
+type AppDatabase = ExpoSQLiteDatabase<LookupSchema>;
 
 const effortMetricSeeds = [{ code: "rpe" }, { code: "rir" }];
 
