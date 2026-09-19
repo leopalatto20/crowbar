@@ -4,6 +4,7 @@
 
 - Keep Expo Router route files thin. Routes compose feature components and navigation; they do not contain business rules or persistence logic.
 - Prefer pure functions for domain decisions and calculations.
+- Avoid barrel exports.
 
 ## TypeScript
 
