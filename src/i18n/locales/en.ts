@@ -1,4 +1,10 @@
 export type TranslationResource = {
+  app: {
+    title: string;
+    subtitle: string;
+    metric: string;
+    settingsLink: string;
+  };
   trainingPreferences: {
     firstRun: {
       title: string;
@@ -39,6 +45,12 @@ export type TranslationResource = {
 };
 
 export const en: TranslationResource = {
+  app: {
+    title: "Crowbar",
+    subtitle: "Your training workspace",
+    metric: "Effort metric: {{metric}}",
+    settingsLink: "Training preference settings",
+  },
   trainingPreferences: {
     firstRun: {
       title: "Choose your effort metric",

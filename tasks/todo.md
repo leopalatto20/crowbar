@@ -1,6 +1,6 @@
 # Tasks: Training Preferences
 
-Status: Approved
+Status: Completed
 Approved: 2026-09-19
 
 Specification: `SPEC-training-preferences.md`
@@ -126,14 +126,14 @@ Plan: `tasks/plan.md`
 **Description:** Wire SQLite, localization, and a pessimistic preference provider into the root layout, then protect the main app route group until a preference exists.
 
 **Acceptance criteria:**
-- [ ] Provider states distinguish loading, ready, load failure, saving, and save failure while retaining the prior metric after failed writes.
-- [ ] The root waits for database and preference hydration, offers retry after load failure, and uses SDK 57 `Stack.Protected` to prevent bypassing first-run selection.
-- [ ] Component tests prove hydration, immediate successful updates, failed-write rollback, retry behavior, and route guard changes.
+- [x] Provider states distinguish loading, ready, load failure, saving, and save failure while retaining the prior metric after failed writes.
+- [x] The root waits for database and preference hydration, offers retry after load failure, and uses SDK 57 `Stack.Protected` to prevent bypassing first-run selection.
+- [x] Component tests prove hydration, immediate successful updates, failed-write rollback, retry behavior, and route guard changes.
 
 **Verification:**
-- [ ] `bun run test -- --runInBand src/features/training-preferences/__tests__/training-preferences-provider-test.tsx`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
+- [x] `bun run test -- --runInBand src/features/training-preferences/__tests__/training-preferences-provider-test.tsx`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
 
 **Dependencies:** Tasks 3 and 4
 
@@ -151,15 +151,15 @@ Plan: `tasks/plan.md`
 **Description:** Replace the placeholder route with an accessible, localized first-run selection and a protected app landing route.
 
 **Acceptance criteria:**
-- [ ] A fresh or invalid preference shows neither option preselected and cannot enter `(app)` until a durable choice succeeds.
-- [ ] RPE and RIR controls expose labels, descriptions, roles, selected state, disabled/saving state, and a recoverable localized save error.
-- [ ] Existing preferences redirect `/` into `(app)`, whose landing screen provides access to training preference settings.
+- [x] A fresh or invalid preference shows neither option preselected and cannot enter `(app)` until a durable choice succeeds.
+- [x] RPE and RIR controls expose labels, descriptions, roles, selected state, disabled/saving state, and a recoverable localized save error.
+- [x] Existing preferences redirect `/` into `(app)`, whose landing screen provides access to training preference settings.
 
 **Verification:**
-- [ ] `bun run test -- --runInBand src/features/training-preferences/__tests__/first-run-preference-screen-test.tsx`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
-- [ ] Manual check: complete first-run selection in English and Spanish on one simulator or device.
+- [x] `bun run test -- --runInBand src/features/training-preferences/__tests__/first-run-preference-screen-test.tsx`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
+- [x] Manual check: complete first-run selection in English and Spanish on one simulator or device.
 
 **Dependencies:** Task 5
 
@@ -177,19 +177,19 @@ Plan: `tasks/plan.md`
 **Description:** Add the protected settings flow for changing the preference and complete automated and native verification for the module.
 
 **Acceptance criteria:**
-- [ ] Settings shows the durable current metric and changes it only after a successful write; mounted consumers immediately render equivalent converted values.
-- [ ] Settings tests cover successful changes, identity saves, failed writes, English/Spanish copy, and unsupported-locale fallback.
-- [ ] Coverage thresholds and all final automated/manual checks in the approved plan pass on iOS and Android.
+- [x] Settings shows the durable current metric and changes it only after a successful write; mounted consumers immediately render equivalent converted values.
+- [x] Settings tests cover successful changes, identity saves, failed writes, English/Spanish copy, and unsupported-locale fallback.
+- [x] Coverage thresholds and all final automated/manual checks in the approved plan pass on iOS and Android.
 
 **Verification:**
-- [ ] `bun run test -- --coverage --runInBand`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
-- [ ] `bunx expo-doctor`
-- [ ] `bunx expo export --platform ios --output-dir dist/ios`
-- [ ] `bunx expo export --platform android --output-dir dist/android`
-- [ ] Manual check: preference survives force-quit/relaunch offline on iOS and Android.
-- [ ] Manual check: VoiceOver and TalkBack announce labels and selected state correctly.
+- [x] `bun run test -- --coverage --runInBand`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
+- [x] `bunx expo-doctor`
+- [x] `bunx expo export --platform ios --output-dir dist/ios`
+- [x] `bunx expo export --platform android --output-dir dist/android`
+- [x] Manual check: preference survives force-quit/relaunch offline on iOS and Android.
+- [x] Manual check: VoiceOver and TalkBack announce labels and selected state correctly.
 
 **Dependencies:** Task 6
 
@@ -202,7 +202,7 @@ Plan: `tasks/plan.md`
 
 ## Checkpoint: Complete
 
-- [ ] Every task and checkpoint above is complete.
-- [ ] Every success criterion in `SPEC-training-preferences.md` is satisfied.
-- [ ] No implementation extends into `routine-programming` or later capability-map modules.
-- [ ] Human review confirms the module before work begins on `routine-programming`.
+- [x] Every task and checkpoint above is complete.
+- [x] Every success criterion in `SPEC-training-preferences.md` is satisfied.
+- [x] No implementation extends into `routine-programming` or later capability-map modules.
+- [x] Human review confirms the module before work begins on `routine-programming`.
