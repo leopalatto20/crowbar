@@ -51,7 +51,7 @@ export function TrainingPreferencesProvider({
   });
   const [loadAttempt, setLoadAttempt] = useState(0);
   const currentMetric = useRef<EffortMetric | null>(null);
-  const saveQueue = useRef(Promise.resolve());
+  const saveQueue = useRef<Promise<void> | null>(null);
 
   useEffect(() => {
     currentMetric.current = state.metric;
@@ -86,7 +86,8 @@ export function TrainingPreferencesProvider({
 
   const save = useCallback(
     async (metric: EffortMetric): Promise<void> => {
-      const saveOperation = saveQueue.current.then(async () => {
+      const previousSave = saveQueue.current ?? Promise.resolve();
+      const saveOperation = previousSave.then(async () => {
         const priorMetric = currentMetric.current;
         setState({ status: "saving", metric: priorMetric, pendingMetric: metric });
 

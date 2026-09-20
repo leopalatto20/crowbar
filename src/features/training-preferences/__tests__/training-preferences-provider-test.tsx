@@ -1,4 +1,5 @@
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
+import { useEffect } from "react";
 import { Pressable, Text } from "react-native";
 
 import type { TrainingPreferencesRepository } from "../data/training-preferences-repository";
@@ -39,7 +40,11 @@ function ConcurrentSaveConsumer({
   onSave: (save: (metric: "rpe" | "rir") => Promise<void>) => void;
 }): React.JSX.Element {
   const { save, state } = useTrainingPreferences();
-  onSave(save);
+
+  useEffect(() => {
+    onSave(save);
+  }, [onSave, save]);
+
   return <Text>{`${state.status}:${state.metric ?? "none"}`}</Text>;
 }
 
