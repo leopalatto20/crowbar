@@ -62,7 +62,10 @@ describe("FirstRunPreferenceScreen", () => {
       expect(view.getByTestId("effort-metric-rpe").props.accessibilityState.checked).toBe(true),
     );
     expect(view.getByTestId("effort-metric-rpe").props.accessibilityRole).toBe("radio");
-    fireEvent.press(view.getByTestId("first-run-save"));
+    await act(async () => {
+      fireEvent.press(view.getByTestId("first-run-save"));
+      await Promise.resolve();
+    });
 
     await waitFor(() => expect(save).toHaveBeenCalledWith("rpe"));
     await act(async () => {
@@ -89,7 +92,10 @@ describe("FirstRunPreferenceScreen", () => {
     await waitFor(() =>
       expect(view.getByTestId("effort-metric-rir").props.accessibilityState.checked).toBe(true),
     );
-    fireEvent.press(view.getByTestId("first-run-save"));
+    await act(async () => {
+      fireEvent.press(view.getByTestId("first-run-save"));
+      await Promise.resolve();
+    });
     await waitFor(() =>
       expect(view.getByTestId("effort-metric-rir").props.accessibilityState.disabled).toBe(true),
     );

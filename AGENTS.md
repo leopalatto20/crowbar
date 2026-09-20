@@ -23,6 +23,10 @@ npx expo install --fix      # fix incompatible package versions
 
 Run lint and typecheck before declaring any task done.
 
+### Test Environment
+
+- Wrap asynchronous updates triggered by promises, timers, or event handlers in `act`/`waitFor`. Never hide React test warnings by mocking or suppressing `console.error`.
+
 ## Navigation & Routing
 
 - Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
@@ -72,3 +76,6 @@ For every request:
 
 - Prefer gluestack generated and mantained components over hand-rolled ones.
 - Avoid barrel exports.
+
+# Maintaining this file
+Keep this file for knowledge useful to almost every future agent session in this project. Do not repeat what the codebase already shows; point to the authoritative file or command instead. Prefer rewriting or pruning existing entries over appending new ones. When updating this file, preserve this bar for all agents and keep entries concise.

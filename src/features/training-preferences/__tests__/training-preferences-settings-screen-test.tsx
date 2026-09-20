@@ -65,7 +65,10 @@ describe("TrainingPreferencesSettingsScreen", () => {
     );
     expect(view.getByTestId("effort-consumer")).toHaveTextContent("rpe:8");
 
-    fireEvent.press(view.getByTestId("settings-save"));
+    await act(async () => {
+      fireEvent.press(view.getByTestId("settings-save"));
+      await Promise.resolve();
+    });
     await waitFor(() => expect(repository.save).toHaveBeenCalledWith("rir"));
     expect(view.getByTestId("effort-consumer")).toHaveTextContent("rpe:8");
 
@@ -93,7 +96,10 @@ describe("TrainingPreferencesSettingsScreen", () => {
     await waitFor(() =>
       expect(view.getByTestId("current-metric")).toHaveTextContent("Current effort metric: RIR"),
     );
-    fireEvent.press(view.getByTestId("settings-save"));
+    await act(async () => {
+      fireEvent.press(view.getByTestId("settings-save"));
+      await Promise.resolve();
+    });
     await waitFor(() => expect(save).toHaveBeenCalledWith("rir"));
     await act(async () => {
       resolveSave();
@@ -120,7 +126,10 @@ describe("TrainingPreferencesSettingsScreen", () => {
     await waitFor(() =>
       expect(view.getByTestId("effort-metric-rir").props.accessibilityState.checked).toBe(true),
     );
-    fireEvent.press(view.getByTestId("settings-save"));
+    await act(async () => {
+      fireEvent.press(view.getByTestId("settings-save"));
+      await Promise.resolve();
+    });
     await waitFor(() => expect(view.getByTestId("settings-save").props.accessibilityState.busy).toBe(true));
 
     await act(async () => {

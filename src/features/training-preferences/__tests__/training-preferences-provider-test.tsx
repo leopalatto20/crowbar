@@ -79,7 +79,10 @@ describe("TrainingPreferencesProvider", () => {
     });
     await waitFor(() => expect(view.getByText("ready:rir")).toBeTruthy());
 
-    fireEvent.press(view.getByText("save-rpe"));
+    await act(async () => {
+      fireEvent.press(view.getByText("save-rpe"));
+      await Promise.resolve();
+    });
     await waitFor(() => expect(view.getByText("saving:rir")).toBeTruthy());
     await act(async () => {
       resolveSave();
@@ -101,7 +104,10 @@ describe("TrainingPreferencesProvider", () => {
     const view = await renderProvider(repository);
 
     await waitFor(() => expect(view.getByText("ready:rir")).toBeTruthy());
-    fireEvent.press(view.getByText("save-rpe"));
+    await act(async () => {
+      fireEvent.press(view.getByText("save-rpe"));
+      await Promise.resolve();
+    });
     await waitFor(() => expect(view.getByText("saving:rir")).toBeTruthy());
     await act(async () => {
       rejectSave(new Error("offline"));
