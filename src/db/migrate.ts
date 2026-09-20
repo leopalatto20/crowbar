@@ -59,8 +59,11 @@ export async function migrate(
     return;
   }
 
-  for (const migration of pendingMigrations) {
-    await migration.migrate(database);
-    await database.execAsync(`PRAGMA user_version = ${migration.version}`);
-  }
+  await pendingMigrations.reduce(
+    (previousMigration, migration) =>
+      previousMigration
+        .then(() => migration.migrate(database))
+        .then(() => database.execAsync(`PRAGMA user_version = ${migration.version}`)),
+    Promise.resolve(),
+  );
 }
