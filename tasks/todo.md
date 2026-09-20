@@ -12,15 +12,15 @@ Plan: `tasks/plan.md`
 **Description:** Replace incompatible or redundant persistence packages with Expo SQLite and establish Expo's documented Jest setup before feature implementation.
 
 **Acceptance criteria:**
-- [ ] `expo-sqlite`, Jest, `jest-expo`, Jest types, and React Native Testing Library are installed at Expo-compatible versions; `sqlite` and AsyncStorage are removed.
-- [ ] Package scripts run deterministic tests and coverage, and Jest uses the `jest-expo` preset with the Bun-compatible transform pattern.
-- [ ] A smoke test passes, TypeScript recognizes Jest globals, and coverage output is ignored by Git.
+- [x] `expo-sqlite`, Jest, `jest-expo`, Jest types, and React Native Testing Library are installed at Expo-compatible versions; `sqlite` and AsyncStorage are removed.
+- [x] Package scripts run deterministic tests and coverage, and Jest uses the `jest-expo` preset with the Bun-compatible transform pattern.
+- [x] A smoke test passes, TypeScript recognizes Jest globals, and coverage output is ignored by Git.
 
 **Verification:**
-- [ ] `bun run test -- --runInBand`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
-- [ ] `bunx expo-doctor`
+- [x] `bun run test -- --runInBand`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
+- [x] `bunx expo-doctor`
 
 **Dependencies:** None
 
@@ -38,14 +38,14 @@ Plan: `tasks/plan.md`
 **Description:** Add the shared database provider and ordered migration runner, including the singleton `training_preferences` table defined by the plan.
 
 **Acceptance criteria:**
-- [ ] Initialization enables WAL and foreign keys, reads `PRAGMA user_version`, and applies pending migrations in ascending order.
-- [ ] Version 1 creates the constrained singleton table and advances the version only after successful completion.
-- [ ] Migration tests cover a fresh database, an already-current database, and a failed migration that remains retryable.
+- [x] Initialization enables WAL and foreign keys, reads `PRAGMA user_version`, and applies pending migrations in ascending order.
+- [x] Version 1 creates the constrained singleton table and advances the version only after successful completion.
+- [x] Migration tests cover a fresh database, an already-current database, and a failed migration that remains retryable.
 
 **Verification:**
-- [ ] `bun run test -- --runInBand src/db`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
+- [x] `bun run test -- --runInBand src/db`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
 
 **Dependencies:** Task 1
 
@@ -58,11 +58,11 @@ Plan: `tasks/plan.md`
 
 ## Checkpoint: Persistence Foundation
 
-- [ ] Tasks 1-2 acceptance criteria pass.
-- [ ] `bun run test -- --runInBand`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
-- [ ] Review migration SQL and failure semantics before continuing.
+- [x] Tasks 1-2 acceptance criteria pass.
+- [x] `bun run test -- --runInBand`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
+- [x] Review migration SQL and failure semantics before continuing.
 
 ## Task 3: Implement Domain and Repository Contracts
 
