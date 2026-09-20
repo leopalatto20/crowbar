@@ -69,14 +69,14 @@ Plan: `tasks/plan.md`
 **Description:** Implement pure effort conversion/validation and the SQLite-backed preference repository behind a narrow consumer-facing contract.
 
 **Acceptance criteria:**
-- [ ] Domain functions enforce finite half-step RPE 5.0-10.0 and RIR 0.0-5.0 values and exact identity/cross-metric conversion.
-- [ ] The repository returns `null` for missing or invalid values, propagates database errors, and performs an atomic bound-parameter upsert.
-- [ ] Unit and repository contract tests cover all specified boundaries, idempotent saves, invalid rows, and read/write failures.
+- [x] Domain functions enforce finite half-step RPE 5.0-10.0 and RIR 0.0-5.0 values and exact identity/cross-metric conversion.
+- [x] The repository returns `null` for missing or invalid values, propagates database errors, and performs an atomic bound-parameter upsert.
+- [x] Unit and repository contract tests cover all specified boundaries, idempotent saves, invalid rows, and read/write failures.
 
 **Verification:**
-- [ ] `bun run test -- --runInBand src/features/training-preferences`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
+- [x] `bun run test -- --runInBand src/features/training-preferences`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
 
 **Dependencies:** Task 2
 
@@ -93,14 +93,14 @@ Plan: `tasks/plan.md`
 **Description:** Configure English and Spanish resources with device-locale selection and English fallback before adding user-facing preference screens.
 
 **Acceptance criteria:**
-- [ ] i18next initializes from `expo-localization` and falls back to English for unsupported locales and missing Spanish keys.
-- [ ] English and Spanish resources contain all first-run, settings, loading, validation, accessibility, and persistence-error strings required by this module.
-- [ ] App configuration declares English and Spanish as supported iOS and Android locales, and locale tests pass.
+- [x] i18next initializes from `expo-localization` and falls back to English for unsupported locales and missing Spanish keys.
+- [x] English and Spanish resources contain all first-run, settings, loading, validation, accessibility, and persistence-error strings required by this module.
+- [x] App configuration declares English and Spanish as supported iOS and Android locales, and locale tests pass.
 
 **Verification:**
-- [ ] `bun run test -- --runInBand src/i18n`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
+- [x] `bun run test -- --runInBand src/i18n`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
 
 **Dependencies:** Task 1
 
@@ -115,11 +115,11 @@ Plan: `tasks/plan.md`
 
 ## Checkpoint: Module Contract
 
-- [ ] Tasks 3-4 acceptance criteria pass.
-- [ ] `bun run test -- --runInBand`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
-- [ ] Confirm downstream imports expose domain/repository contracts without SQLite or resource internals.
+- [x] Tasks 3-4 acceptance criteria pass.
+- [x] `bun run test -- --runInBand`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
+- [x] Confirm downstream imports expose domain/repository contracts without SQLite or resource internals.
 
 ## Task 5: Hydrate State and Protect Routes
 
