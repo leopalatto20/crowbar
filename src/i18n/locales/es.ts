@@ -1,6 +1,12 @@
 import type { TranslationResource } from "./en";
 
 export const es: TranslationResource = {
+  app: {
+    title: "Crowbar",
+    subtitle: "Tu espacio de entrenamiento",
+    metric: "Métrica de esfuerzo: {{metric}}",
+    settingsLink: "Configuración de preferencia de entrenamiento",
+  },
   trainingPreferences: {
     firstRun: {
       title: "Elige tu métrica de esfuerzo",
