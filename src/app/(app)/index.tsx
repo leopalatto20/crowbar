@@ -1,6 +1,11 @@
 import { Link } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet } from "react-native";
+
+import { Button, ButtonText } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
+import { Text } from "@/components/ui/text";
+import { VStack } from "@/components/ui/vstack";
 
 import { useTrainingPreferences } from "../../features/training-preferences/training-preferences-provider";
 
@@ -9,20 +14,20 @@ export default function AppIndex(): React.JSX.Element {
   const { t } = useTranslation();
 
   return (
-    <View style={styles.container}>
-      <Text accessibilityRole="header" style={styles.title}>
+    <VStack style={styles.container}>
+      <Heading size="5xl" accessibilityRole="header" style={styles.title}>
         {t("app.title")}
-      </Text>
+      </Heading>
       <Text style={styles.subtitle}>{t("app.subtitle")}</Text>
       <Text style={styles.preference}>
         {t("app.metric", { metric: metric?.toUpperCase() })}
       </Text>
       <Link href="/(app)/settings/training-preferences" asChild>
-        <Pressable accessibilityRole="button" style={styles.settingsButton}>
-          <Text style={styles.settingsButtonText}>{t("app.settingsLink")}</Text>
-        </Pressable>
+        <Button style={styles.settingsButton}>
+          <ButtonText style={styles.settingsButtonText}>{t("app.settingsLink")}</ButtonText>
+        </Button>
       </Link>
-    </View>
+    </VStack>
   );
 }
 

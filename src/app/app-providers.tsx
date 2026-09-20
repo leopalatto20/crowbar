@@ -1,6 +1,9 @@
 import { I18nextProvider } from "react-i18next";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { StyleSheet } from "react-native";
 
+import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
+import { Spinner } from "@/components/ui/spinner";
+import { VStack } from "@/components/ui/vstack";
 import { DatabaseProvider } from "../db/database-provider";
 import { TrainingPreferencesProvider } from "../features/training-preferences/training-preferences-provider";
 import { PreferenceLoadStateScreen } from "../features/training-preferences/ui/preference-load-state-screen";
@@ -17,19 +20,21 @@ export default function AppProviders({
   }, []);
 
   return (
-    <I18nextProvider i18n={i18n}>
-      {ready ? (
-        <DatabaseProvider
-          fallback={(onRetry) => <PreferenceLoadStateScreen error onRetry={onRetry} />}
-        >
-          <TrainingPreferencesProvider>{children}</TrainingPreferencesProvider>
-        </DatabaseProvider>
-      ) : (
-        <View style={styles.container}>
-          <ActivityIndicator />
-        </View>
-      )}
-    </I18nextProvider>
+    <GluestackUIProvider>
+      <I18nextProvider i18n={i18n}>
+        {ready ? (
+          <DatabaseProvider
+            fallback={(onRetry) => <PreferenceLoadStateScreen error onRetry={onRetry} />}
+          >
+            <TrainingPreferencesProvider>{children}</TrainingPreferencesProvider>
+          </DatabaseProvider>
+        ) : (
+          <VStack style={styles.container}>
+            <Spinner />
+          </VStack>
+        )}
+      </I18nextProvider>
+    </GluestackUIProvider>
   );
 }
 

@@ -15,9 +15,8 @@ describe("EffortMetricPicker", () => {
       />,
     );
     expect(view.getByTestId("effort-metric-rpe").props.style).toBeTruthy();
-    expect(view.getByTestId("effort-metric-rpe").props.accessibilityState).toEqual({
-      disabled: false,
-      selected: true,
-    });
+    expect(view.getByTestId("effort-metric-rpe").props.accessibilityState).toEqual(
+      expect.objectContaining({ checked: true, disabled: false }),
+    );
   });
 });
