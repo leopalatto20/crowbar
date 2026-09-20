@@ -64,7 +64,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "test": "jest --runInBand",
-    "test:coverage": "jest --coverage --runInBand"
+    "test:coverage": "jest --coverage --runInBand",
+    "doctor": "npx react-doctor@latest"
   },
   "private": true,
   "overrides": {
