@@ -39,3 +39,36 @@ Docs: https://docs.expo.dev/eas/index.md
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+
+## Core Rules
+
+- If a task matches a skill, invoke it with the `skill` tool before acting.
+- Skills are located in `.opencode/skills/<skill-name>/SKILL.md`.
+- Follow the skill workflow strictly; do not partially apply it.
+- Never skip required steps such as spec, plan, or test when a skill demands them.
+
+## Intent → Skill Mapping
+
+Map the user's intent to the matching skill automatically:
+
+- Feature / new functionality → `spec-driven-development`, then `incremental-implementation` and `test-driven-development`
+- Planning / breakdown → `planning-and-task-breakdown`
+- Bug / failure / unexpected behavior → `debugging-and-error-recovery`
+- Code review → `code-review-and-quality`
+- Refactoring / simplification → `code-simplification`
+- API or interface design → `api-and-interface-design`
+- UI work → `frontend-ui-engineering`
+
+## Execution Model
+
+For every request:
+
+1. Determine if any skill applies (even a small chance).
+2. Load the skill with `skill({ name: "<skill-name>" })`.
+3. Follow the skill workflow exactly.
+4. Only proceed to implementation once required steps are complete.
+
+# Coding rules 
+
+- Prefer gluestack generated and mantained components over hand-rolled ones.
+- Avoid barrel exports.
