@@ -1,6 +1,11 @@
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet } from "react-native";
 import { useState } from "react";
+
+import { Button, ButtonSpinner, ButtonText } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
+import { Text } from "@/components/ui/text";
+import { VStack } from "@/components/ui/vstack";
 
 import {
   useTrainingPreferences,
@@ -31,12 +36,12 @@ export function FirstRunPreferenceScreen(): React.JSX.Element {
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Text accessibilityRole="header" style={styles.title}>
+      <VStack style={styles.header}>
+        <Heading size="3xl" accessibilityRole="header" style={styles.title}>
           {t("trainingPreferences.firstRun.title")}
-        </Text>
+        </Heading>
         <Text style={styles.description}>{t("trainingPreferences.firstRun.description")}</Text>
-      </View>
+      </VStack>
 
       <EffortMetricPicker
         selectedMetric={selectedMetric}
@@ -64,7 +69,7 @@ export function FirstRunPreferenceScreen(): React.JSX.Element {
         </Text>
       ) : null}
 
-      <Pressable
+      <Button
         testID="first-run-save"
         accessibilityRole="button"
         accessibilityLabel={
@@ -73,16 +78,18 @@ export function FirstRunPreferenceScreen(): React.JSX.Element {
             : t("trainingPreferences.firstRun.saveButtonLabel")
         }
         accessibilityState={{ disabled: !selectedMetric || saving, busy: saving }}
-        disabled={!selectedMetric || saving}
+        isDisabled={!selectedMetric || saving}
         onPress={submit}
         style={styles.saveButton}
       >
         {saving ? (
-          <ActivityIndicator color="#FFFFFF" />
+          <ButtonSpinner color="#FFFFFF" />
         ) : (
-          <Text style={styles.saveButtonText}>{t("trainingPreferences.firstRun.saveButtonLabel")}</Text>
+          <ButtonText style={styles.saveButtonText}>
+            {t("trainingPreferences.firstRun.saveButtonLabel")}
+          </ButtonText>
         )}
-      </Pressable>
+      </Button>
     </ScrollView>
   );
 }

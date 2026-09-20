@@ -1,5 +1,10 @@
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Button, StyleSheet, Text, View } from "react-native";
+import { StyleSheet } from "react-native";
+
+import { Button, ButtonText } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
+import { Spinner } from "@/components/ui/spinner";
+import { VStack } from "@/components/ui/vstack";
 
 type PreferenceLoadStateScreenProps = {
   error?: boolean;
@@ -13,15 +18,17 @@ export function PreferenceLoadStateScreen({
   const { t } = useTranslation();
 
   return (
-    <View style={styles.container}>
-      {error ? null : <ActivityIndicator accessibilityLabel={t("trainingPreferences.loading.label")} />}
-      <Text accessibilityRole="header">
+    <VStack style={styles.container}>
+      {error ? null : <Spinner aria-label={t("trainingPreferences.loading.label")} />}
+      <Heading size="lg" accessibilityRole="header">
         {error ? t("trainingPreferences.errors.loadFailed") : t("trainingPreferences.loading.label")}
-      </Text>
+      </Heading>
       {error && onRetry ? (
-        <Button title={t("trainingPreferences.errors.retry")} onPress={onRetry} />
+        <Button onPress={onRetry}>
+          <ButtonText>{t("trainingPreferences.errors.retry")}</ButtonText>
+        </Button>
       ) : null}
-    </View>
+    </VStack>
   );
 }
 

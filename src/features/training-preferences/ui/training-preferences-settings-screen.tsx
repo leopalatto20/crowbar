@@ -1,6 +1,11 @@
 import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet } from "react-native";
+
+import { Button, ButtonSpinner, ButtonText } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
+import { Text } from "@/components/ui/text";
+import { VStack } from "@/components/ui/vstack";
 
 import type { EffortMetric } from "../model/effort";
 import {
@@ -47,17 +52,17 @@ export function TrainingPreferencesSettingsScreen({
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Text accessibilityRole="header" style={styles.title}>
+      <VStack style={styles.header}>
+        <Heading size="3xl" accessibilityRole="header" style={styles.title}>
           {t("trainingPreferences.settings.title")}
-        </Text>
+        </Heading>
         <Text style={styles.description}>{t("trainingPreferences.settings.description")}</Text>
         <Text testID="current-metric" style={styles.currentMetric}>
           {metric
             ? t("trainingPreferences.settings.currentMetric", { metric: metricLabel(metric) })
             : t("trainingPreferences.loading.label")}
         </Text>
-      </View>
+      </VStack>
 
       <EffortMetricPicker
         selectedMetric={selectedMetric}
@@ -87,7 +92,7 @@ export function TrainingPreferencesSettingsScreen({
         </Text>
       ) : null}
 
-      <Pressable
+      <Button
         testID="settings-save"
         accessibilityRole="button"
         accessibilityLabel={
@@ -96,16 +101,18 @@ export function TrainingPreferencesSettingsScreen({
             : t("trainingPreferences.settings.saveButtonLabel")
         }
         accessibilityState={{ disabled: selectedMetric === null || saving, busy: saving }}
-        disabled={selectedMetric === null || saving}
+        isDisabled={selectedMetric === null || saving}
         onPress={submit}
         style={styles.saveButton}
       >
         {saving ? (
-          <ActivityIndicator color="#FFFFFF" />
+          <ButtonSpinner color="#FFFFFF" />
         ) : (
-          <Text style={styles.saveButtonText}>{t("trainingPreferences.settings.saveButtonLabel")}</Text>
+          <ButtonText style={styles.saveButtonText}>
+            {t("trainingPreferences.settings.saveButtonLabel")}
+          </ButtonText>
         )}
-      </Pressable>
+      </Button>
     </ScrollView>
   );
 }

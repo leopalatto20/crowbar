@@ -61,7 +61,7 @@ describe("TrainingPreferencesSettingsScreen", () => {
     await waitFor(() => expect(view.getByTestId("effort-consumer")).toHaveTextContent("rpe:8"));
     fireEvent.press(view.getByTestId("effort-metric-rir"));
     await waitFor(() =>
-      expect(view.getByTestId("effort-metric-rir").props.accessibilityState.selected).toBe(true),
+      expect(view.getByTestId("effort-metric-rir").props.accessibilityState.checked).toBe(true),
     );
     expect(view.getByTestId("effort-consumer")).toHaveTextContent("rpe:8");
 
@@ -118,7 +118,7 @@ describe("TrainingPreferencesSettingsScreen", () => {
     );
     fireEvent.press(view.getByTestId("effort-metric-rir"));
     await waitFor(() =>
-      expect(view.getByTestId("effort-metric-rir").props.accessibilityState.selected).toBe(true),
+      expect(view.getByTestId("effort-metric-rir").props.accessibilityState.checked).toBe(true),
     );
     fireEvent.press(view.getByTestId("settings-save"));
     await waitFor(() => expect(view.getByTestId("settings-save").props.accessibilityState.busy).toBe(true));

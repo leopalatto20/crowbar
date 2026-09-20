@@ -1,4 +1,13 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet } from "react-native";
+
+import {
+  Radio,
+  RadioGroup,
+  RadioIndicator,
+  RadioLabel,
+} from "@/components/ui/radio";
+import { Text } from "@/components/ui/text";
+import { VStack } from "@/components/ui/vstack";
 
 import type { EffortMetric } from "../model/effort";
 
@@ -22,31 +31,37 @@ export function EffortMetricPicker({
   notSelectedAnnouncement,
 }: EffortMetricPickerProps): React.JSX.Element {
   return (
-    <View accessibilityRole="radiogroup" style={styles.group}>
+    <RadioGroup
+      value={selectedMetric ?? ""}
+      onChange={(value) => onSelect(value as EffortMetric)}
+      accessibilityRole="radiogroup"
+      style={styles.group}
+    >
       {(["rpe", "rir"] as const).map((metric) => {
         const selected = selectedMetric === metric;
 
         return (
-          <Pressable
+          <Radio
             key={metric}
+            value={metric}
             testID={`effort-metric-${metric}`}
             accessibilityRole="radio"
-            accessibilityLabel={labels[metric]}
             accessibilityHint={descriptions[metric]}
-            accessibilityState={{ disabled, selected }}
-            disabled={disabled}
-            onPress={() => onSelect(metric)}
+            isDisabled={disabled}
             style={[styles.option, selected && styles.selectedOption]}
           >
-            <Text style={styles.label}>{labels[metric]}</Text>
-            <Text style={styles.description}>{descriptions[metric]}</Text>
-            <Text accessibilityLiveRegion="polite" style={styles.state}>
-              {selected ? selectedAnnouncement(metric) : notSelectedAnnouncement(metric)}
-            </Text>
-          </Pressable>
+            <RadioIndicator style={styles.indicator} />
+            <VStack style={styles.copy}>
+              <RadioLabel style={styles.label}>{labels[metric]}</RadioLabel>
+              <Text style={styles.description}>{descriptions[metric]}</Text>
+              <Text accessibilityLiveRegion="polite" style={styles.state}>
+                {selected ? selectedAnnouncement(metric) : notSelectedAnnouncement(metric)}
+              </Text>
+            </VStack>
+          </Radio>
         );
       })}
-    </View>
+    </RadioGroup>
   );
 }
 
@@ -59,6 +74,17 @@ const styles = StyleSheet.create({
   group: {
     gap: 12,
     width: "100%",
+  },
+  copy: {
+    flex: 1,
+    gap: 4,
+  },
+  indicator: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#BCCCDC",
+    borderWidth: 2,
+    height: 20,
+    width: 20,
   },
   label: {
     color: "#102A43",

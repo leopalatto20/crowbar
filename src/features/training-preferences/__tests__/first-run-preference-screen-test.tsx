@@ -32,14 +32,12 @@ describe("FirstRunPreferenceScreen", () => {
     const view = await renderScreen(repository);
 
     await waitFor(() => expect(view.getByTestId("first-run-save")).toBeTruthy());
-    expect(view.getByTestId("effort-metric-rpe").props.accessibilityState).toEqual({
-      disabled: false,
-      selected: false,
-    });
-    expect(view.getByTestId("effort-metric-rir").props.accessibilityState).toEqual({
-      disabled: false,
-      selected: false,
-    });
+    expect(view.getByTestId("effort-metric-rpe").props.accessibilityState).toEqual(
+      expect.objectContaining({ checked: false, disabled: false }),
+    );
+    expect(view.getByTestId("effort-metric-rir").props.accessibilityState).toEqual(
+      expect.objectContaining({ checked: false, disabled: false }),
+    );
     expect(view.getByTestId("first-run-save").props.accessibilityState).toEqual({
       busy: false,
       disabled: true,
@@ -61,7 +59,7 @@ describe("FirstRunPreferenceScreen", () => {
 
     fireEvent.press(view.getByTestId("effort-metric-rpe"));
     await waitFor(() =>
-      expect(view.getByTestId("effort-metric-rpe").props.accessibilityState.selected).toBe(true),
+      expect(view.getByTestId("effort-metric-rpe").props.accessibilityState.checked).toBe(true),
     );
     expect(view.getByTestId("effort-metric-rpe").props.accessibilityRole).toBe("radio");
     fireEvent.press(view.getByTestId("first-run-save"));
@@ -89,7 +87,7 @@ describe("FirstRunPreferenceScreen", () => {
 
     fireEvent.press(view.getByTestId("effort-metric-rir"));
     await waitFor(() =>
-      expect(view.getByTestId("effort-metric-rir").props.accessibilityState.selected).toBe(true),
+      expect(view.getByTestId("effort-metric-rir").props.accessibilityState.checked).toBe(true),
     );
     fireEvent.press(view.getByTestId("first-run-save"));
     await waitFor(() =>
@@ -103,7 +101,7 @@ describe("FirstRunPreferenceScreen", () => {
     });
 
     await waitFor(() => expect(view.getByText("trainingPreferences.errors.saveFailed")).toBeTruthy());
-    expect(view.getByTestId("effort-metric-rir").props.accessibilityState.selected).toBe(true);
+    expect(view.getByTestId("effort-metric-rir").props.accessibilityState.checked).toBe(true);
     expect(view.getByTestId("first-run-save").props.accessibilityState.disabled).toBe(false);
   });
 });
