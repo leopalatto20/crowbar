@@ -124,6 +124,80 @@ describe("ExerciseCatalogProvider", () => {
     expect(view.getByTestId("custom-name").props.children).toBe("missing");
   });
 
+  it("does not let a stale retry overwrite a completed mutation", async () => {
+    let resolveRetry: (nextSnapshot: ExerciseCatalogSnapshot) => void = () => undefined;
+    const retryRead = new Promise<ExerciseCatalogSnapshot>((resolve) => {
+      resolveRetry = resolve;
+    });
+    const createdExercise: PersistedCustomExercise = {
+      ...customExercise,
+      id: "cccccccccccccccccccccccccccccccc" as ExerciseId,
+      displayName: "Cable Pulldown",
+      nameKey: "cable pulldown",
+      muscleGroup: "lats",
+    };
+    const read = jest.fn().mockResolvedValueOnce(snapshot([customExercise])).mockReturnValueOnce(retryRead);
+    const { view } = await renderProvider(
+      createRepository({ read, createCustom: jest.fn().mockResolvedValue(createdExercise) }),
+    );
+
+    await act(async () => {
+      currentCatalog?.retryLoad();
+    });
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
+
+    await act(async () => {
+      await currentCatalog?.createCustom({ displayName: "Cable Pulldown", muscleGroup: "lats" });
+    });
+    expect(currentCatalog?.resolve(createdExercise.id)).toEqual(
+      expect.objectContaining({ id: createdExercise.id }),
+    );
+
+    await act(async () => {
+      resolveRetry(snapshot([customExercise]));
+    });
+
+    expect(view.getByTestId("status").props.children).toBe("ready");
+    expect(currentCatalog?.resolve(createdExercise.id)).toEqual(
+      expect.objectContaining({ id: createdExercise.id }),
+    );
+  });
+
+  it("keeps a pending mutation visible while a retry read completes", async () => {
+    let resolveRetry: (nextSnapshot: ExerciseCatalogSnapshot) => void = () => undefined;
+    let resolveWrite: (exercise: PersistedCustomExercise) => void = () => undefined;
+    const retryRead = new Promise<ExerciseCatalogSnapshot>((resolve) => {
+      resolveRetry = resolve;
+    });
+    const pendingWrite = new Promise<PersistedCustomExercise>((resolve) => {
+      resolveWrite = resolve;
+    });
+    const read = jest.fn().mockResolvedValueOnce(snapshot([customExercise])).mockReturnValueOnce(retryRead);
+    const { view } = await renderProvider(
+      createRepository({ read, setCustomAvailability: jest.fn().mockReturnValue(pendingWrite) }),
+    );
+
+    await act(async () => {
+      currentCatalog?.retryLoad();
+    });
+    await waitFor(() => expect(read).toHaveBeenCalledTimes(2));
+    await act(async () => {
+      currentCatalog?.setAvailability(customExerciseId, false);
+    });
+    await waitFor(() => expect(view.getByTestId("status").props.children).toBe("mutating"));
+
+    await act(async () => {
+      resolveRetry(snapshot([customExercise]));
+    });
+
+    expect(view.getByTestId("status").props.children).toBe("mutating");
+
+    await act(async () => {
+      resolveWrite({ ...customExercise, isAvailable: false });
+    });
+    await waitFor(() => expect(view.getByTestId("status").props.children).toBe("ready"));
+  });
+
   it("re-resolves built-in names when the active locale changes", async () => {
     const { i18n, view } = await renderProvider(createRepository());
     const englishName = view.getByTestId("builtin-name").props.children;
@@ -259,11 +333,20 @@ describe("ExerciseCatalogProvider", () => {
         }),
       ).resolves.toEqual({ ok: false, reason: "not-found" });
       await expect(
+        currentCatalog?.updateCustom("not-an-exercise-id" as ExerciseId, {
+          displayName: "New Row",
+          muscleGroup: "upper-back",
+        }),
+      ).resolves.toEqual({ ok: false, reason: "invalid-input" });
+      await expect(
         currentCatalog?.updateCustom(builtinExercises[0].id, {
           displayName: "Renamed",
           muscleGroup: "chest",
         }),
       ).resolves.toEqual({ ok: false, reason: "immutable-builtin" });
+      await expect(
+        currentCatalog?.setAvailability("not-an-exercise-id" as ExerciseId, false),
+      ).resolves.toEqual({ ok: false, reason: "invalid-input" });
     });
 
     expect(view.getByTestId("custom-name").props.children).toBe("Cable Row");

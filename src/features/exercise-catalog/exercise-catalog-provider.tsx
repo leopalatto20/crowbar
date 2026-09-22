@@ -20,6 +20,7 @@ import {
 import {
   type CatalogExercise,
   type CatalogMutationResult,
+  exerciseIdSchema,
   muscleGroupSchema,
   type ExerciseId,
   type MuscleGroup,
@@ -90,6 +91,7 @@ export function ExerciseCatalogProvider({
   const [loadAttempt, setLoadAttempt] = useState(0);
   const snapshotRef = useRef(snapshot);
   const mutationQueue = useRef<Promise<void> | null>(null);
+  const mutationEpoch = useRef(0);
   const language = i18n.resolvedLanguage ?? i18n.language;
   const exercises = useMemo(
     () => composeCatalogExercises(snapshot.customExercises, snapshot.hiddenBuiltinIds, t),
@@ -102,11 +104,13 @@ export function ExerciseCatalogProvider({
 
   useEffect(() => {
     let active = true;
+    // A load started before or during a mutation may not include its durable result.
+    const loadMutationEpoch = mutationEpoch.current;
 
     void repository
       .read()
       .then((nextSnapshot) => {
-        if (active) {
+        if (active && mutationEpoch.current === loadMutationEpoch) {
           snapshotRef.current = nextSnapshot;
           setSnapshot(nextSnapshot);
           setError(null);
@@ -114,7 +118,7 @@ export function ExerciseCatalogProvider({
         }
       })
       .catch((nextError: unknown) => {
-        if (active) {
+        if (active && mutationEpoch.current === loadMutationEpoch) {
           setError(nextError);
           setStatus("load-error");
         }
@@ -142,13 +146,19 @@ export function ExerciseCatalogProvider({
     <T,>(operation: () => Promise<CatalogMutationResult<T>>): Promise<CatalogMutationResult<T>> => {
       const previousMutation = mutationQueue.current ?? Promise.resolve();
       const mutation = previousMutation.then(async () => {
-        setError(null);
-        setStatus("mutating");
-        const result = await operation();
-        if (!result.ok && result.reason !== "persistence-error") {
-          setStatus("ready");
+        mutationEpoch.current += 1;
+
+        try {
+          setError(null);
+          setStatus("mutating");
+          const result = await operation();
+          if (!result.ok && result.reason !== "persistence-error") {
+            setStatus("ready");
+          }
+          return result;
+        } finally {
+          mutationEpoch.current += 1;
         }
-        return result;
       });
 
       mutationQueue.current = mutation.then(
@@ -200,6 +210,10 @@ export function ExerciseCatalogProvider({
       id: ExerciseId,
       input: CustomExerciseInput,
     ): Promise<CatalogMutationResult<CatalogExercise>> => {
+      if (!exerciseIdSchema.safeParse(id).success) {
+        return Promise.resolve({ ok: false, reason: "invalid-input" });
+      }
+
       const parsedInput = parseInput(input);
       if (!parsedInput) {
         return Promise.resolve({ ok: false, reason: "invalid-input" });
@@ -254,7 +268,7 @@ export function ExerciseCatalogProvider({
       id: ExerciseId,
       isAvailable: boolean,
     ): Promise<CatalogMutationResult<CatalogExercise>> => {
-      if (typeof isAvailable !== "boolean") {
+      if (!exerciseIdSchema.safeParse(id).success || typeof isAvailable !== "boolean") {
         return Promise.resolve({ ok: false, reason: "invalid-input" });
       }
 
