@@ -155,12 +155,46 @@ describe("catalog selectors", () => {
         origin: "custom",
         isAvailable: true,
       },
+      {
+        id: exerciseId(37),
+        displayName: "nube",
+        muscleGroup: "chest",
+        origin: "custom",
+        isAvailable: true,
+      },
+      {
+        id: exerciseId(38),
+        displayName: "ñu",
+        muscleGroup: "chest",
+        origin: "custom",
+        isAvailable: true,
+      },
     ];
 
     expect(sortCatalogExercises(exercises, "es").map((exercise) => exercise.id)).toEqual([
       exerciseId(33),
       exerciseId(34),
       exerciseId(32),
+      exerciseId(37),
+      exerciseId(38),
+      exerciseId(31),
+      exerciseId(30),
+    ]);
+    expect(sortCatalogExercises(exercises, "en").map((exercise) => exercise.id)).toEqual([
+      exerciseId(33),
+      exerciseId(34),
+      exerciseId(32),
+      exerciseId(38),
+      exerciseId(37),
+      exerciseId(31),
+      exerciseId(30),
+    ]);
+    expect(sortCatalogExercises(exercises, "fr-CA").map((exercise) => exercise.id)).toEqual([
+      exerciseId(33),
+      exerciseId(34),
+      exerciseId(32),
+      exerciseId(38),
+      exerciseId(37),
       exerciseId(31),
       exerciseId(30),
     ]);
