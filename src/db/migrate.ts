@@ -19,6 +19,56 @@ const migrations: readonly Migration[] = [
       `);
     },
   },
+  {
+    version: 2,
+    migrate: async (database) => {
+      await database.execAsync(`
+        CREATE TABLE custom_exercises (
+          exercise_id TEXT PRIMARY KEY NOT NULL
+            CHECK (
+              length(exercise_id) = 32
+              AND exercise_id NOT GLOB '*[^0-9a-f]*'
+            ),
+          display_name TEXT NOT NULL
+            CHECK (length(display_name) BETWEEN 1 AND 80),
+          name_key TEXT NOT NULL UNIQUE
+            CHECK (length(name_key) > 0),
+          muscle_group TEXT NOT NULL
+            CHECK (
+              muscle_group IN (
+                'chest',
+                'upper-back',
+                'lats',
+                'shoulders',
+                'biceps',
+                'triceps',
+                'forearms',
+                'quads',
+                'hamstrings',
+                'glutes',
+                'calves',
+                'adductors',
+                'core',
+                'lower-back'
+              )
+          ),
+          is_available INTEGER NOT NULL DEFAULT 1
+            CHECK (is_available IN (0, 1))
+        );
+      `);
+
+      await database.execAsync(`
+
+        CREATE TABLE hidden_builtin_exercises (
+          exercise_id TEXT PRIMARY KEY NOT NULL
+            CHECK (
+              length(exercise_id) = 32
+              AND exercise_id NOT GLOB '*[^0-9a-f]*'
+            )
+        );
+      `);
+    },
+  },
 ];
 
 export async function migrateDatabase(database: SQLiteDatabase): Promise<void> {

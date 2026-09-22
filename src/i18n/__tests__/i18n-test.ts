@@ -34,6 +34,55 @@ const requiredKeys = [
   "trainingPreferences.metric.rir",
 ] as const;
 
+const catalogRequiredKeys = [
+  "exerciseCatalog.muscleGroups.chest",
+  "exerciseCatalog.muscleGroups.upper-back",
+  "exerciseCatalog.muscleGroups.lats",
+  "exerciseCatalog.muscleGroups.shoulders",
+  "exerciseCatalog.muscleGroups.biceps",
+  "exerciseCatalog.muscleGroups.triceps",
+  "exerciseCatalog.muscleGroups.forearms",
+  "exerciseCatalog.muscleGroups.quads",
+  "exerciseCatalog.muscleGroups.hamstrings",
+  "exerciseCatalog.muscleGroups.glutes",
+  "exerciseCatalog.muscleGroups.calves",
+  "exerciseCatalog.muscleGroups.adductors",
+  "exerciseCatalog.muscleGroups.core",
+  "exerciseCatalog.muscleGroups.lower-back",
+  "exerciseCatalog.origin.builtin",
+  "exerciseCatalog.origin.custom",
+  "exerciseCatalog.controls.searchLabel",
+  "exerciseCatalog.controls.searchPlaceholder",
+  "exerciseCatalog.controls.muscleGroupFilterLabel",
+  "exerciseCatalog.controls.allMuscleGroups",
+  "exerciseCatalog.controls.availableView",
+  "exerciseCatalog.controls.unavailableView",
+  "exerciseCatalog.controls.clearSearch",
+  "exerciseCatalog.controls.clearFilters",
+  "exerciseCatalog.controls.create",
+  "exerciseCatalog.controls.edit",
+  "exerciseCatalog.controls.archive",
+  "exerciseCatalog.controls.restore",
+  "exerciseCatalog.controls.hide",
+  "exerciseCatalog.controls.save",
+  "exerciseCatalog.controls.cancel",
+  "exerciseCatalog.controls.retry",
+  "exerciseCatalog.validation.blankName",
+  "exerciseCatalog.validation.tooLongName",
+  "exerciseCatalog.validation.invalidCharacters",
+  "exerciseCatalog.validation.invalidMuscleGroup",
+  "exerciseCatalog.validation.duplicateName",
+  "exerciseCatalog.errors.loadFailed",
+  "exerciseCatalog.errors.persistenceFailed",
+  "exerciseCatalog.accessibility.loading",
+  "exerciseCatalog.accessibility.created",
+  "exerciseCatalog.accessibility.updated",
+  "exerciseCatalog.accessibility.archived",
+  "exerciseCatalog.accessibility.restored",
+  "exerciseCatalog.accessibility.hidden",
+  "exerciseCatalog.accessibility.shown",
+] as const;
+
 function locale(languageCode: string | null): Locale {
   return { languageCode } as Locale;
 }
@@ -60,14 +109,33 @@ describe("translation resources", () => {
         }
 
         return (value as Record<string, unknown>)[segment];
-      }, en)).toEqual(expect.any(String));
+      }, en)).toEqual(expect.stringMatching(/\S/));
       expect(key.split(".").reduce<unknown>((value, segment) => {
         if (typeof value !== "object" || value === null) {
           return undefined;
         }
 
         return (value as Record<string, unknown>)[segment];
-      }, es)).toEqual(expect.any(String));
+      }, es)).toEqual(expect.stringMatching(/\S/));
+    }
+  });
+
+  it("contain every required exercise catalog key in both languages", () => {
+    for (const key of catalogRequiredKeys) {
+      expect(key.split(".").reduce<unknown>((value, segment) => {
+        if (typeof value !== "object" || value === null) {
+          return undefined;
+        }
+
+        return (value as Record<string, unknown>)[segment];
+      }, en)).toEqual(expect.stringMatching(/\S/));
+      expect(key.split(".").reduce<unknown>((value, segment) => {
+        if (typeof value !== "object" || value === null) {
+          return undefined;
+        }
+
+        return (value as Record<string, unknown>)[segment];
+      }, es)).toEqual(expect.stringMatching(/\S/));
     }
   });
 });
