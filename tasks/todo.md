@@ -165,14 +165,14 @@ Plan: `tasks/plan.md`
 **Description:** Add the project-maintained Gluestack text-input component needed by catalog search and custom-name forms.
 
 **Acceptance criteria:**
-- [ ] The component is generated under `src/components/ui/input/` using `gluestack-ui.config.json` and supports labels, errors, disabled state, refs, and text scaling.
-- [ ] Existing runtime dependencies and package versions are unchanged; implementation pauses for approval if generation requests a dependency change.
-- [ ] A focused smoke test proves controlled text entry, accessible naming, disabled state, and ref focus behavior.
+- [x] The component is generated under `src/components/ui/input/` using `gluestack-ui.config.json` and supports labels, errors, disabled state, refs, and text scaling.
+- [x] Existing runtime dependencies and package versions are unchanged; implementation pauses for approval if generation requests a dependency change.
+- [x] A focused smoke test proves controlled text entry, accessible naming, disabled state, and ref focus behavior.
 
 **Verification:**
-- [ ] `bun run test -- --runInBand src/components/ui/input`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
+- [x] `bun run test -- --runInBand src/components/ui/input`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
 
 **Dependencies:** None
 
