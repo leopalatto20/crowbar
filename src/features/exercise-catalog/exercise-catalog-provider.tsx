@@ -64,6 +64,11 @@ export type ExerciseCatalogContextValue = Readonly<{
 
 type CatalogStatus = ExerciseCatalogState["status"];
 
+type CatalogMutationOperation<T> = Readonly<{
+  result: CatalogMutationResult<T>;
+  snapshot?: ExerciseCatalogSnapshot;
+}>;
+
 type ExerciseCatalogProviderProps = PropsWithChildren<{
   repository?: ExerciseCatalogRepository;
 }>;
@@ -143,32 +148,42 @@ export function ExerciseCatalogProvider({
   }, []);
 
   const runMutation = useCallback(
-    <T,>(operation: () => Promise<CatalogMutationResult<T>>): Promise<CatalogMutationResult<T>> => {
+    <T,>(
+      operation: () => Promise<CatalogMutationOperation<T>>,
+    ): Promise<CatalogMutationResult<T>> => {
       const previousMutation = mutationQueue.current ?? Promise.resolve();
-      const mutation = previousMutation.then(async () => {
+      const mutation = previousMutation.then(async (): Promise<CatalogMutationResult<T>> => {
         mutationEpoch.current += 1;
 
+        setError(null);
+        setStatus("mutating");
+
         try {
-          setError(null);
-          setStatus("mutating");
-          const result = await operation();
-          if (!result.ok && result.reason !== "persistence-error") {
+          const outcome = await operation();
+          if (outcome.snapshot) {
+            updateSnapshot(outcome.snapshot);
+          } else if (!outcome.result.ok) {
             setStatus("ready");
           }
-          return result;
-        } finally {
-          mutationEpoch.current += 1;
+          return outcome.result;
+        } catch (nextError: unknown) {
+          setError(nextError);
+          setStatus("mutation-error");
+          return { ok: false, reason: "persistence-error" };
         }
       });
+      const completedMutation = mutation.finally(() => {
+        mutationEpoch.current += 1;
+      });
 
-      mutationQueue.current = mutation.then(
+      mutationQueue.current = completedMutation.then(
         () => undefined,
         () => undefined,
       );
 
-      return mutation;
+      return completedMutation;
     },
-    [],
+    [updateSnapshot],
   );
 
   const createCustom = useCallback(
@@ -184,25 +199,20 @@ export function ExerciseCatalogProvider({
             (exercise) => exercise.nameKey === parsedInput.nameKey,
           )
         ) {
-          return { ok: false, reason: "duplicate-name" };
+          return { result: { ok: false, reason: "duplicate-name" } };
         }
 
-        try {
-          const createdExercise = await repository.createCustom(parsedInput);
-          const nextSnapshot = {
+        const createdExercise = await repository.createCustom(parsedInput);
+        return {
+          result: { ok: true, value: createdExercise.id },
+          snapshot: {
             ...snapshotRef.current,
             customExercises: [...snapshotRef.current.customExercises, createdExercise],
-          };
-          updateSnapshot(nextSnapshot);
-          return { ok: true, value: createdExercise.id };
-        } catch (nextError: unknown) {
-          setError(nextError);
-          setStatus("mutation-error");
-          return { ok: false, reason: "persistence-error" };
-        }
+          },
+        };
       });
     },
-    [repository, runMutation, updateSnapshot],
+    [repository, runMutation],
   );
 
   const updateCustom = useCallback(
@@ -225,42 +235,37 @@ export function ExerciseCatalogProvider({
           id,
         );
         if (!currentExercise) {
-          return { ok: false, reason: "not-found" };
+          return { result: { ok: false, reason: "not-found" } };
         }
         if (currentExercise.origin === "builtin") {
-          return { ok: false, reason: "immutable-builtin" };
+          return { result: { ok: false, reason: "immutable-builtin" } };
         }
         if (
           snapshotRef.current.customExercises.some(
             (exercise) => exercise.id !== id && exercise.nameKey === parsedInput.nameKey,
           )
         ) {
-          return { ok: false, reason: "duplicate-name" };
+          return { result: { ok: false, reason: "duplicate-name" } };
         }
 
-        try {
-          const updatedExercise = await repository.updateCustom(id, parsedInput);
-          if (!updatedExercise) {
-            return { ok: false, reason: "not-found" };
-          }
+        const updatedExercise = await repository.updateCustom(id, parsedInput);
+        if (!updatedExercise) {
+          return { result: { ok: false, reason: "not-found" } };
+        }
 
-          const nextSnapshot = {
+        return {
+          result: { ok: true, value: toCatalogExercise(updatedExercise) },
+          snapshot: {
             ...snapshotRef.current,
             customExercises: replaceCustomExercise(
               snapshotRef.current.customExercises,
               updatedExercise,
             ),
-          };
-          updateSnapshot(nextSnapshot);
-          return { ok: true, value: toCatalogExercise(updatedExercise) };
-        } catch (nextError: unknown) {
-          setError(nextError);
-          setStatus("mutation-error");
-          return { ok: false, reason: "persistence-error" };
-        }
+          },
+        };
       });
     },
-    [repository, runMutation, t, updateSnapshot],
+    [repository, runMutation, t],
   );
 
   const setAvailability = useCallback(
@@ -278,41 +283,39 @@ export function ExerciseCatalogProvider({
           id,
         );
         if (!currentExercise) {
-          return { ok: false, reason: "not-found" };
+          return { result: { ok: false, reason: "not-found" } };
         }
 
-        try {
-          if (currentExercise.origin === "custom") {
-            const updatedExercise = await repository.setCustomAvailability(id, isAvailable);
-            if (!updatedExercise) {
-              return { ok: false, reason: "not-found" };
-            }
+        if (currentExercise.origin === "custom") {
+          const updatedExercise = await repository.setCustomAvailability(id, isAvailable);
+          if (!updatedExercise) {
+            return { result: { ok: false, reason: "not-found" } };
+          }
 
-            updateSnapshot({
+          return {
+            result: { ok: true, value: toCatalogExercise(updatedExercise) },
+            snapshot: {
               ...snapshotRef.current,
               customExercises: replaceCustomExercise(
                 snapshotRef.current.customExercises,
                 updatedExercise,
               ),
-            });
-            return { ok: true, value: toCatalogExercise(updatedExercise) };
-          }
-
-          await repository.setBuiltinAvailability(id, isAvailable);
-          const hiddenBuiltinIds = isAvailable
-            ? snapshotRef.current.hiddenBuiltinIds.filter((hiddenId) => hiddenId !== id)
-            : [...new Set([...snapshotRef.current.hiddenBuiltinIds, id])];
-          const nextExercise = { ...currentExercise, isAvailable };
-          updateSnapshot({ ...snapshotRef.current, hiddenBuiltinIds });
-          return { ok: true, value: nextExercise };
-        } catch (nextError: unknown) {
-          setError(nextError);
-          setStatus("mutation-error");
-          return { ok: false, reason: "persistence-error" };
+            },
+          };
         }
+
+        await repository.setBuiltinAvailability(id, isAvailable);
+        const hiddenBuiltinIds = isAvailable
+          ? snapshotRef.current.hiddenBuiltinIds.filter((hiddenId) => hiddenId !== id)
+          : [...new Set([...snapshotRef.current.hiddenBuiltinIds, id])];
+        const nextExercise = { ...currentExercise, isAvailable };
+        return {
+          result: { ok: true, value: nextExercise },
+          snapshot: { ...snapshotRef.current, hiddenBuiltinIds },
+        };
       });
     },
-    [repository, runMutation, t, updateSnapshot],
+    [repository, runMutation, t],
   );
 
   const state = useMemo<ExerciseCatalogState>(() => {
