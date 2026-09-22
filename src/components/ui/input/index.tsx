@@ -12,11 +12,19 @@ const SCOPE = 'INPUT';
 
 const StyledUIIcon = styled(UIIcon, { className: "style" });
 
+const InputTextInput = React.forwardRef<
+  TextInput,
+  React.ComponentProps<typeof TextInput>
+>(function InputTextInput({ accessibilityElementsHidden: _, ...props }, ref) {
+  // Disabled fields must remain in the iOS accessibility tree to announce their state.
+  return <TextInput ref={ref} {...props} accessibilityElementsHidden={false} />;
+});
+
 const UIInput = createInput({
   Root: withStyleContext(View, SCOPE),
   Icon: StyledUIIcon,
   Slot: Pressable,
-  Input: TextInput,
+  Input: InputTextInput,
 });
 
 

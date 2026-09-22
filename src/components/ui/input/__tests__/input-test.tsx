@@ -32,10 +32,11 @@ describe("Input", () => {
       expect(view.getByTestId("exercise-name").props.value).toBe("  Cable Fly  "),
     );
     expect(input.props.accessibilityHint).toBe("Name is required.");
+    expect(input.props["aria-invalid"]).toBe(true);
     expect(input.props.allowFontScaling).toBe(true);
   });
 
-  it("prevents editing when disabled", async () => {
+  it("exposes disabled state without hiding the field from assistive technology", async () => {
     const view = await render(
       <Input isDisabled>
         <InputField aria-label="Exercise name" testID="disabled-exercise-name" />
@@ -43,10 +44,11 @@ describe("Input", () => {
     );
 
     expect(
-      view.getByTestId("disabled-exercise-name", { includeHiddenElements: true }).props[
-        "aria-disabled"
-      ],
+      view.getByTestId("disabled-exercise-name").props["aria-disabled"],
     ).toBe(true);
+    expect(view.getByTestId("disabled-exercise-name").props.accessibilityElementsHidden).toBe(
+      false,
+    );
   });
 
   it("forwards a ref that can focus the native text field", async () => {
