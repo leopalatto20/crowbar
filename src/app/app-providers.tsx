@@ -5,6 +5,7 @@ import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
 import { Spinner } from "@/components/ui/spinner";
 import { VStack } from "@/components/ui/vstack";
 import { DatabaseProvider } from "../db/database-provider";
+import { ExerciseCatalogProvider } from "../features/exercise-catalog/exercise-catalog-provider";
 import { TrainingPreferencesProvider } from "../features/training-preferences/training-preferences-provider";
 import { PreferenceLoadStateScreen } from "../features/training-preferences/ui/preference-load-state-screen";
 import { i18n, i18nReady } from "../i18n";
@@ -26,7 +27,9 @@ export default function AppProviders({
           <DatabaseProvider
             fallback={(onRetry) => <PreferenceLoadStateScreen error onRetry={onRetry} />}
           >
-            <TrainingPreferencesProvider>{children}</TrainingPreferencesProvider>
+            <ExerciseCatalogProvider>
+              <TrainingPreferencesProvider>{children}</TrainingPreferencesProvider>
+            </ExerciseCatalogProvider>
           </DatabaseProvider>
         ) : (
           <VStack style={styles.container}>

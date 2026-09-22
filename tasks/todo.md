@@ -1,6 +1,6 @@
 # Tasks: Exercise Catalog
 
-Status: Approved, not started
+Status: In progress
 Approved: 2026-09-21
 
 Specification: `SPEC-exercise-catalog.md`
@@ -12,14 +12,14 @@ Plan: `tasks/plan.md`
 **Description:** Extend the existing ordered migration runner with the exact custom-exercise and hidden-built-in tables from the approved plan.
 
 **Acceptance criteria:**
-- [ ] Version 2 creates both constrained tables without modifying version 1 or copying built-in definitions into SQLite.
-- [ ] Fresh databases advance through versions 1 and 2, version-1 databases apply only version 2, and current databases do no migration work.
-- [ ] A failure creating either table rolls back both version-2 changes and leaves `user_version = 1` for retry.
+- [x] Version 2 creates both constrained tables without modifying version 1 or copying built-in definitions into SQLite.
+- [x] Fresh databases advance through versions 1 and 2, version-1 databases apply only version 2, and current databases do no migration work.
+- [x] A failure creating either table rolls back both version-2 changes and leaves `user_version = 1` for retry.
 
 **Verification:**
-- [ ] `bun run test -- --runInBand src/db/__tests__/migrate-test.ts`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
+- [x] `bun run test -- --runInBand src/db/__tests__/migrate-test.ts`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
 
 **Dependencies:** None
 
@@ -34,14 +34,14 @@ Plan: `tasks/plan.md`
 **Description:** Add branded identities, the fixed muscle-group taxonomy and order, public exercise/mutation contracts, and pure custom-name validation.
 
 **Acceptance criteria:**
-- [ ] IDs, all 14 muscle groups, origins, availability, input, and machine-readable mutation results match the specification.
-- [ ] Name parsing trims display values, enforces 1-80 Unicode code points, rejects invisible control/format content, and generates deterministic case-insensitive NFC duplicate keys.
-- [ ] Tests cover every muscle group, valid boundaries, blank/overlong/control input, case duplicates, accents, and composed/decomposed names with 100% validation branch coverage.
+- [x] IDs, all 14 muscle groups, origins, availability, input, and machine-readable mutation results match the specification.
+- [x] Name parsing trims display values, enforces 1-80 Unicode code points, rejects invisible control/format content, and generates deterministic case-insensitive NFC duplicate keys.
+- [x] Tests cover every muscle group, valid boundaries, blank/overlong/control input, case duplicates, accents, and composed/decomposed names with 100% validation branch coverage.
 
 **Verification:**
-- [ ] `bun run test -- --runInBand src/features/exercise-catalog/__tests__/catalog-model-test.ts`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
+- [x] `bun run test -- --runInBand src/features/exercise-catalog/__tests__/catalog-model-test.ts`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
 
 **Dependencies:** None
 
@@ -57,14 +57,14 @@ Plan: `tasks/plan.md`
 **Description:** Define all 74 built-in exercises with stable opaque IDs and complete English/Spanish translation resources, then validate the manifest as catalog data.
 
 **Acceptance criteria:**
-- [ ] The manifest exactly matches the approved exercise names, groups, and fixed ordering; IDs are unique valid opaque literals and translation keys are not identities.
-- [ ] English and Spanish contain every built-in name, muscle-group label, origin label, control label, validation message, persistence error, and accessibility announcement required by later UI tasks.
-- [ ] Tests reject duplicate/invalid IDs, invalid groups, missing translations, or altered membership/order and provide 100% manifest-validation branch coverage.
+- [x] The manifest exactly matches the approved exercise names, groups, and fixed ordering; IDs are unique valid opaque literals and translation keys are not identities.
+- [x] English and Spanish contain every built-in name, muscle-group label, origin label, control label, validation message, persistence error, and accessibility announcement required by later UI tasks.
+- [x] Tests reject duplicate/invalid IDs, invalid groups, missing translations, or altered membership/order and provide 100% manifest-validation branch coverage.
 
 **Verification:**
-- [ ] `bun run test -- --runInBand src/features/exercise-catalog/__tests__/builtin-manifest-test.ts src/i18n/__tests__/i18n-test.ts`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
+- [x] `bun run test -- --runInBand src/features/exercise-catalog/__tests__/builtin-manifest-test.ts src/i18n/__tests__/i18n-test.ts`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
 
 **Dependencies:** Task 2
 
@@ -79,25 +79,25 @@ Plan: `tasks/plan.md`
 
 ## Checkpoint: Foundation
 
-- [ ] Tasks 1-3 acceptance criteria pass.
-- [ ] `bun run test -- --runInBand`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
-- [ ] Review schema version 2, built-in IDs, and exact starter membership before persistence code continues.
+- [x] Tasks 1-3 acceptance criteria pass.
+- [x] `bun run test -- --runInBand`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
+- [x] Review schema version 2, built-in IDs, and exact starter membership before persistence code continues.
 
 ## Task 4: Implement the SQLite Repository
 
 **Description:** Persist custom definitions and built-in visibility behind a narrow repository contract with complete row validation and atomic custom creation.
 
 **Acceptance criteria:**
-- [ ] Reads validate every custom row and hidden built-in ID with Zod and reject the complete load when any row is invalid or references an unknown built-in.
-- [ ] Create, update, archive/restore, and hide/restore use bound values, preserve IDs, are idempotent where required, and return enough state for pessimistic provider updates.
-- [ ] Contract tests cover success, duplicate names, unknown IDs, invalid persisted rows, read/write failures, create rollback, affected-row checks, and repeated availability mutations.
+- [x] Reads validate every custom row and hidden built-in ID with Zod and reject the complete load when any row is invalid or references an unknown built-in.
+- [x] Create, update, archive/restore, and hide/restore use bound values, preserve IDs, are idempotent where required, and return enough state for pessimistic provider updates.
+- [x] Contract tests cover success, duplicate names, unknown IDs, invalid persisted rows, read/write failures, create rollback, affected-row checks, and repeated availability mutations.
 
 **Verification:**
-- [ ] `bun run test -- --runInBand src/features/exercise-catalog/__tests__/exercise-catalog-repository-test.ts`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
+- [x] `bun run test -- --runInBand src/features/exercise-catalog/__tests__/exercise-catalog-repository-test.ts`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
 
 **Dependencies:** Tasks 1-3
 
@@ -112,14 +112,14 @@ Plan: `tasks/plan.md`
 **Description:** Add pure composition, resolution, accent-insensitive search, availability/group filtering, grouping, and locale-aware deterministic sorting.
 
 **Acceptance criteria:**
-- [ ] Built-ins and custom rows combine into localized `CatalogExercise` values while hidden/archived entries remain resolvable by ID.
-- [ ] Available/unavailable listing supports no filter or one valid group, case- and accent-insensitive search, fixed group order, and locale-name order.
-- [ ] Tests cover English, Spanish, unsupported fallback inputs, accents, empty criteria, every group, duplicate display names across origins, and deterministic tie breakers with 100% selector branch coverage.
+- [x] Built-ins and custom rows combine into localized `CatalogExercise` values while hidden/archived entries remain resolvable by ID.
+- [x] Available/unavailable listing supports no filter or one valid group, case- and accent-insensitive search, fixed group order, and locale-name order.
+- [x] Tests cover English, Spanish, unsupported fallback inputs, accents, empty criteria, every group, duplicate display names across origins, and deterministic tie breakers with 100% selector branch coverage.
 
 **Verification:**
-- [ ] `bun run test -- --runInBand src/features/exercise-catalog/__tests__/catalog-selectors-test.ts`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
+- [x] `bun run test -- --runInBand src/features/exercise-catalog/__tests__/catalog-selectors-test.ts`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
 
 **Dependencies:** Tasks 2 and 3
 
@@ -134,14 +134,14 @@ Plan: `tasks/plan.md`
 **Description:** Combine repository state, the manifest, and current translations in a root provider that exposes all catalog reads and pessimistic mutations through one hook.
 
 **Acceptance criteria:**
-- [ ] State distinguishes loading, ready, load error, mutation in progress, and mutation error while retaining the last durable catalog on failures.
-- [ ] Public methods return explicit invalid-input, duplicate-name, not-found, immutable-builtin, or persistence-error results and serialize concurrent writes.
-- [ ] Tests prove retry, immediate mounted-consumer updates, locale re-resolution, ID-preserving edits, unavailable resolution, failed-write rollback, and concurrent mutation ordering.
+- [x] State distinguishes loading, ready, load error, mutation in progress, and mutation error while retaining the last durable catalog on failures.
+- [x] Public methods return explicit invalid-input, duplicate-name, not-found, immutable-builtin, or persistence-error results and serialize concurrent writes.
+- [x] Tests prove retry, immediate mounted-consumer updates, locale re-resolution, ID-preserving edits, unavailable resolution, failed-write rollback, and concurrent mutation ordering.
 
 **Verification:**
-- [ ] `bun run test -- --runInBand src/features/exercise-catalog/__tests__/exercise-catalog-provider-test.tsx`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
+- [x] `bun run test -- --runInBand src/features/exercise-catalog/__tests__/exercise-catalog-provider-test.tsx`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
 
 **Dependencies:** Tasks 3-5
 
@@ -154,11 +154,11 @@ Plan: `tasks/plan.md`
 
 ## Checkpoint: Consumer Contract
 
-- [ ] Tasks 4-6 acceptance criteria pass.
-- [ ] `bun run test -- --runInBand`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
-- [ ] Confirm downstream code needs only catalog types and `useExerciseCatalog`, never SQLite, translation objects, or routes.
+- [x] Tasks 4-6 acceptance criteria pass.
+- [x] `bun run test -- --runInBand`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
+- [x] Confirm downstream code needs only catalog types and `useExerciseCatalog`, never SQLite, translation objects, or routes.
 
 ## Task 7: Generate the Gluestack Input Primitive
 
