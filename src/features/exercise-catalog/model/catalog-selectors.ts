@@ -62,8 +62,7 @@ export function listCatalogExercises(
 ): readonly CatalogExercise[] {
   const normalizedQuery = normalizeSearchText(query);
   const isAvailable = availability === "available";
-
-  return sortCatalogExercises(
+  const matchingExercises = sortCatalogExercises(
     exercises.filter(
       (exercise) =>
         exercise.isAvailable === isAvailable &&
@@ -71,6 +70,10 @@ export function listCatalogExercises(
         normalizeSearchText(exercise.displayName).includes(normalizedQuery),
     ),
     language,
+  );
+
+  return muscleGroupOrder.flatMap((currentMuscleGroup) =>
+    matchingExercises.filter((exercise) => exercise.muscleGroup === currentMuscleGroup),
   );
 }
 

@@ -97,6 +97,11 @@ describe("ExerciseCatalogRepository", () => {
   it.each([
     ["invalid custom ID", [{ ...customRow, exercise_id: "invalid" }], []],
     ["invalid custom display name", [{ ...customRow, display_name: "  " }], []],
+    [
+      "untrimmed custom display name",
+      [{ ...customRow, display_name: "  Incline Landmine Press  " }],
+      [],
+    ],
     ["custom row with a mismatched duplicate key", [{ ...customRow, name_key: "other" }], []],
     ["invalid custom muscle group", [{ ...customRow, muscle_group: "unknown" }], []],
     ["invalid custom row", [{ ...customRow, is_available: 2 }], []],

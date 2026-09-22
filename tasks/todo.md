@@ -154,11 +154,11 @@ Plan: `tasks/plan.md`
 
 ## Checkpoint: Consumer Contract
 
-- [ ] Tasks 4-6 acceptance criteria pass.
-- [ ] `bun run test -- --runInBand`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
-- [ ] Confirm downstream code needs only catalog types and `useExerciseCatalog`, never SQLite, translation objects, or routes.
+- [x] Tasks 4-6 acceptance criteria pass.
+- [x] `bun run test -- --runInBand`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
+- [x] Confirm downstream code needs only catalog types and `useExerciseCatalog`, never SQLite, translation objects, or routes.
 
 ## Task 7: Generate the Gluestack Input Primitive
 

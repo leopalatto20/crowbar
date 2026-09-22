@@ -65,7 +65,11 @@ const customExerciseRowSchema = z
   })
   .superRefine((row, context) => {
     const parsedName = parseCustomExerciseName(row.display_name);
-    if (!parsedName.ok || parsedName.value.nameKey !== row.name_key) {
+    if (
+      !parsedName.ok ||
+      parsedName.value.displayName !== row.display_name ||
+      parsedName.value.nameKey !== row.name_key
+    ) {
       context.addIssue({ code: "custom", message: "Invalid custom exercise name." });
     }
   })

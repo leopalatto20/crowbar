@@ -101,6 +101,31 @@ describe("catalog selectors", () => {
     ).toBe(true);
   });
 
+  it("lists exercises in fixed muscle-group order with localized names within each group", () => {
+    const exercises: CatalogExercise[] = [
+      {
+        id: exerciseId(3),
+        displayName: "Alpha Curl",
+        muscleGroup: "biceps",
+        origin: "custom",
+        isAvailable: true,
+      },
+      {
+        id: exerciseId(4),
+        displayName: "Zebra Press",
+        muscleGroup: "chest",
+        origin: "custom",
+        isAvailable: true,
+      },
+    ];
+
+    expect(
+      listCatalogExercises(exercises, { availability: "available", language: "en" }).map(
+        (exercise) => exercise.id,
+      ),
+    ).toEqual([exerciseId(4), exerciseId(3)]);
+  });
+
   it("groups every muscle group in the fixed order and omits empty groups", () => {
     const exercises: CatalogExercise[] = muscleGroupOrder.map((muscleGroup, index) => ({
       id: exerciseId(index + 10),
