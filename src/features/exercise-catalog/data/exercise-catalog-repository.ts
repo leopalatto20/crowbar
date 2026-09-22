@@ -56,14 +56,13 @@ type ExerciseCatalogDatabase = Pick<
 type ExerciseCatalogTransaction = Pick<SQLiteDatabase, "getFirstAsync" | "runAsync">;
 
 const customExerciseRowSchema = z
-  .object({
+  .strictObject({
     exercise_id: exerciseIdSchema,
     display_name: z.string(),
     name_key: z.string(),
     muscle_group: muscleGroupSchema,
     is_available: z.union([z.literal(0), z.literal(1)]),
   })
-  .strict()
   .superRefine((row, context) => {
     const parsedName = parseCustomExerciseName(row.display_name);
     if (!parsedName.ok || parsedName.value.nameKey !== row.name_key) {
@@ -94,11 +93,9 @@ const customExerciseRowsSchema = z.array(customExerciseRowSchema).superRefine((r
   });
 });
 
-const hiddenBuiltinExerciseRowSchema = z
-  .object({
-    exercise_id: exerciseIdSchema,
-  })
-  .strict();
+const hiddenBuiltinExerciseRowSchema = z.strictObject({
+  exercise_id: exerciseIdSchema,
+});
 
 const hiddenBuiltinExerciseRowsSchema = z
   .array(hiddenBuiltinExerciseRowSchema)
@@ -114,12 +111,11 @@ const hiddenBuiltinExerciseRowsSchema = z
   });
 
 const customExerciseWriteInputSchema = z
-  .object({
+  .strictObject({
     displayName: z.string(),
     nameKey: z.string(),
     muscleGroup: muscleGroupSchema,
   })
-  .strict()
   .superRefine((input, context) => {
     const parsedName = parseCustomExerciseName(input.displayName);
     if (
