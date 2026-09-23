@@ -155,6 +155,8 @@ export const es: TranslationResource = {
       save: "Guardar ejercicio",
       cancel: "Cancelar",
       retry: "Intentar de nuevo",
+      nameLabel: "Nombre del ejercicio",
+      muscleGroupLabel: "Grupo muscular",
     },
     validation: {
       blankName: "Escribe un nombre para el ejercicio.",

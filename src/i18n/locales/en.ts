@@ -63,6 +63,8 @@ export type TranslationResource = {
       save: string;
       cancel: string;
       retry: string;
+      nameLabel: string;
+      muscleGroupLabel: string;
     };
     validation: {
       blankName: string;
@@ -242,6 +244,8 @@ export const en: TranslationResource = {
       save: "Save exercise",
       cancel: "Cancel",
       retry: "Try again",
+      nameLabel: "Exercise name",
+      muscleGroupLabel: "Muscle group",
     },
     validation: {
       blankName: "Enter an exercise name.",

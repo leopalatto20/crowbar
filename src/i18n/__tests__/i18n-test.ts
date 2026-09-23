@@ -67,6 +67,8 @@ const catalogRequiredKeys = [
   "exerciseCatalog.controls.save",
   "exerciseCatalog.controls.cancel",
   "exerciseCatalog.controls.retry",
+  "exerciseCatalog.controls.nameLabel",
+  "exerciseCatalog.controls.muscleGroupLabel",
   "exerciseCatalog.validation.blankName",
   "exerciseCatalog.validation.tooLongName",
   "exerciseCatalog.validation.invalidCharacters",
