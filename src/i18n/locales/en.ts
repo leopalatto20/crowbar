@@ -4,6 +4,7 @@ export type TranslationResource = {
     subtitle: string;
     metric: string;
     settingsLink: string;
+    exercisesLink: string;
   };
   trainingPreferences: {
     firstRun: {
@@ -99,6 +100,7 @@ export const en: TranslationResource = {
     subtitle: "Your training workspace",
     metric: "Effort metric: {{metric}}",
     settingsLink: "Training preference settings",
+    exercisesLink: "Exercise catalog",
   },
   trainingPreferences: {
     firstRun: {

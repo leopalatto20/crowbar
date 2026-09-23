@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
 
-import AppProviders from "./app-providers";
+import AppProviders from "../providers/app-providers";
 import { PreferenceLoadStateScreen } from "../features/training-preferences/ui/preference-load-state-screen";
 import { useTrainingPreferences } from "../features/training-preferences/training-preferences-provider";
 

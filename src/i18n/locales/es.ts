@@ -6,6 +6,7 @@ export const es: TranslationResource = {
     subtitle: "Tu espacio de entrenamiento",
     metric: "Métrica de esfuerzo: {{metric}}",
     settingsLink: "Configuración de preferencia de entrenamiento",
+    exercisesLink: "Catálogo de ejercicios",
   },
   trainingPreferences: {
     firstRun: {

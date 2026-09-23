@@ -256,19 +256,20 @@ Plan: `tasks/plan.md`
 **Description:** Expose the dedicated catalog through a thin Expo Router route, link it from the protected app, enforce coverage gates, and run all automated and manual completion checks.
 
 **Acceptance criteria:**
-- [ ] `/exercises` renders only a thin route wrapper, is reachable from the protected landing screen, and no tests or non-route modules live under `src/app/`.
-- [ ] Jest enforces 100% branch coverage for validation/manifest/selectors and at least 90% line and branch coverage for the complete feature.
+- [x] `/exercises` renders only a thin route wrapper, is reachable from the protected landing screen, and no tests or non-route modules live under `src/app/`.
+- [x] Jest enforces 100% branch coverage for validation/manifest/selectors and at least 90% line and branch coverage for the complete feature.
 - [ ] Every automated command passes and named iOS/Android persistence, accessibility, focus, touch-target, and text-scaling checks are recorded complete.
 
 **Verification:**
-- [ ] `bun run test -- --coverage --runInBand`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
-- [ ] `bunx expo-doctor`
-- [ ] `bunx expo export --platform ios --output-dir dist/ios`
-- [ ] `bunx expo export --platform android --output-dir dist/android`
+- [x] `bun run test -- --coverage --runInBand`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
+- [x] `bunx expo-doctor`
+- [x] `bunx expo export --platform ios --output-dir dist/ios`
+- [x] `bunx expo export --platform android --output-dir dist/android`
 - [ ] Manual check: custom IDs, edits, archives, and built-in visibility survive force-quit/relaunch offline on iOS and Android.
 - [ ] Manual check: VoiceOver and TalkBack announce controls, state, errors, and mutations with correct focus restoration.
+- [ ] Manual check: dedicated catalog and inline picker have at least 44-point touch targets, usable keyboard interaction, and text scaling on iOS and Android.
 
 **Dependencies:** Tasks 9 and 10
 
