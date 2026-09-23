@@ -24,9 +24,13 @@ import {
 } from "../model/custom-exercise";
 import { MuscleGroupPicker } from "./muscle-group-picker";
 
+export type CustomCatalogExercise = Readonly<
+  Omit<CatalogExercise, "origin"> & { origin: "custom" }
+>;
+
 export type CustomExerciseFormMode =
   | Readonly<{ kind: "create" }>
-  | Readonly<{ kind: "edit"; exercise: CatalogExercise }>;
+  | Readonly<{ kind: "edit"; exercise: CustomCatalogExercise }>;
 
 type CustomExerciseFormProps = Readonly<{
   mode: CustomExerciseFormMode;
@@ -110,6 +114,8 @@ export function CustomExerciseForm({
       return;
     }
 
+    clearErrors();
+
     const parsedName = parseCustomExerciseName(name);
     if (!parsedName.ok) {
       setNameError(nameValidationMessage(parsedName.reason));
@@ -121,7 +127,6 @@ export function CustomExerciseForm({
       return;
     }
 
-    clearErrors();
     setSaving(true);
     void save(parsedName.value, muscleGroup);
   };

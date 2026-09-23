@@ -12,9 +12,10 @@ import type {
   ExerciseCatalogSnapshot,
   PersistedCustomExercise,
 } from "../data/exercise-catalog-repository";
-import type { CatalogExercise, ExerciseId } from "../model/catalog";
+import type { ExerciseId } from "../model/catalog";
 import {
   CustomExerciseForm,
+  type CustomCatalogExercise,
   type CustomExerciseFormMode,
 } from "../ui/custom-exercise-form";
 
@@ -39,7 +40,7 @@ const customExerciseRow: PersistedCustomExercise = {
   muscleGroup: "upper-back",
   isAvailable: true,
 };
-const customExercise: CatalogExercise = {
+const customExercise: CustomCatalogExercise = {
   id: customExerciseId,
   displayName: "Cable Row",
   muscleGroup: "upper-back",
@@ -268,6 +269,30 @@ describe("CustomExerciseForm", () => {
       expect(view.getByTestId("catalog-probe").props.children).toBe("mutation-error:74"),
     );
     expect(onSuccess).not.toHaveBeenCalled();
+  });
+
+  it("replaces a stale persistence error when the next submission fails validation", async () => {
+    const repository = createRepository({
+      createCustom: jest.fn().mockRejectedValue(new Error("offline")),
+    });
+    const { view } = await renderForm({ repository });
+
+    await fireEvent.changeText(
+      view.getByTestId("custom-exercise-form-name"),
+      "Nordic Hamstring Curl",
+    );
+    await fireEvent.press(view.getByTestId("muscle-group-hamstrings"));
+    await fireEvent.press(view.getByTestId("custom-exercise-form-save"));
+
+    await waitFor(() =>
+      expect(view.getByText("The exercise catalog could not be saved.")).toBeTruthy(),
+    );
+
+    await fireEvent.changeText(view.getByTestId("custom-exercise-form-name"), "   ");
+    await fireEvent.press(view.getByTestId("custom-exercise-form-save"));
+
+    expect(view.getByText("Enter an exercise name.")).toBeTruthy();
+    expect(view.queryByText("The exercise catalog could not be saved.")).toBeNull();
   });
 
   it("disables every control while disabled and blocks submissions", async () => {

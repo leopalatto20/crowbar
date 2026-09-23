@@ -2,7 +2,7 @@ import { StyleSheet } from "react-native";
 
 import { Radio, RadioGroup, RadioIndicator, RadioLabel } from "@/components/ui/radio";
 
-import { muscleGroupOrder, type MuscleGroup } from "../model/catalog";
+import { muscleGroupOrder, muscleGroupSchema, type MuscleGroup } from "../model/catalog";
 
 type MuscleGroupPickerProps = Readonly<{
   label: string;
@@ -26,7 +26,12 @@ export function MuscleGroupPicker({
       style={styles.group}
       testID="custom-exercise-form-group-picker"
       value={selectedMuscleGroup ?? ""}
-      onChange={(value) => onSelect(value as MuscleGroup)}
+      onChange={(value) => {
+        const parsedMuscleGroup = muscleGroupSchema.safeParse(value);
+        if (parsedMuscleGroup.success) {
+          onSelect(parsedMuscleGroup.data);
+        }
+      }}
     >
       {muscleGroupOrder.map((muscleGroup) => (
         <Radio
