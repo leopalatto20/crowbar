@@ -234,14 +234,14 @@ Plan: `tasks/plan.md`
 **Description:** Add a route-independent picker for routine programming that searches the available catalog and creates/selects a custom exercise inline.
 
 **Acceptance criteria:**
-- [ ] Search and muscle filtering match the dedicated catalog while hidden/archived entries are excluded and one stable ID is returned on selection.
-- [ ] Inline creation uses the shared form and selects the newly durable ID after success; cancel or save failure retains the previous selection and logical focus.
-- [ ] Tests cover selection, combined criteria, hidden/archived exclusion, create, duplicate/invalid input, cancellation, persistence failure, announcements, and focus behavior.
+- [x] Search and muscle filtering match the dedicated catalog while hidden/archived entries are excluded and one stable ID is returned on selection.
+- [x] Inline creation uses the shared form and selects the newly durable ID after success; cancel or save failure retains the previous selection and logical focus.
+- [x] Tests cover selection, combined criteria, hidden/archived exclusion, create, duplicate/invalid input, cancellation, persistence failure, announcements, and focus behavior.
 
 **Verification:**
-- [ ] `bun run test -- --runInBand src/features/exercise-catalog/__tests__/exercise-picker-test.tsx`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
+- [x] `bun run test -- --runInBand src/features/exercise-catalog/__tests__/exercise-picker-test.tsx`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
 
 **Dependencies:** Task 8
 
