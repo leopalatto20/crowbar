@@ -187,14 +187,14 @@ Plan: `tasks/plan.md`
 **Description:** Create one localized form used for dedicated creation, editing, and inline-picker creation, backed by the catalog validation contract.
 
 **Acceptance criteria:**
-- [ ] The form collects a name and exactly one required muscle group, supports create/edit initial values, and presents localized field-level errors for all invalid and duplicate submissions.
-- [ ] Save remains pessimistic, a persistence failure keeps entered values and prior catalog state, and cancel/success restores logical focus through explicit callbacks.
-- [ ] Component tests cover valid create/edit, trimming, blank/overlong/invalid-group/duplicate errors, save failure, disabled state, cancellation, and accessibility associations.
+- [x] The form collects a name and exactly one required muscle group, supports create/edit initial values, and presents localized field-level errors for all invalid and duplicate submissions.
+- [x] Save remains pessimistic, a persistence failure keeps entered values and prior catalog state, and cancel/success restores logical focus through explicit callbacks.
+- [x] Component tests cover valid create/edit, trimming, blank/overlong/invalid-group/duplicate errors, save failure, disabled state, cancellation, and accessibility associations.
 
 **Verification:**
-- [ ] `bun run test -- --runInBand src/features/exercise-catalog/__tests__/custom-exercise-form-test.tsx`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
+- [x] `bun run test -- --runInBand src/features/exercise-catalog/__tests__/custom-exercise-form-test.tsx`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
 
 **Dependencies:** Tasks 6 and 7
 
