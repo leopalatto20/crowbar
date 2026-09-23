@@ -169,6 +169,10 @@ export const es: TranslationResource = {
       loadFailed: "No se pudo cargar el catálogo de ejercicios.",
       persistenceFailed: "No se pudo guardar el catálogo de ejercicios.",
     },
+    empty: {
+      available: "Ningún ejercicio disponible coincide con tu búsqueda y filtro.",
+      unavailable: "Ningún ejercicio no disponible coincide con tu búsqueda y filtro.",
+    },
     accessibility: {
       loading: "Cargando el catálogo de ejercicios",
       created: "Ejercicio creado",

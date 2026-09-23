@@ -77,6 +77,10 @@ export type TranslationResource = {
       loadFailed: string;
       persistenceFailed: string;
     };
+    empty: {
+      available: string;
+      unavailable: string;
+    };
     accessibility: {
       loading: string;
       created: string;
@@ -257,6 +261,10 @@ export const en: TranslationResource = {
     errors: {
       loadFailed: "The exercise catalog could not be loaded.",
       persistenceFailed: "The exercise catalog could not be saved.",
+    },
+    empty: {
+      available: "No available exercises match your search and filter.",
+      unavailable: "No unavailable exercises match your search and filter.",
     },
     accessibility: {
       loading: "Loading exercise catalog",

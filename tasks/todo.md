@@ -210,14 +210,14 @@ Plan: `tasks/plan.md`
 **Description:** Build the grouped mobile catalog browser with combined search/filtering, explicit unavailable recovery, origin labels, and all origin-appropriate lifecycle actions.
 
 **Acceptance criteria:**
-- [ ] Available entries render in fixed groups with search, one group filter, clear controls, origin and group text, and a no-results state; the unavailable view uses the same criteria.
-- [ ] Custom create/edit/archive/restore and built-in hide/restore work with localized errors, retry, result announcements, at least 44-point targets, and defined focus restoration.
-- [ ] Component tests cover load/retry, combined criteria, empty states, every lifecycle action, immutable built-ins, failed mutations, unavailable recovery, and supported locale copy without snapshots.
+- [x] Available entries render in fixed groups with search, one group filter, clear controls, origin and group text, and a no-results state; the unavailable view uses the same criteria.
+- [x] Custom create/edit/archive/restore and built-in hide/restore work with localized errors, retry, result announcements, at least 44-point targets, and defined focus restoration.
+- [x] Component tests cover load/retry, combined criteria, empty states, every lifecycle action, immutable built-ins, failed mutations, unavailable recovery, and supported locale copy without snapshots.
 
 **Verification:**
-- [ ] `bun run test -- --runInBand src/features/exercise-catalog/__tests__/exercise-catalog-screen-test.tsx`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
+- [x] `bun run test -- --runInBand src/features/exercise-catalog/__tests__/exercise-catalog-screen-test.tsx`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
 - [ ] Manual check: text scaling and keyboard interaction on one iOS and one Android target.
 
 **Dependencies:** Task 8
