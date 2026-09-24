@@ -1,6 +1,6 @@
 # Tasks: Exercise Catalog
 
-Status: In progress
+Status: Complete
 Approved: 2026-09-21
 
 Specification: `SPEC-exercise-catalog.md`
@@ -218,7 +218,7 @@ Plan: `tasks/plan.md`
 - [x] `bun run test -- --runInBand src/features/exercise-catalog/__tests__/exercise-catalog-screen-test.tsx`
 - [x] `bunx expo lint`
 - [x] `bunx tsc --noEmit`
-- [ ] Manual check: text scaling and keyboard interaction on one iOS and one Android target.
+- [x] Manual check: text scaling and keyboard interaction on one iOS and one Android target.
 
 **Dependencies:** Task 8
 
@@ -258,7 +258,7 @@ Plan: `tasks/plan.md`
 **Acceptance criteria:**
 - [x] `/exercises` renders only a thin route wrapper, is reachable from the protected landing screen, and no tests or non-route modules live under `src/app/`.
 - [x] Jest enforces 100% branch coverage for validation/manifest/selectors and at least 90% line and branch coverage for the complete feature.
-- [ ] Every automated command passes and named iOS/Android persistence, accessibility, focus, touch-target, and text-scaling checks are recorded complete.
+- [x] Every automated command passes and named iOS/Android persistence, accessibility, focus, touch-target, and text-scaling checks are recorded complete.
 
 **Verification:**
 - [x] `bun run test -- --coverage --runInBand`
@@ -267,9 +267,11 @@ Plan: `tasks/plan.md`
 - [x] `bunx expo-doctor`
 - [x] `bunx expo export --platform ios --output-dir dist/ios`
 - [x] `bunx expo export --platform android --output-dir dist/android`
-- [ ] Manual check: custom IDs, edits, archives, and built-in visibility survive force-quit/relaunch offline on iOS and Android.
-- [ ] Manual check: VoiceOver and TalkBack announce controls, state, errors, and mutations with correct focus restoration.
-- [ ] Manual check: dedicated catalog and inline picker have at least 44-point touch targets, usable keyboard interaction, and text scaling on iOS and Android.
+- [x] Manual check: custom IDs, edits, archives, and built-in visibility survive force-quit/relaunch offline on iOS and Android.
+- [x] Manual check: VoiceOver and TalkBack announce controls, state, errors, and mutations with correct focus restoration.
+- [x] Manual check: dedicated catalog and inline picker have at least 44-point touch targets, usable keyboard interaction, and text scaling on iOS and Android.
+
+Manual checks and consumer-contract review confirmed by the user on 2026-09-23; device models were not supplied.
 
 **Dependencies:** Tasks 9 and 10
 
@@ -283,7 +285,7 @@ Plan: `tasks/plan.md`
 
 ## Checkpoint: Complete
 
-- [ ] Every task and checkpoint above is complete.
-- [ ] Every success criterion in `SPEC-exercise-catalog.md` is satisfied.
-- [ ] No implementation extends into routine prescriptions, equipment contexts, workout logging, or history.
-- [ ] Human review confirms the catalog consumer contract before `routine-programming` begins.
+- [x] Every task and checkpoint above is complete.
+- [x] Every success criterion in `SPEC-exercise-catalog.md` is satisfied.
+- [x] No implementation extends into routine prescriptions, equipment contexts, workout logging, or history.
+- [x] Human review confirms the catalog consumer contract before `routine-programming` begins.
