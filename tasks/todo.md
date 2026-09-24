@@ -1,6 +1,6 @@
 # Tasks: Exercise Catalog
 
-Status: In progress
+Status: Complete
 Approved: 2026-09-21
 
 Specification: `SPEC-exercise-catalog.md`
@@ -165,14 +165,14 @@ Plan: `tasks/plan.md`
 **Description:** Add the project-maintained Gluestack text-input component needed by catalog search and custom-name forms.
 
 **Acceptance criteria:**
-- [ ] The component is generated under `src/components/ui/input/` using `gluestack-ui.config.json` and supports native/web labels, errors, disabled state, refs, and text scaling.
-- [ ] Existing runtime dependencies and package versions are unchanged; implementation pauses for approval if generation requests a dependency change.
-- [ ] A focused smoke test proves controlled text entry, accessible naming, disabled state, and ref focus behavior.
+- [x] The component is generated under `src/components/ui/input/` using `gluestack-ui.config.json` and supports labels, errors, disabled state, refs, and text scaling.
+- [x] Existing runtime dependencies and package versions are unchanged; implementation pauses for approval if generation requests a dependency change.
+- [x] A focused smoke test proves controlled text entry, accessible naming, disabled state, and ref focus behavior.
 
 **Verification:**
-- [ ] `bun run test -- --runInBand src/components/ui/input`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
+- [x] `bun run test -- --runInBand src/components/ui/input`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
 
 **Dependencies:** None
 
@@ -187,14 +187,14 @@ Plan: `tasks/plan.md`
 **Description:** Create one localized form used for dedicated creation, editing, and inline-picker creation, backed by the catalog validation contract.
 
 **Acceptance criteria:**
-- [ ] The form collects a name and exactly one required muscle group, supports create/edit initial values, and presents localized field-level errors for all invalid and duplicate submissions.
-- [ ] Save remains pessimistic, a persistence failure keeps entered values and prior catalog state, and cancel/success restores logical focus through explicit callbacks.
-- [ ] Component tests cover valid create/edit, trimming, blank/overlong/invalid-group/duplicate errors, save failure, disabled state, cancellation, and accessibility associations.
+- [x] The form collects a name and exactly one required muscle group, supports create/edit initial values, and presents localized field-level errors for all invalid and duplicate submissions.
+- [x] Save remains pessimistic, a persistence failure keeps entered values and prior catalog state, and cancel/success restores logical focus through explicit callbacks.
+- [x] Component tests cover valid create/edit, trimming, blank/overlong/invalid-group/duplicate errors, save failure, disabled state, cancellation, and accessibility associations.
 
 **Verification:**
-- [ ] `bun run test -- --runInBand src/features/exercise-catalog/__tests__/custom-exercise-form-test.tsx`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
+- [x] `bun run test -- --runInBand src/features/exercise-catalog/__tests__/custom-exercise-form-test.tsx`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
 
 **Dependencies:** Tasks 6 and 7
 
@@ -210,15 +210,15 @@ Plan: `tasks/plan.md`
 **Description:** Build the grouped mobile catalog browser with combined search/filtering, explicit unavailable recovery, origin labels, and all origin-appropriate lifecycle actions.
 
 **Acceptance criteria:**
-- [ ] Available entries render in fixed groups with search, one group filter, clear controls, origin and group text, and a no-results state; the unavailable view uses the same criteria.
-- [ ] Custom create/edit/archive/restore and built-in hide/restore work with localized errors, retry, result announcements, at least 44-point targets, and defined focus restoration.
-- [ ] Component tests cover load/retry, combined criteria, empty states, every lifecycle action, immutable built-ins, failed mutations, unavailable recovery, and supported locale copy without snapshots.
+- [x] Available entries render in fixed groups with search, one group filter, clear controls, origin and group text, and a no-results state; the unavailable view uses the same criteria.
+- [x] Custom create/edit/archive/restore and built-in hide/restore work with localized errors, retry, result announcements, at least 44-point targets, and defined focus restoration.
+- [x] Component tests cover load/retry, combined criteria, empty states, every lifecycle action, immutable built-ins, failed mutations, unavailable recovery, and supported locale copy without snapshots.
 
 **Verification:**
-- [ ] `bun run test -- --runInBand src/features/exercise-catalog/__tests__/exercise-catalog-screen-test.tsx`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
-- [ ] Manual check: text scaling and keyboard interaction on one iOS and one Android target.
+- [x] `bun run test -- --runInBand src/features/exercise-catalog/__tests__/exercise-catalog-screen-test.tsx`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
+- [x] Manual check: text scaling and keyboard interaction on one iOS and one Android target.
 
 **Dependencies:** Task 8
 
@@ -234,14 +234,14 @@ Plan: `tasks/plan.md`
 **Description:** Add a route-independent picker for routine programming that searches the available catalog and creates/selects a custom exercise inline.
 
 **Acceptance criteria:**
-- [ ] Search and muscle filtering match the dedicated catalog while hidden/archived entries are excluded and one stable ID is returned on selection.
-- [ ] Inline creation uses the shared form and selects the newly durable ID after success; cancel or save failure retains the previous selection and logical focus.
-- [ ] Tests cover selection, combined criteria, hidden/archived exclusion, create, duplicate/invalid input, cancellation, persistence failure, announcements, and focus behavior.
+- [x] Search and muscle filtering match the dedicated catalog while hidden/archived entries are excluded and one stable ID is returned on selection.
+- [x] Inline creation uses the shared form and selects the newly durable ID after success; cancel or save failure retains the previous selection and logical focus.
+- [x] Tests cover selection, combined criteria, hidden/archived exclusion, create, duplicate/invalid input, cancellation, persistence failure, announcements, and focus behavior.
 
 **Verification:**
-- [ ] `bun run test -- --runInBand src/features/exercise-catalog/__tests__/exercise-picker-test.tsx`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
+- [x] `bun run test -- --runInBand src/features/exercise-catalog/__tests__/exercise-picker-test.tsx`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
 
 **Dependencies:** Task 8
 
@@ -256,19 +256,22 @@ Plan: `tasks/plan.md`
 **Description:** Expose the dedicated catalog through a thin Expo Router route, link it from the protected app, enforce coverage gates, and run all automated and manual completion checks.
 
 **Acceptance criteria:**
-- [ ] `/exercises` renders only a thin route wrapper, is reachable from the protected landing screen, and no tests or non-route modules live under `src/app/`.
-- [ ] Jest enforces 100% branch coverage for validation/manifest/selectors and at least 90% line and branch coverage for the complete feature.
-- [ ] Every automated command passes and named iOS/Android persistence, accessibility, focus, touch-target, and text-scaling checks are recorded complete.
+- [x] `/exercises` renders only a thin route wrapper, is reachable from the protected landing screen, and no tests or non-route modules live under `src/app/`.
+- [x] Jest enforces 100% branch coverage for validation/manifest/selectors and at least 90% line and branch coverage for the complete feature.
+- [x] Every automated command passes and named iOS/Android persistence, accessibility, focus, touch-target, and text-scaling checks are recorded complete.
 
 **Verification:**
-- [ ] `bun run test -- --coverage --runInBand`
-- [ ] `bunx expo lint`
-- [ ] `bunx tsc --noEmit`
-- [ ] `bunx expo-doctor`
-- [ ] `bunx expo export --platform ios --output-dir dist/ios`
-- [ ] `bunx expo export --platform android --output-dir dist/android`
-- [ ] Manual check: custom IDs, edits, archives, and built-in visibility survive force-quit/relaunch offline on iOS and Android.
-- [ ] Manual check: VoiceOver and TalkBack announce controls, state, errors, and mutations with correct focus restoration.
+- [x] `bun run test -- --coverage --runInBand`
+- [x] `bunx expo lint`
+- [x] `bunx tsc --noEmit`
+- [x] `bunx expo-doctor`
+- [x] `bunx expo export --platform ios --output-dir dist/ios`
+- [x] `bunx expo export --platform android --output-dir dist/android`
+- [x] Manual check: custom IDs, edits, archives, and built-in visibility survive force-quit/relaunch offline on iOS and Android.
+- [x] Manual check: VoiceOver and TalkBack announce controls, state, errors, and mutations with correct focus restoration.
+- [x] Manual check: dedicated catalog and inline picker have at least 44-point touch targets, usable keyboard interaction, and text scaling on iOS and Android.
+
+Manual checks and consumer-contract review confirmed by the user on 2026-09-23; device models were not supplied.
 
 **Dependencies:** Tasks 9 and 10
 
@@ -282,7 +285,7 @@ Plan: `tasks/plan.md`
 
 ## Checkpoint: Complete
 
-- [ ] Every task and checkpoint above is complete.
-- [ ] Every success criterion in `SPEC-exercise-catalog.md` is satisfied.
-- [ ] No implementation extends into routine prescriptions, equipment contexts, workout logging, or history.
-- [ ] Human review confirms the catalog consumer contract before `routine-programming` begins.
+- [x] Every task and checkpoint above is complete.
+- [x] Every success criterion in `SPEC-exercise-catalog.md` is satisfied.
+- [x] No implementation extends into routine prescriptions, equipment contexts, workout logging, or history.
+- [x] Human review confirms the catalog consumer contract before `routine-programming` begins.

@@ -4,6 +4,7 @@ export type TranslationResource = {
     subtitle: string;
     metric: string;
     settingsLink: string;
+    exercisesLink: string;
   };
   trainingPreferences: {
     firstRun: {
@@ -63,6 +64,8 @@ export type TranslationResource = {
       save: string;
       cancel: string;
       retry: string;
+      nameLabel: string;
+      muscleGroupLabel: string;
     };
     validation: {
       blankName: string;
@@ -74,6 +77,10 @@ export type TranslationResource = {
     errors: {
       loadFailed: string;
       persistenceFailed: string;
+    };
+    empty: {
+      available: string;
+      unavailable: string;
     };
     accessibility: {
       loading: string;
@@ -93,6 +100,7 @@ export const en: TranslationResource = {
     subtitle: "Your training workspace",
     metric: "Effort metric: {{metric}}",
     settingsLink: "Training preference settings",
+    exercisesLink: "Exercise catalog",
   },
   trainingPreferences: {
     firstRun: {
@@ -242,6 +250,8 @@ export const en: TranslationResource = {
       save: "Save exercise",
       cancel: "Cancel",
       retry: "Try again",
+      nameLabel: "Exercise name",
+      muscleGroupLabel: "Muscle group",
     },
     validation: {
       blankName: "Enter an exercise name.",
@@ -253,6 +263,10 @@ export const en: TranslationResource = {
     errors: {
       loadFailed: "The exercise catalog could not be loaded.",
       persistenceFailed: "The exercise catalog could not be saved.",
+    },
+    empty: {
+      available: "No available exercises match your search and filter.",
+      unavailable: "No unavailable exercises match your search and filter.",
     },
     accessibility: {
       loading: "Loading exercise catalog",

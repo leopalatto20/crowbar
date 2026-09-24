@@ -22,6 +22,11 @@ export default function AppIndex(): React.JSX.Element {
       <Text style={styles.preference}>
         {t("app.metric", { metric: metric?.toUpperCase() })}
       </Text>
+      <Link href="/(app)/exercises" asChild>
+        <Button style={styles.settingsButton}>
+          <ButtonText style={styles.settingsButtonText}>{t("app.exercisesLink")}</ButtonText>
+        </Button>
+      </Link>
       <Link href="/(app)/settings/training-preferences" asChild>
         <Button style={styles.settingsButton}>
           <ButtonText style={styles.settingsButtonText}>{t("app.settingsLink")}</ButtonText>

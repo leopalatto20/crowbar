@@ -6,6 +6,7 @@ export const es: TranslationResource = {
     subtitle: "Tu espacio de entrenamiento",
     metric: "Métrica de esfuerzo: {{metric}}",
     settingsLink: "Configuración de preferencia de entrenamiento",
+    exercisesLink: "Catálogo de ejercicios",
   },
   trainingPreferences: {
     firstRun: {
@@ -155,6 +156,8 @@ export const es: TranslationResource = {
       save: "Guardar ejercicio",
       cancel: "Cancelar",
       retry: "Intentar de nuevo",
+      nameLabel: "Nombre del ejercicio",
+      muscleGroupLabel: "Grupo muscular",
     },
     validation: {
       blankName: "Escribe un nombre para el ejercicio.",
@@ -166,6 +169,10 @@ export const es: TranslationResource = {
     errors: {
       loadFailed: "No se pudo cargar el catálogo de ejercicios.",
       persistenceFailed: "No se pudo guardar el catálogo de ejercicios.",
+    },
+    empty: {
+      available: "Ningún ejercicio disponible coincide con tu búsqueda y filtro.",
+      unavailable: "Ningún ejercicio no disponible coincide con tu búsqueda y filtro.",
     },
     accessibility: {
       loading: "Cargando el catálogo de ejercicios",

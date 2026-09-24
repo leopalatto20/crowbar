@@ -89,6 +89,19 @@
       "!**/expo-env.d.ts"
     ],
     "coverageThreshold": {
+      "./src/features/exercise-catalog/": {
+        "branches": 90,
+        "lines": 90
+      },
+      "./src/features/exercise-catalog/model/custom-exercise.ts": {
+        "branches": 100
+      },
+      "./src/features/exercise-catalog/data/builtin-exercises.ts": {
+        "branches": 100
+      },
+      "./src/features/exercise-catalog/model/catalog-selectors.ts": {
+        "branches": 100
+      },
       "./src/features/training-preferences/": {
         "branches": 90,
         "functions": 90,
