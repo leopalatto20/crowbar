@@ -1,4 +1,4 @@
-import { StyleSheet } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { Radio, RadioGroup, RadioIndicator, RadioLabel } from "@/components/ui/radio";
 
@@ -33,20 +33,31 @@ export function MuscleGroupPicker({
         }
       }}
     >
-      {muscleGroupOrder.map((muscleGroup) => (
-        <Radio
-          key={muscleGroup}
-          accessibilityLabel={labelFor(muscleGroup)}
-          accessibilityRole="radio"
-          isDisabled={disabled}
-          style={styles.option}
-          testID={`muscle-group-${muscleGroup}`}
-          value={muscleGroup}
-        >
-          <RadioIndicator style={styles.indicator} />
-          <RadioLabel style={styles.optionLabel}>{labelFor(muscleGroup)}</RadioLabel>
-        </Radio>
-      ))}
+      {muscleGroupOrder.map((muscleGroup) => {
+        const selected = selectedMuscleGroup === muscleGroup;
+
+        return (
+          <Radio
+            key={muscleGroup}
+            accessibilityLabel={labelFor(muscleGroup)}
+            accessibilityRole="radio"
+            isDisabled={disabled}
+            style={[styles.option, selected && styles.selectedOption]}
+            testID={`muscle-group-${muscleGroup}`}
+            value={muscleGroup}
+          >
+            <RadioIndicator style={[styles.indicator, selected && styles.selectedIndicator]}>
+              {selected ? (
+                <View
+                  style={styles.selectedDot}
+                  testID={`muscle-group-${muscleGroup}-selected-indicator`}
+                />
+              ) : null}
+            </RadioIndicator>
+            <RadioLabel style={styles.optionLabel}>{labelFor(muscleGroup)}</RadioLabel>
+          </Radio>
+        );
+      })}
     </RadioGroup>
   );
 }
@@ -57,10 +68,12 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   indicator: {
+    alignItems: "center",
     backgroundColor: "#FFFFFF",
     borderColor: "#BCCCDC",
     borderWidth: 2,
     height: 20,
+    justifyContent: "center",
     width: 20,
   },
   option: {
@@ -75,5 +88,18 @@ const styles = StyleSheet.create({
     color: "#102A43",
     fontSize: 15,
     fontWeight: "600",
+  },
+  selectedDot: {
+    backgroundColor: "#1565C0",
+    borderRadius: 6,
+    height: 10,
+    width: 10,
+  },
+  selectedIndicator: {
+    borderColor: "#1565C0",
+  },
+  selectedOption: {
+    backgroundColor: "#E3F2FD",
+    borderColor: "#1565C0",
   },
 });

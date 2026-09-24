@@ -143,6 +143,18 @@ describe("CustomExerciseForm", () => {
     );
   });
 
+  it("shows which muscle group is selected and moves the selection marker when changed", async () => {
+    const { view } = await renderForm({ repository: createRepository() });
+
+    expect(view.queryByTestId("muscle-group-chest-selected-indicator")).toBeNull();
+    await fireEvent.press(view.getByTestId("muscle-group-chest"));
+    expect(view.getByTestId("muscle-group-chest-selected-indicator")).toBeTruthy();
+
+    await fireEvent.press(view.getByTestId("muscle-group-shoulders"));
+    expect(view.queryByTestId("muscle-group-chest-selected-indicator")).toBeNull();
+    expect(view.getByTestId("muscle-group-shoulders-selected-indicator")).toBeTruthy();
+  });
+
   it("prefills an existing custom exercise and updates it in place", async () => {
     const onSuccess = jest.fn();
     const repository = createRepository({
