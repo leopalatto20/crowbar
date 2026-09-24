@@ -1,38 +1,17 @@
 import { useRef, useState } from "react";
-import {
-  AccessibilityInfo,
-  ScrollView,
-  StyleSheet,
-  type TextInput,
-} from "react-native";
+import { AccessibilityInfo, StyleSheet, type TextInput } from "react-native";
 import { useTranslation } from "react-i18next";
 
 import { Button, ButtonText } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
-import { HStack } from "@/components/ui/hstack";
-import { Input, InputField } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 
 import { useExerciseCatalog } from "../exercise-catalog-provider";
-import {
-  muscleGroupOrder,
-  type CatalogExercise,
-  type ExerciseId,
-  type MuscleGroup,
-} from "../model/catalog";
-import {
-  CustomExerciseForm,
-  type CustomCatalogExercise,
-  type CustomExerciseFormMode,
-} from "./custom-exercise-form";
-import {
-  ExerciseList,
-  type ExerciseListActionRef,
-} from "./exercise-list";
-
-type CatalogView = "available" | "unavailable";
+import { type CatalogExercise, type ExerciseId, type MuscleGroup } from "../model/catalog";
+import { CatalogScreenHeader, type CatalogView } from "./catalog-screen-header";
+import { type CustomCatalogExercise, type CustomExerciseFormMode } from "./custom-exercise-form";
+import { ExerciseList, type ExerciseListActionRef } from "./exercise-list";
 
 export function ExerciseCatalogScreen(): React.JSX.Element {
   const { t } = useTranslation();
@@ -168,174 +147,31 @@ export function ExerciseCatalogScreen(): React.JSX.Element {
   return (
     <VStack style={styles.screen}>
       <ExerciseList
-        header={<VStack style={styles.header}>
-        <HStack style={styles.titleRow}>
-          <Heading accessibilityRole="header" size="2xl" style={styles.title}>
-            {t(
-              catalogView === "available"
-                ? "exerciseCatalog.controls.availableView"
-                : "exerciseCatalog.controls.unavailableView",
-            )}
-          </Heading>
-          <Button
-            ref={createControlRef}
-            accessibilityRole="button"
-            isDisabled={busy}
-            onPress={() => setFormMode({ kind: "create" })}
-            style={styles.primaryControl}
-            testID="catalog-create"
-          >
-            <ButtonText style={styles.primaryControlText}>
-              {t("exerciseCatalog.controls.create")}
-            </ButtonText>
-          </Button>
-        </HStack>
-
-        <HStack accessibilityRole="tablist" style={styles.viewToggle}>
-          <Button
-            ref={availableViewRef}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: catalogView === "available" }}
-            isDisabled={busy}
-            onPress={() => selectView("available")}
-            style={[
-              styles.viewControl,
-              catalogView === "available" && styles.selectedControl,
-            ]}
-            testID="catalog-view-available"
-            variant="outline"
-          >
-            <ButtonText>{t("exerciseCatalog.controls.availableView")}</ButtonText>
-          </Button>
-          <Button
-            ref={unavailableViewRef}
-            accessibilityRole="tab"
-            accessibilityState={{ selected: catalogView === "unavailable" }}
-            isDisabled={busy}
-            onPress={() => selectView("unavailable")}
-            style={[
-              styles.viewControl,
-              catalogView === "unavailable" && styles.selectedControl,
-            ]}
-            testID="catalog-view-unavailable"
-            variant="outline"
-          >
-            <ButtonText>{t("exerciseCatalog.controls.unavailableView")}</ButtonText>
-          </Button>
-        </HStack>
-
-        <Input className="min-h-11" isDisabled={busy}>
-          <InputField
-            ref={searchRef}
-            accessibilityLabel={t("exerciseCatalog.controls.searchLabel")}
-            allowFontScaling
-            onChangeText={setQuery}
-            placeholder={t("exerciseCatalog.controls.searchPlaceholder")}
-            returnKeyType="search"
-            testID="catalog-search"
-            value={query}
+        header={
+          <CatalogScreenHeader
+            availableViewRef={availableViewRef}
+            busy={busy}
+            createControlRef={createControlRef}
+            formMode={formMode}
+            hasActionError={failedExercise !== null}
+            hasLoadError={state.status === "load-error"}
+            muscleGroup={muscleGroup}
+            onCancelForm={closeForm}
+            onCreate={() => setFormMode({ kind: "create" })}
+            onFormSuccess={handleFormSuccess}
+            onMuscleGroupChange={setMuscleGroup}
+            onQueryChange={setQuery}
+            onRetryAvailability={() => {
+              if (failedExercise) void runAvailabilityChange(failedExercise);
+            }}
+            onRetryLoad={retryLoad}
+            onViewChange={selectView}
+            query={query}
+            searchRef={searchRef}
+            unavailableViewRef={unavailableViewRef}
+            view={catalogView}
           />
-        </Input>
-
-        <ScrollView
-          accessibilityLabel={t("exerciseCatalog.controls.muscleGroupFilterLabel")}
-          contentContainerStyle={styles.filters}
-          horizontal
-          keyboardShouldPersistTaps="handled"
-          showsHorizontalScrollIndicator={false}
-        >
-          <Button
-            accessibilityState={{ selected: muscleGroup === null }}
-            isDisabled={busy}
-            onPress={() => setMuscleGroup(null)}
-            style={[styles.filterControl, muscleGroup === null && styles.selectedControl]}
-            testID="catalog-filter-all"
-            variant="outline"
-          >
-            <ButtonText>{t("exerciseCatalog.controls.allMuscleGroups")}</ButtonText>
-          </Button>
-          {muscleGroupOrder.map((group) => (
-            <Button
-              key={group}
-              accessibilityState={{ selected: muscleGroup === group }}
-              isDisabled={busy}
-              onPress={() => setMuscleGroup(group)}
-              style={[styles.filterControl, muscleGroup === group && styles.selectedControl]}
-              testID={`catalog-filter-${group}`}
-              variant="outline"
-            >
-              <ButtonText>{t(`exerciseCatalog.muscleGroups.${group}`)}</ButtonText>
-            </Button>
-          ))}
-        </ScrollView>
-
-        {query.length > 0 || muscleGroup !== null ? (
-          <HStack style={styles.clearControls}>
-            {query.length > 0 ? (
-              <Button
-                accessibilityRole="button"
-                isDisabled={busy}
-                onPress={() => {
-                  setQuery("");
-                  searchRef.current?.focus();
-                }}
-                style={styles.clearControl}
-                testID="catalog-clear-search"
-                variant="ghost"
-              >
-                <ButtonText>{t("exerciseCatalog.controls.clearSearch")}</ButtonText>
-              </Button>
-            ) : null}
-            <Button
-              accessibilityRole="button"
-              isDisabled={busy}
-              onPress={() => {
-                setQuery("");
-                setMuscleGroup(null);
-              }}
-              style={styles.clearControl}
-              testID="catalog-clear-filters"
-              variant="ghost"
-            >
-              <ButtonText>{t("exerciseCatalog.controls.clearFilters")}</ButtonText>
-            </Button>
-          </HStack>
-        ) : null}
-
-        {state.status === "load-error" ? (
-          <VStack accessibilityRole="alert" style={styles.errorBanner}>
-            <Text style={styles.errorText}>{t("exerciseCatalog.errors.loadFailed")}</Text>
-            <Button onPress={retryLoad} style={styles.retryControl} variant="outline">
-              <ButtonText>{t("exerciseCatalog.controls.retry")}</ButtonText>
-            </Button>
-          </VStack>
-        ) : null}
-
-        {failedExercise ? (
-          <VStack accessibilityRole="alert" style={styles.errorBanner} testID="catalog-action-error">
-            <Text style={styles.errorText}>{t("exerciseCatalog.errors.persistenceFailed")}</Text>
-            <Button
-              isDisabled={busy}
-              onPress={() => void runAvailabilityChange(failedExercise)}
-              style={styles.retryControl}
-              testID="catalog-action-retry"
-              variant="outline"
-            >
-              <ButtonText>{t("exerciseCatalog.controls.retry")}</ButtonText>
-            </Button>
-          </VStack>
-        ) : null}
-
-        {formMode ? (
-          <CustomExerciseForm
-            key={formMode.kind === "create" ? "create" : formMode.exercise.id}
-            disabled={busy}
-            mode={formMode}
-            onCancel={closeForm}
-            onSuccess={handleFormSuccess}
-          />
-        ) : null}
-        </VStack>}
+        }
         disabled={busy}
         emptyMessage={t(
           catalogView === "available"
@@ -362,40 +198,6 @@ export function ExerciseCatalogScreen(): React.JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  clearControl: {
-    minHeight: 44,
-    paddingHorizontal: 8,
-  },
-  clearControls: {
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  errorBanner: {
-    backgroundColor: "#FFF5F5",
-    borderColor: "#F4B6B6",
-    borderRadius: 10,
-    borderWidth: 1,
-    gap: 8,
-    padding: 12,
-  },
-  errorText: {
-    color: "#9B1C1C",
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  filterControl: {
-    minHeight: 44,
-    paddingHorizontal: 14,
-  },
-  filters: {
-    gap: 8,
-    paddingRight: 16,
-  },
-  header: {
-    backgroundColor: "#F5F7FA",
-    gap: 12,
-    paddingTop: 16,
-  },
   primaryControl: {
     backgroundColor: "#1565C0",
     minHeight: 44,
@@ -405,18 +207,9 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "700",
   },
-  retryControl: {
-    alignSelf: "flex-start",
-    minHeight: 44,
-    paddingHorizontal: 14,
-  },
   screen: {
     backgroundColor: "#F5F7FA",
     flex: 1,
-  },
-  selectedControl: {
-    backgroundColor: "#E3F2FD",
-    borderColor: "#1565C0",
   },
   state: {
     alignItems: "center",
@@ -428,26 +221,5 @@ const styles = StyleSheet.create({
   stateHeading: {
     color: "#102A43",
     textAlign: "center",
-  },
-  title: {
-    color: "#102A43",
-    flex: 1,
-    fontSize: 28,
-    fontWeight: "800",
-    lineHeight: 34,
-  },
-  titleRow: {
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: 12,
-    justifyContent: "space-between",
-  },
-  viewControl: {
-    flex: 1,
-    minHeight: 44,
-    paddingHorizontal: 10,
-  },
-  viewToggle: {
-    gap: 8,
   },
 });

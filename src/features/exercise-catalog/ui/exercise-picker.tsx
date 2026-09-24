@@ -1,5 +1,5 @@
 import { useRef, useState, type ComponentRef } from "react";
-import { AccessibilityInfo, ScrollView, SectionList, StyleSheet, type TextInput } from "react-native";
+import { AccessibilityInfo, SectionList, StyleSheet, type TextInput } from "react-native";
 import { useTranslation } from "react-i18next";
 
 import { Button, ButtonText } from "@/components/ui/button";
@@ -11,9 +11,10 @@ import { Text } from "@/components/ui/text";
 import { VStack } from "@/components/ui/vstack";
 
 import { useExerciseCatalog } from "../exercise-catalog-provider";
-import { muscleGroupOrder, type ExerciseId, type MuscleGroup } from "../model/catalog";
+import { type ExerciseId, type MuscleGroup } from "../model/catalog";
 import { groupCatalogExercises } from "../model/catalog-selectors";
 import { CustomExerciseForm } from "./custom-exercise-form";
+import { MuscleGroupFilter } from "./muscle-group-filter";
 
 export type ExercisePickerProps = Readonly<{
   selectedId: ExerciseId | null;
@@ -91,37 +92,12 @@ export function ExercisePicker({ selectedId, onSelect }: ExercisePickerProps): R
               value={query}
             />
           </Input>
-          <ScrollView
-            accessibilityLabel={t("exerciseCatalog.controls.muscleGroupFilterLabel")}
-            contentContainerStyle={styles.filters}
-            horizontal
-            keyboardShouldPersistTaps="handled"
-            showsHorizontalScrollIndicator={false}
-          >
-            <Button
-              accessibilityState={{ selected: muscleGroup === null }}
-              isDisabled={busy}
-              onPress={() => setMuscleGroup(null)}
-              style={styles.control}
-              testID="picker-filter-all"
-              variant="outline"
-            >
-              <ButtonText>{t("exerciseCatalog.controls.allMuscleGroups")}</ButtonText>
-            </Button>
-            {muscleGroupOrder.map((group) => (
-              <Button
-                key={group}
-                accessibilityState={{ selected: muscleGroup === group }}
-                isDisabled={busy}
-                onPress={() => setMuscleGroup(group)}
-                style={styles.control}
-                testID={`picker-filter-${group}`}
-                variant="outline"
-              >
-                <ButtonText>{t(`exerciseCatalog.muscleGroups.${group}`)}</ButtonText>
-              </Button>
-            ))}
-          </ScrollView>
+          <MuscleGroupFilter
+            disabled={busy}
+            onSelect={setMuscleGroup}
+            selectedGroup={muscleGroup}
+            testIDPrefix="picker"
+          />
           {query || muscleGroup ? (
             <HStack>
               {query ? (
@@ -229,7 +205,6 @@ const styles = StyleSheet.create({
   content: { paddingBottom: 40, paddingHorizontal: 16 },
   control: { minHeight: 44, paddingHorizontal: 12 },
   empty: { color: "#52606D", fontSize: 17, paddingVertical: 24, textAlign: "center" },
-  filters: { gap: 8, paddingRight: 16 },
   header: { gap: 12, paddingVertical: 12 },
   metadata: { color: "#52606D", fontSize: 14 },
   row: { justifyContent: "flex-start", minHeight: 56, marginVertical: 4 },
