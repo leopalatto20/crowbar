@@ -13,7 +13,7 @@ A gym-agnostic plan of exercises with Targets, defined once and run at any Gym.
 _Avoid_: Program, template, plan
 
 **Workout**:
-One training session, logged at exactly one Gym.
+One training session, logged at exactly one Gym. It may start from a Routine, as a snapshot of that Routine's Exercises and Targets that later Routine edits never touch.
 _Avoid_: Session, training, log
 
 **Exercise**:
