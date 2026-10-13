@@ -10,7 +10,17 @@ export const en = {
     workout: "No Workout in progress.",
     history: "No Workouts yet.",
     exercises: "No Exercises yet.",
-    settings: "No settings yet.",
+  },
+  settings: {
+    logging: "Logging",
+    effortScale: "Effort scale",
+    defaultWeightUnit: "Default weight unit",
+    stackLevel: "Stack level",
+  },
+  databaseFailure: {
+    title: "Crowbar couldn’t open your data",
+    message:
+      "Nothing was deleted, and your data is still on this device. Check the App Store or Google Play for a newer version of Crowbar.",
   },
   effort: {
     RIR: "RIR",

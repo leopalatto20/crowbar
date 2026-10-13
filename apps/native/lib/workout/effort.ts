@@ -1,7 +1,3 @@
-import { createContext, use } from "react";
+import { useSettings } from "@/lib/settings";
 
-import type { Effort } from "./model";
-
-// RIR vs RPE is one app-wide setting; until the settings screen exists, every screen reads the default.
-export const EffortContext = createContext<Effort>("RIR");
-export const useEffort = () => use(EffortContext);
+export const useEffort = () => useSettings().effortScale;

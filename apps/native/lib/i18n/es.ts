@@ -11,7 +11,17 @@ export const es: Messages = {
     workout: "No hay ningún entrenamiento en curso.",
     history: "Aún no hay entrenamientos.",
     exercises: "Aún no hay ejercicios.",
-    settings: "Aún no hay ajustes.",
+  },
+  settings: {
+    logging: "Registro",
+    effortScale: "Escala de esfuerzo",
+    defaultWeightUnit: "Unidad de peso predeterminada",
+    stackLevel: "Nivel",
+  },
+  databaseFailure: {
+    title: "Crowbar no pudo abrir tus datos",
+    message:
+      "No se borró nada y tus datos siguen en este dispositivo. Busca una versión más reciente de Crowbar en la App Store o Google Play.",
   },
   effort: {
     RIR: "RIR",
