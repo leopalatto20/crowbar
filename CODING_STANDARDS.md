@@ -1,0 +1,4 @@
+- No dead code: every identifier, sentinel error and helper is used.
+- Comments explain a non-trivial decision or implementation, per the global rule.
+- Tautological tests considered harmful.
+- Avoid unnecesary abstractions, keep code legible.
