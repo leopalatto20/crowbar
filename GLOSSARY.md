@@ -91,3 +91,7 @@ _Avoid_: Tonnage, workload
 **Rep record**:
 The most reps done at a given load, or the heaviest load done for a given rep count, on one Station.
 _Avoid_: PR, personal best, max
+
+**Backup**:
+A file holding a complete copy of the lifter's data; restoring one replaces everything currently in Crowbar.
+_Avoid_: Export, snapshot, archive
