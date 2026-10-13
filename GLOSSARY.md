@@ -20,6 +20,42 @@ _Avoid_: Session, training, log
 A movement performed on a type of equipment, such as Barbell Bench Press or Machine Chest Press; gym-agnostic, and what a Routine lists.
 _Avoid_: Lift, movement, move
 
+**Built-in Exercise**:
+An Exercise that ships with Crowbar; it can be hidden but never edited.
+_Avoid_: Default exercise, stock exercise
+
+**Custom Exercise**:
+An Exercise created by the lifter; it can be renamed, hidden, or deleted along with its history.
+_Avoid_: User exercise, personal exercise
+
+**Hidden Exercise**:
+An Exercise left out of the picker and search; its history and its place in Routines are untouched.
+_Avoid_: Archived, deleted
+
+**Equipment type**:
+The class of equipment an Exercise is performed on, such as Barbell, Dumbbell, Machine, or Cable; part of what makes an Exercise what it is.
+_Avoid_: Equipment (a Station is the concrete equipment)
+
+**Muscle group**:
+The one primary muscle an Exercise trains, used only to browse the exercise library.
+_Avoid_: Body part, target muscle
+
+**Load type**:
+How an Exercise's logged load is read: External (the weight moved), Bodyweight, or Assisted. Fixed per Exercise; across all three, higher load is better.
+_Avoid_: Weight type, exercise kind
+
+**Bodyweight Exercise**:
+An Exercise whose logged load is the weight added to the lifter's body, with zero meaning bodyweight only.
+_Avoid_: Calisthenics, weighted bodyweight
+
+**Assisted Exercise**:
+An Exercise whose logged load is the assistance taken off the lifter's bodyweight, counted as negative load.
+_Avoid_: Counterweight, negative weight
+
+**Unilateral Exercise**:
+An Exercise trained one side at a time, where a set's reps are counted per side.
+_Avoid_: Single-arm, single-leg, one-sided
+
 **Station**:
 One Exercise as performed on specific equipment at one Gym; it carries the weight unit and machine notes, and every logged set belongs to one. A Gym can hold several Stations for the same Exercise.
 _Avoid_: Machine, setup, equipment, gym exercise
@@ -45,7 +81,7 @@ A unitless load value for equipment with no reliable weight label, such as a num
 _Avoid_: Plate number, pin
 
 **Volume**:
-The sum of load × reps over a Workout's Working sets at one Station; comparable only within that Station.
+The sum of load × reps over a Workout's Working sets at one Station of an External Exercise; comparable only within that Station.
 _Avoid_: Tonnage, workload
 
 **Rep record**:
