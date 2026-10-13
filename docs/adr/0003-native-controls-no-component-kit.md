@@ -1,0 +1,9 @@
+# Native controls, no component kit
+
+Crowbar looks native on each platform: SwiftUI on iOS, Material on Android. Every control that has a native counterpart (buttons outside the Workout logging table, toggles, pickers, segmented controls, menus, context menus, confirmation dialogs, sheets, date pickers, steppers, forms, swipe actions on plain lists) comes from `@expo/ui`. Screens import the universal entry, and a control that only exists in the platform entries gets one small wrapper with `.ios.tsx` and `.android.tsx` files. Only the dense, high-frequency data surfaces are our own RN components: the Workout logging table, the rest card, charts, and set history. The test is whether a `Host` per row would hurt. Those components are styled with `StyleSheet` from one typed theme module (system colors for light and dark, spacing, a type ramp that follows Dynamic Type with a cap on the logging table, radii, motion). Navigation chrome is expo-router's native Stack, NativeTabs, and form sheets. Icons are SF Symbols on iOS and Material Symbols on Android. There is no toast layer.
+
+## Considered Options
+
+- **gluestack-ui v5 on UniWind**: the spike showed it works on our stack with no TypeScript slowdown. But it is a single shadcn-style look ported to native, which fights a native feel on iOS. It overlaps almost entirely with `@expo/ui`, adds about 1.4 MB of JS (react-aria/react-stately), and its alpha CLI overwrites config on every `add`. Keeping it next to `@expo/ui` would mean two visual systems.
+- **UniWind/Tailwind for our own components without gluestack**: without a kit, it only saves typing on a handful of components. It adds a Metro/CSS layer, and Reanimated needs plain color strings anyway.
+- **One custom look identical on both platforms**: more control over brand, but every picker, menu and sheet becomes a lookalike to build and maintain. For an app used mid-set, native controls feel faster.
