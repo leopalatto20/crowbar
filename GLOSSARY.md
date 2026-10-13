@@ -16,6 +16,18 @@ _Avoid_: Program, template, plan
 One training session, logged at exactly one Gym.
 _Avoid_: Session, training, log
 
+**Exercise**:
+A movement performed on a type of equipment, such as Barbell Bench Press or Machine Chest Press; gym-agnostic, and what a Routine lists.
+_Avoid_: Lift, movement, move
+
+**Station**:
+One Exercise as performed on specific equipment at one Gym; it carries the weight unit and machine notes, and every logged set belongs to one. A Gym can hold several Stations for the same Exercise.
+_Avoid_: Machine, setup, equipment, gym exercise
+
+**Retired Station**:
+A Station whose equipment is gone from its Gym; its history remains, but nothing new is logged to it.
+_Avoid_: Deleted, archived station
+
 **Target**:
 A planned value on a Routine (set count, rep range, RIR or RPE) that guides logging but is never enforced.
 _Avoid_: Goal, requirement
