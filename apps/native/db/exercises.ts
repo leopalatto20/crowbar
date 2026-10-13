@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import type { Language } from "@/lib/i18n/locale";
 
@@ -6,8 +6,7 @@ import type { BuiltInExercise } from "./built-in-exercises";
 import type { Database } from "./database";
 import { exercise } from "./schema";
 
-// One statement, so a launch never leaves the library half-seeded. Only names are refreshed: every
-// other field is fixed once shipped (see BuiltInExercise), and hidden belongs to the lifter.
+// Insert-only: a shipped Built-in Exercise never changes, and its hidden flag belongs to the lifter.
 export function seedBuiltInExercises(db: Database, builtIns: readonly BuiltInExercise[]) {
   db.insert(exercise)
     .values(
@@ -18,12 +17,7 @@ export function seedBuiltInExercises(db: Database, builtIns: readonly BuiltInExe
         builtIn: true,
       })),
     )
-    .onConflictDoUpdate({
-      target: exercise.id,
-      set: { name: sql`excluded.name`, nameEs: sql`excluded.name_es` },
-      // Unchanged rows aren't rewritten, so a launch that ships no new names writes nothing.
-      setWhere: sql`${exercise.name} IS NOT excluded.name OR ${exercise.nameEs} IS NOT excluded.name_es`,
-    })
+    .onConflictDoNothing()
     .run();
 }
 
@@ -50,14 +44,14 @@ export function listExercises(db: Database, language: Language): ExerciseListing
 }
 
 // Lifters rarely type accents mid-Workout, so "extension" has to find "Extensión".
-function fold(text: string) {
+function foldCaseAndAccents(text: string) {
   return text
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
 }
 
 export function searchExercises(exercises: ExerciseListing[], query: string) {
-  const folded = fold(query.trim());
-  return exercises.filter((listing) => fold(listing.name).includes(folded));
+  const folded = foldCaseAndAccents(query.trim());
+  return exercises.filter((listing) => foldCaseAndAccents(listing.name).includes(folded));
 }

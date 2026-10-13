@@ -4,7 +4,7 @@ import { Suspense, useState } from "react";
 
 import { EmptyState } from "@/components/empty-state";
 import { MUSCLE_GROUPS } from "@/lib/exercise/model";
-import { useExercises } from "@/lib/exercises";
+import { useExercises } from "@/lib/exercise/use-exercises";
 import { useI18n } from "@/lib/i18n";
 
 export default function ExercisesTab() {
@@ -43,19 +43,19 @@ function ExerciseLibrary({ search }: { search: string }) {
   const sections = [...MUSCLE_GROUPS, null]
     .map((muscleGroup) => ({
       muscleGroup,
-      exercises: exercises.filter((listing) => listing.muscleGroup === muscleGroup),
+      listings: exercises.filter((listing) => listing.muscleGroup === muscleGroup),
     }))
-    .filter((section) => section.exercises.length > 0);
+    .filter((section) => section.listings.length > 0);
 
   return (
     <Host style={{ flex: 1 }}>
       <FieldGroup>
-        {sections.map(({ muscleGroup, exercises }) => (
+        {sections.map(({ muscleGroup, listings }) => (
           <FieldGroup.Section
             key={muscleGroup ?? "none"}
             title={muscleGroup ? t.muscleGroup[muscleGroup] : t.exercises.noMuscleGroup}
           >
-            {exercises.map((listing) => (
+            {listings.map((listing) => (
               <Text key={listing.id}>{listing.name}</Text>
             ))}
           </FieldGroup.Section>

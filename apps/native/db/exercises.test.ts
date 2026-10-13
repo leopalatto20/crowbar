@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
-import type { BuiltInExercise } from "./built-in-exercises";
+import { BUILT_IN_EXERCISES, type BuiltInExercise } from "./built-in-exercises";
 import { listExercises, searchExercises, seedBuiltInExercises } from "./exercises";
 import type { Database } from "./database";
 import { exercise } from "./schema";
@@ -79,16 +79,6 @@ describe("seedBuiltInExercises", () => {
 
     expect(listExercises(db, "en").map((listing) => listing.id)).toEqual(["pull-up"]);
   });
-
-  test("a new app version's corrected names replace the old ones", async () => {
-    const db = await createTestDatabase();
-    seedBuiltInExercises(db, [{ ...pullUp, name: { en: "Pullup", es: "Dominadas" } }]);
-
-    seedBuiltInExercises(db, [pullUp]);
-
-    expect(listExercises(db, "en")[0]?.name).toBe("Pull-Up");
-    expect(listExercises(db, "es")[0]?.name).toBe("Dominada");
-  });
 });
 
 describe("searchExercises", () => {
@@ -115,5 +105,20 @@ describe("searchExercises", () => {
     seedBuiltInExercises(db, [benchPress, pullUp]);
 
     expect(searchExercises(listExercises(db, "en"), "  ")).toHaveLength(2);
+  });
+});
+
+describe("BUILT_IN_EXERCISES", () => {
+  test("ids are kebab-case slugs, each used once", () => {
+    const ids = BUILT_IN_EXERCISES.map((builtIn) => builtIn.id);
+    for (const id of ids) expect(id).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  test("names are unique case-insensitively within each language", () => {
+    for (const language of ["en", "es"] as const) {
+      const names = BUILT_IN_EXERCISES.map((builtIn) => builtIn.name[language].toLowerCase());
+      expect(new Set(names).size).toBe(names.length);
+    }
   });
 });

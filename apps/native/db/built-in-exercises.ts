@@ -1,13 +1,13 @@
 import type { EquipmentType, LoadType, MuscleGroup } from "@/lib/exercise/model";
 import type { Language } from "@/lib/i18n/locale";
 
-// The seed format for Built-in Exercises. Every launch upserts this list (seedBuiltInExercises),
-// so a new app version adds its new entries and refreshes names, and nothing else changes:
+// The seed format for Built-in Exercises. Every launch inserts the entries a database doesn't
+// have yet (seedBuiltInExercises), so a new app version adds its new entries and changes nothing else:
 // - `id` is a Crowbar-owned kebab-case slug, permanent once shipped. Sets, Stations and Routines
-//   point at it, so it is never changed, reused or removed; a renamed lift keeps its id.
+//   point at it, so it is never changed, reused or removed.
 // - `name` needs every shipped language, unique case-insensitively within each language.
-// - The other fields are fixed once shipped, because changing them would reinterpret history.
-//   Correcting one means a new entry with a new id.
+// - Every field is fixed once shipped: names must stay unique alongside Custom Exercises, and the
+//   other fields would reinterpret history. Correcting one means a new entry with a new id.
 export type BuiltInExercise = {
   id: string;
   name: Record<Language, string>;
