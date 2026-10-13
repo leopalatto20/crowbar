@@ -65,8 +65,12 @@ A Station whose equipment is gone from its Gym; its history remains, but nothing
 _Avoid_: Deleted, archived station
 
 **Target**:
-A planned value on a Routine (set count, rep range, RIR or RPE) that guides logging but is never enforced.
+A planned value on a Routine (set count, rep range, RIR or RPE, rest) that guides logging but is never enforced.
 _Avoid_: Goal, requirement
+
+**Rest**:
+The timed pause that follows a confirmed Working set, lasting the slot's rest Target or the app-wide default. Only one Rest runs at a time, and it is never recorded in history.
+_Avoid_: Break, recovery, rest period
 
 **Working set**:
 A set performed as real training effort; the only kind of set that counts toward progress.
