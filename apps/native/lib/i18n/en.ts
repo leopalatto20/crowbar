@@ -1,3 +1,5 @@
+import type { MuscleGroup } from "@/lib/exercise/model";
+
 // The English catalog is the source of truth: its shape is the type every other catalog fills in.
 export const en = {
   tabs: {
@@ -10,6 +12,11 @@ export const en = {
     workout: "No Workout in progress.",
     history: "No Workouts yet.",
     exercises: "No Exercises yet.",
+  },
+  exercises: {
+    search: "Search",
+    noMatches: (query: string) => `No Exercises match “${query}”.`,
+    noMuscleGroup: "No Muscle group",
   },
   settings: {
     logging: "Logging",
@@ -35,14 +42,22 @@ export const en = {
     chest: "Chest",
     lats: "Lats",
     upperBack: "Upper back",
+    lowerBack: "Lower back",
+    frontDelts: "Front delts",
     sideDelts: "Side delts",
     rearDelts: "Rear delts",
     biceps: "Biceps",
     triceps: "Triceps",
+    forearms: "Forearms",
+    abs: "Abs",
     quads: "Quads",
     hamstrings: "Hamstrings",
+    glutes: "Glutes",
+    adductors: "Adductors",
+    abductors: "Abductors",
     calves: "Calves",
-  },
+    other: "Other",
+  } satisfies Record<MuscleGroup, string>,
   stackLevel: (level: string) => `L${level}`,
   dragToReorder: "Drag to reorder",
   ledger: {
@@ -100,4 +115,3 @@ export const en = {
 };
 
 export type Messages = typeof en;
-export type MuscleGroup = keyof Messages["muscleGroup"];

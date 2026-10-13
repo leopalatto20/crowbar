@@ -20,8 +20,11 @@ export function useI18n() {
   const { languageTag } = locales[0];
   const uses24HourClock = calendar.uses24hourClock ?? false;
 
+  const language = resolveLanguage(locales.map((locale) => locale.languageTag));
+
   return {
-    t: CATALOGS[resolveLanguage(locales.map((locale) => locale.languageTag))],
+    language,
+    t: CATALOGS[language],
     formatDecimal: (value: number) => formatDecimal(value, languageTag),
     formatEditableDecimal: (value: number) => formatEditableDecimal(value, languageTag),
     formatTime: (epochMs: number) => formatTime(epochMs, languageTag, uses24HourClock),

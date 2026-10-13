@@ -1,4 +1,4 @@
-import type { MuscleGroup } from "@/lib/i18n/en";
+import type { MuscleGroup } from "@/lib/exercise/model";
 
 // Stands in for the exercise library until the data layer and Custom Exercises (#13) exist.
 export type ExerciseSummary = { id: string; name: string; muscleGroup: MuscleGroup | null };
