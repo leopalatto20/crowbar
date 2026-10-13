@@ -11,9 +11,11 @@
   "scripts": {
     "dev": "bun run --filter '*' dev",
     "build": "bun run --filter '*' build",
-    "check-types": "bun run --filter '*' check-types",
+    "check-types": "bun run --filter '*' check-types && tsc --noEmit -p scripts",
     "dev:native": "bun run --filter native dev",
-    "check": "oxlint && oxfmt --write",
+    "check": "oxlint && oxfmt --write && bun run check-raw-sql",
+    "check-raw-sql": "bun scripts/check-raw-sql.ts",
+    "test": "bun test",
     "prepare": "husky"
   },
   "devDependencies": {
@@ -29,7 +31,8 @@
     "*": [
       "oxlint --no-error-on-unmatched-pattern",
       "oxfmt --write"
-    ]
+    ],
+    "apps/native/db/**/*.{ts,tsx}": "bun scripts/check-raw-sql.ts"
   },
   "packageManager": "bun@1.3.14"
 }
