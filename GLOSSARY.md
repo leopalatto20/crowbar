@@ -43,3 +43,11 @@ _Avoid_: Ramp-up, feeder set
 **Stack level**:
 A unitless load value for equipment with no reliable weight label, such as a numbered pin position; comparable only to itself.
 _Avoid_: Plate number, pin
+
+**Volume**:
+The sum of load × reps over a Workout's Working sets at one Station; comparable only within that Station.
+_Avoid_: Tonnage, workload
+
+**Rep record**:
+The most reps done at a given load, or the heaviest load done for a given rep count, on one Station.
+_Avoid_: PR, personal best, max
