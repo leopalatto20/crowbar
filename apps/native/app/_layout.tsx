@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { StyleSheet, useColorScheme } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
+import { DatabaseProvider } from "@/db/provider";
 import { useColors } from "@/lib/theme";
 
 export const unstable_settings = {
@@ -30,9 +31,11 @@ export default function RootLayout() {
     <ThemeProvider value={navigationTheme}>
       <StatusBar style="auto" />
       <GestureHandlerRootView style={styles.container}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        </Stack>
+        <DatabaseProvider>
+          <Stack>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          </Stack>
+        </DatabaseProvider>
       </GestureHandlerRootView>
     </ThemeProvider>
   );

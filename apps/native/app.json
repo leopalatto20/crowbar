@@ -41,7 +41,8 @@
           "supportedLocales": ["en", "es"],
           "allowDynamicLocaleChangesAndroid": true
         }
-      ]
+      ],
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,

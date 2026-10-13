@@ -1,7 +1,9 @@
 import type { I18n } from "@/lib/i18n";
 
-export type Effort = "RIR" | "RPE";
-export type Unit = "kg" | "lb" | "level";
+export const EFFORTS = ["RIR", "RPE"] as const;
+export type Effort = (typeof EFFORTS)[number];
+export const UNITS = ["kg", "lb", "level"] as const;
+export type Unit = (typeof UNITS)[number];
 export type SetKind = "warmup" | "working";
 export type Field = "weight" | "reps" | "rir";
 
