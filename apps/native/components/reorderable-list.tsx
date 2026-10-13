@@ -12,7 +12,8 @@ import Animated, {
 import { scheduleOnRN } from "react-native-worklets";
 
 import { haptics } from "@/lib/haptics";
-import { ENTER_EASING } from "@/lib/motion";
+import { useI18n } from "@/lib/i18n";
+import { motion } from "@/lib/theme";
 
 type Shared = {
   order: SharedValue<string[]>;
@@ -100,9 +101,10 @@ function Row<T>({
   renderItem: (item: T, handle: (children: ReactNode) => ReactNode) => ReactNode;
 }) {
   const { order, heights, active, dragStart, dragY, gap, reduced, onReorder } = shared;
+  const { t } = useI18n();
   const y = useSharedValue(0);
   const placed = useSharedValue(false);
-  const duration = reduced ? 0 : 200;
+  const duration = reduced ? 0 : motion.reorderSettle;
 
   useAnimatedReaction(
     () => (heights.value[id] === undefined ? null : offsetOf(id, order.value, heights.value, gap)),
@@ -112,7 +114,7 @@ function Row<T>({
         y.value = next;
         placed.value = true;
       } else if (next !== prev) {
-        y.value = withTiming(next, { duration, easing: ENTER_EASING });
+        y.value = withTiming(next, { duration, easing: motion.enterEasing });
       }
     },
   );
@@ -124,7 +126,7 @@ function Row<T>({
       zIndex: dragging ? 10 : 0,
       transform: [
         { translateY: dragging ? dragStart.value + dragY.value : y.value },
-        { scale: withTiming(dragging && !reduced ? 1.02 : 1, { duration: 150 }) },
+        { scale: withTiming(dragging && !reduced ? 1.02 : 1, { duration: motion.reorderLift }) },
       ],
     };
   });
@@ -162,7 +164,7 @@ function Row<T>({
       y.value = dragStart.value + dragY.value;
       y.value = withTiming(offsetOf(id, order.value, heights.value, gap), {
         duration,
-        easing: ENTER_EASING,
+        easing: motion.enterEasing,
       });
       active.value = null;
       scheduleOnRN(onReorder, order.value);
@@ -179,7 +181,7 @@ function Row<T>({
 
   const handle = (children: ReactNode) => (
     <GestureDetector gesture={pan}>
-      <View hitSlop={8} accessibilityLabel="Drag to reorder">
+      <View hitSlop={8} accessibilityLabel={t.dragToReorder}>
         {children}
       </View>
     </GestureDetector>

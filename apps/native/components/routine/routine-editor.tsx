@@ -1,5 +1,5 @@
-import { Ionicons } from "@expo/vector-icons";
 import { Stack } from "expo-router";
+import { SymbolView } from "expo-symbols";
 import { useState } from "react";
 import { ScrollView, Text, TextInput, View } from "react-native";
 import { LayoutAnimationConfig } from "react-native-reanimated";
@@ -8,14 +8,16 @@ import { ExercisePickerSheet } from "@/components/exercise-picker-sheet";
 import { PressableScale } from "@/components/pressable-scale";
 import { ReorderableList } from "@/components/reorderable-list";
 import { haptics } from "@/lib/haptics";
-import { usePalette } from "@/lib/palette";
+import { useI18n } from "@/lib/i18n";
 import { type RoutineExercisePatch, newRoutineExercise } from "@/lib/routine/model";
 import { useRoutine } from "@/lib/routine/use-routine";
+import { radii, spacing, type, useColors } from "@/lib/theme";
 
 import { PILLS, RoutineExerciseCard, type TargetPill } from "./routine-exercise-card";
 
 export function RoutineEditor() {
-  const p = usePalette();
+  const p = useColors();
+  const { t } = useI18n();
   const routine = useRoutine();
   const [open, setOpen] = useState<{ id: string; pill: TargetPill } | null>(null);
   const [picking, setPicking] = useState(false);
@@ -32,24 +34,24 @@ export function RoutineEditor() {
 
   return (
     <View style={{ flex: 1, backgroundColor: p.background }}>
-      <Stack.Screen options={{ title: routine.name || "New Routine" }} />
+      <Stack.Screen options={{ title: routine.name || t.routine.untitled }} />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         automaticallyAdjustKeyboardInsets
-        contentContainerStyle={{ padding: 16, paddingBottom: 80, gap: 12 }}
+        contentContainerStyle={{ padding: spacing.xl, paddingBottom: 80, gap: spacing.lg }}
       >
-        <View style={{ gap: 4 }}>
+        <View style={{ gap: spacing.xs }}>
           <TextInput
             value={routine.name}
             onChangeText={routine.setName}
-            placeholder="Routine name"
+            placeholder={t.routine.namePlaceholder}
             placeholderTextColor={p.tertiary}
-            style={{ color: p.label, fontSize: 28, fontWeight: "700", padding: 0 }}
+            style={{ color: p.label, ...type.title, padding: 0 }}
           />
-          <Text style={{ color: p.secondary, fontSize: 13 }}>
-            {routine.exercises.length} exercises · {workingSets} working sets
+          <Text style={{ color: p.secondary, ...type.footnote }}>
+            {t.routine.summary(routine.exercises.length, workingSets)}
           </Text>
         </View>
 
@@ -57,7 +59,7 @@ export function RoutineEditor() {
           <ReorderableList
             items={routine.exercises}
             keyOf={(e) => e.id}
-            gap={8}
+            gap={spacing.md}
             onReorder={routine.reorder}
             renderItem={(entry, handle) => {
               const pill = open?.id === entry.id ? open.pill : null;
@@ -81,7 +83,7 @@ export function RoutineEditor() {
           onPress={() => setPicking(true)}
           style={{
             height: 50,
-            borderRadius: 14,
+            borderRadius: radii.card,
             borderCurve: "continuous",
             borderWidth: 1,
             borderStyle: "dashed",
@@ -89,11 +91,11 @@ export function RoutineEditor() {
             alignItems: "center",
             justifyContent: "center",
             flexDirection: "row",
-            gap: 6,
+            gap: spacing.sm,
           }}
         >
-          <Ionicons name="add" size={20} color={p.blue} />
-          <Text style={{ color: p.blue, fontSize: 17, fontWeight: "600" }}>Add Exercise</Text>
+          <SymbolView name={{ ios: "plus", android: "add" }} size={20} tintColor={p.blue} />
+          <Text style={{ color: p.blue, ...type.headline }}>{t.routine.addExercise}</Text>
         </PressableScale>
       </ScrollView>
 

@@ -1,20 +1,24 @@
-import { Text, View } from "react-native";
+import { View } from "react-native";
 
-import { usePalette } from "@/lib/palette";
+import { radii, type, useColors } from "@/lib/theme";
+
+import { LedgerText } from "./ledger-text";
 
 export function StationChip({ label }: { label: string }) {
-  const p = usePalette();
+  const p = useColors();
   return (
     <View
       style={{
         paddingHorizontal: 7,
         paddingVertical: 2,
-        borderRadius: 6,
+        borderRadius: radii.chip,
         borderCurve: "continuous",
         backgroundColor: p.fill,
       }}
     >
-      <Text style={{ color: p.secondary, fontSize: 12, fontWeight: "600" }}>{label}</Text>
+      <LedgerText style={{ color: p.secondary, ...type.caption, fontWeight: "600" }}>
+        {label}
+      </LedgerText>
     </View>
   );
 }

@@ -5,11 +5,7 @@
     "packages": [
       "apps/*",
       "packages/*"
-    ],
-    "catalog": {
-      "zod": "^4.5.4",
-      "varlock": "1.18.0"
-    }
+    ]
   },
   "type": "module",
   "scripts": {
@@ -17,13 +13,8 @@
     "build": "bun run --filter '*' build",
     "check-types": "bun run --filter '*' check-types",
     "dev:native": "bun run --filter native dev",
-    "env:generate": "varlock codegen --path ./apps/native/",
-    "postinstall": "varlock codegen --path ./apps/native/",
     "check": "oxlint && oxfmt --write",
     "prepare": "husky"
-  },
-  "dependencies": {
-    "zod": "catalog:"
   },
   "devDependencies": {
     "@crowbar/config": "workspace:*",
@@ -32,8 +23,7 @@
     "lint-staged": "^17.6.0",
     "oxfmt": "^0.72.0",
     "oxlint": "^1.87.0",
-    "typescript": "^6.0.3",
-    "varlock": "catalog:"
+    "typescript": "^6.0.3"
   },
   "lint-staged": {
     "*": [

@@ -1,16 +1,24 @@
-import { Ionicons } from "@expo/vector-icons";
-import { Text, View } from "react-native";
+import { SymbolView } from "expo-symbols";
+import { View } from "react-native";
 
-import { usePalette } from "@/lib/palette";
+import { useI18n } from "@/lib/i18n";
+import { spacing, type, useColors } from "@/lib/theme";
 
-export function WorkoutMeta({ gym, startedAt }: { gym: string; startedAt: string }) {
-  const p = usePalette();
+import { LedgerText } from "./ledger-text";
+
+export function WorkoutMeta({ gym, startedAt }: { gym: string; startedAt: number }) {
+  const p = useColors();
+  const { t, formatTime } = useI18n();
   return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-      <Ionicons name="location" size={13} color={p.secondary} />
-      <Text style={{ color: p.secondary, fontSize: 13, fontWeight: "500" }}>
-        {gym} · started {startedAt}
-      </Text>
+    <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+      <SymbolView
+        name={{ ios: "mappin.and.ellipse", android: "location_on" }}
+        size={13}
+        tintColor={p.secondary}
+      />
+      <LedgerText style={{ color: p.secondary, ...type.footnote, fontWeight: "500" }}>
+        {t.ledger.meta(gym, formatTime(startedAt))}
+      </LedgerText>
     </View>
   );
 }

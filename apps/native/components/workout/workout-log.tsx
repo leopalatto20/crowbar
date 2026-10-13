@@ -1,6 +1,6 @@
 import { ScrollView, View } from "react-native";
 
-import { usePalette } from "@/lib/palette";
+import { spacing, useColors } from "@/lib/theme";
 import { SAMPLE_WORKOUT } from "@/lib/workout/sample-workout";
 import { useWorkout } from "@/lib/workout/use-workout";
 
@@ -10,7 +10,7 @@ import { WorkoutMeta } from "./workout-meta";
 
 export function WorkoutLog() {
   const workout = useWorkout();
-  const p = usePalette();
+  const p = useColors();
 
   return (
     <View style={{ flex: 1, backgroundColor: p.background }}>
@@ -19,7 +19,7 @@ export function WorkoutLog() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         automaticallyAdjustKeyboardInsets
-        contentContainerStyle={{ padding: 16, paddingBottom: 160, gap: 16 }}
+        contentContainerStyle={{ padding: spacing.xl, paddingBottom: 160, gap: spacing.xl }}
       >
         <WorkoutMeta gym={SAMPLE_WORKOUT.gym} startedAt={SAMPLE_WORKOUT.startedAt} />
         {workout.exercises.map((exercise) => (

@@ -1,13 +1,11 @@
-import { Ionicons } from "@expo/vector-icons";
+import { SymbolView } from "expo-symbols";
 import type { ReactNode } from "react";
 import { Pressable, Text, View } from "react-native";
 import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 import Animated, { FadeIn } from "react-native-reanimated";
 
 import { PressableScale } from "@/components/pressable-scale";
-import { ENTER_EASING } from "@/lib/motion";
-import { usePalette } from "@/lib/palette";
-import { useEffort } from "@/lib/workout/effort";
+import { type I18n, useI18n } from "@/lib/i18n";
 import {
   REP_PRESETS,
   RIR_PRESETS,
@@ -17,7 +15,15 @@ import {
   WARMUP_PRESETS,
   formatWarmups,
 } from "@/lib/routine/model";
-import { type Effort, formatEffortRange, formatRange, formatVolume } from "@/lib/workout/model";
+import { motion, radii, spacing, type, useColors } from "@/lib/theme";
+import { useEffort } from "@/lib/workout/effort";
+import {
+  type Effort,
+  formatEffort,
+  formatEffortRange,
+  formatRange,
+  formatVolume,
+} from "@/lib/workout/model";
 
 import { RestPicker } from "./rest-picker";
 import { type ChipSection, ChipSections, PanelHeader } from "./target-panel";
@@ -26,32 +32,31 @@ import { type ChipSection, ChipSections, PanelHeader } from "./target-panel";
 export type TargetPill = "warmups" | "volume" | "effort";
 export const PILLS: TargetPill[] = ["warmups", "volume", "effort"];
 
-const PANEL_ENTER = FadeIn.duration(180).easing(ENTER_EASING);
-const DESTRUCTIVE = "#FF3B30";
+const PANEL_ENTER = FadeIn.duration(motion.panelEnter).easing(motion.enterEasing);
 
-function pillLabel(entry: RoutineExercise, pill: TargetPill, effort: Effort) {
+function pillLabel(entry: RoutineExercise, pill: TargetPill, effort: Effort, i18n: I18n) {
   switch (pill) {
     case "warmups":
-      return formatWarmups(entry.warmups);
+      return formatWarmups(entry.warmups, i18n);
     case "volume":
       return formatVolume(entry.target);
     case "effort":
-      return `${effort} ${formatEffortRange(entry.target.rirMin, entry.target.rirMax, effort)}`;
+      return formatEffort(entry.target.rirMin, entry.target.rirMax, effort, i18n);
   }
 }
 
-function panel(entry: RoutineExercise, pill: TargetPill, effort: Effort) {
+function panel(entry: RoutineExercise, pill: TargetPill, effort: Effort, { t }: I18n) {
   const { target } = entry;
   switch (pill) {
     case "warmups":
       return {
-        title: "Warm-up sets",
+        title: t.routine.warmupSets,
         sections: [
           {
-            title: "Warm-up sets",
+            title: t.routine.warmupSets,
             advances: true,
             chips: WARMUP_PRESETS.map((n) => ({
-              label: n === 0 ? "None" : `${n}`,
+              label: n === 0 ? t.routine.none : `${n}`,
               selected: entry.warmups === n,
               patch: { warmups: n },
             })),
@@ -61,10 +66,10 @@ function panel(entry: RoutineExercise, pill: TargetPill, effort: Effort) {
     case "volume":
       // Sets stays open so both halves can be picked; the rep range is what moves on.
       return {
-        title: "Working sets × reps",
+        title: t.routine.workingSetsByReps,
         sections: [
           {
-            title: "Sets",
+            title: t.routine.sets,
             advances: false,
             chips: SET_PRESETS.map((n) => ({
               label: `${n}`,
@@ -73,7 +78,7 @@ function panel(entry: RoutineExercise, pill: TargetPill, effort: Effort) {
             })),
           },
           {
-            title: "Reps",
+            title: t.routine.reps,
             advances: true,
             customReps: true,
             chips: REP_PRESETS.map(([min, max]) => ({
@@ -86,10 +91,10 @@ function panel(entry: RoutineExercise, pill: TargetPill, effort: Effort) {
       };
     case "effort":
       return {
-        title: `Effort (${effort})`,
+        title: t.routine.effortPanel(t.effort[effort]),
         sections: [
           {
-            title: effort,
+            title: t.effort[effort],
             advances: true,
             chips: RIR_PRESETS.map(([min, max]) => ({
               label: formatEffortRange(min, max, effort),
@@ -121,9 +126,11 @@ export function RoutineExerciseCard({
   onChange: (patch: RoutineExercisePatch) => void;
   onRemove: () => void;
 }) {
-  const p = usePalette();
+  const p = useColors();
   const effort = useEffort();
-  const content = open ? panel(entry, open, effort) : null;
+  const i18n = useI18n();
+  const { t } = i18n;
+  const content = open ? panel(entry, open, effort, i18n) : null;
 
   return (
     <ReanimatedSwipeable
@@ -134,35 +141,41 @@ export function RoutineExerciseCard({
         <Pressable
           onPress={onRemove}
           accessibilityRole="button"
-          accessibilityLabel={`Remove ${entry.exercise.name}`}
+          accessibilityLabel={t.routine.removeExercise(entry.exercise.name)}
           style={{
             width: 88,
-            marginLeft: 8,
-            borderRadius: 14,
+            marginLeft: spacing.md,
+            borderRadius: radii.card,
             borderCurve: "continuous",
-            backgroundColor: DESTRUCTIVE,
+            backgroundColor: p.red,
             alignItems: "center",
             justifyContent: "center",
-            gap: 2,
+            gap: spacing.xxs,
           }}
         >
-          <Ionicons name="trash" size={18} color="#FFFFFF" />
-          <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "600" }}>Remove</Text>
+          <SymbolView
+            name={{ ios: "trash.fill", android: "delete" }}
+            size={18}
+            tintColor={p.onAccent}
+          />
+          <Text style={{ color: p.onAccent, ...type.footnote, fontWeight: "600" }}>
+            {t.routine.remove}
+          </Text>
         </Pressable>
       )}
     >
       <View
         style={{
           backgroundColor: p.card,
-          borderRadius: 14,
+          borderRadius: radii.card,
           borderCurve: "continuous",
-          padding: 12,
+          padding: spacing.lg,
           gap: 10,
         }}
       >
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
           <View style={{ flex: 1, gap: 3 }}>
-            <Text numberOfLines={1} style={{ color: p.label, fontSize: 16, fontWeight: "600" }}>
+            <Text numberOfLines={1} style={{ color: p.label, ...type.callout, fontWeight: "600" }}>
               {entry.exercise.name}
             </Text>
             <RestPicker
@@ -170,15 +183,21 @@ export function RoutineExerciseCard({
               onChange={(restSeconds) => onChange({ restSeconds })}
             />
           </View>
-          {handle(<Ionicons name="reorder-three" size={24} color={p.tertiary} />)}
+          {handle(
+            <SymbolView
+              name={{ ios: "line.3.horizontal", android: "drag_handle" }}
+              size={22}
+              tintColor={p.tertiary}
+            />,
+          )}
         </View>
 
         {/* Wrapping is only the fallback for large Dynamic Type; at default size this is one row. */}
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
           {PILLS.map((pill) => (
             <Pill
               key={pill}
-              label={pillLabel(entry, pill, effort)}
+              label={pillLabel(entry, pill, effort, i18n)}
               active={open === pill}
               muted={pill === "warmups" && entry.warmups === 0}
               warmup={pill === "warmups" && entry.warmups > 0}
@@ -191,11 +210,16 @@ export function RoutineExerciseCard({
           <Animated.View
             key={open}
             entering={PANEL_ENTER}
-            style={{ borderTopWidth: 0.5, borderTopColor: p.separator, paddingTop: 10, gap: 8 }}
+            style={{
+              borderTopWidth: 0.5,
+              borderTopColor: p.separator,
+              paddingTop: 10,
+              gap: spacing.md,
+            }}
           >
             <PanelHeader
               title={content.title}
-              closeLabel={open === PILLS.at(-1) ? "Done" : "Close"}
+              closeLabel={open === PILLS.at(-1) ? t.routine.done : t.routine.close}
               onClose={onClose}
             />
             <ChipSections
@@ -223,7 +247,7 @@ function Pill({
   warmup: boolean;
   onPress: () => void;
 }) {
-  const p = usePalette();
+  const p = useColors();
   const background = active ? p.blue : warmup ? p.orangeTint : p.fill;
   const color = active ? p.onAccent : warmup ? p.orange : muted ? p.secondary : p.label;
   return (
@@ -232,13 +256,13 @@ function Pill({
       style={{
         height: 30,
         paddingHorizontal: 10,
-        borderRadius: 8,
+        borderRadius: radii.control,
         borderCurve: "continuous",
         justifyContent: "center",
         backgroundColor: background,
       }}
     >
-      <Text style={{ color, fontSize: 14, fontWeight: "600", fontVariant: ["tabular-nums"] }}>
+      <Text style={{ color, ...type.cell, fontWeight: "600", fontVariant: ["tabular-nums"] }}>
         {label}
       </Text>
     </PressableScale>

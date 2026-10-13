@@ -1,15 +1,15 @@
-import { Ionicons } from "@expo/vector-icons";
+import { SymbolView } from "expo-symbols";
 import { useState } from "react";
 import { FlatList, Modal, Pressable, Text, TextInput, View } from "react-native";
-
-import { haptics } from "@/lib/haptics";
-import { usePalette } from "@/lib/palette";
 
 import {
   type ExerciseSummary,
   SAMPLE_LIBRARY,
   makeExerciseId,
 } from "@/lib/exercise/sample-library";
+import { haptics } from "@/lib/haptics";
+import { useI18n } from "@/lib/i18n";
+import { radii, spacing, type, useColors } from "@/lib/theme";
 
 // Minimal form of the shared Exercise picker from #13: search, tap to add, and a "Create" row
 // when nothing matches exactly.
@@ -24,7 +24,8 @@ export function ExercisePickerSheet({
   onClose: () => void;
   onPick: (exercise: ExerciseSummary) => void;
 }) {
-  const p = usePalette();
+  const p = useColors();
+  const { t } = useI18n();
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
   const matches = SAMPLE_LIBRARY.filter((ex) => ex.name.toLowerCase().includes(q));
@@ -50,41 +51,45 @@ export function ExercisePickerSheet({
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
-            paddingHorizontal: 16,
-            paddingTop: 16,
+            paddingHorizontal: spacing.xl,
+            paddingTop: spacing.xl,
             paddingBottom: 10,
           }}
         >
           <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button">
-            <Text style={{ color: p.blue, fontSize: 17 }}>Cancel</Text>
+            <Text style={{ color: p.blue, ...type.body }}>{t.exercisePicker.cancel}</Text>
           </Pressable>
-          <Text style={{ color: p.label, fontSize: 17, fontWeight: "600" }}>Add Exercise</Text>
+          <Text style={{ color: p.label, ...type.headline }}>{t.exercisePicker.title}</Text>
           <View style={{ width: 52 }} />
         </View>
         <View
           style={{
             flexDirection: "row",
             alignItems: "center",
-            gap: 6,
-            marginHorizontal: 16,
-            marginBottom: 8,
+            gap: spacing.sm,
+            marginHorizontal: spacing.xl,
+            marginBottom: spacing.md,
             paddingHorizontal: 10,
             height: 36,
-            borderRadius: 10,
+            borderRadius: radii.field,
             borderCurve: "continuous",
             backgroundColor: p.fill,
           }}
         >
-          <Ionicons name="search" size={16} color={p.secondary} />
+          <SymbolView
+            name={{ ios: "magnifyingglass", android: "search" }}
+            size={16}
+            tintColor={p.secondary}
+          />
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="Search exercises"
+            placeholder={t.exercisePicker.search}
             autoFocus
             placeholderTextColor={p.secondary}
             autoCorrect={false}
             returnKeyType="search"
-            style={{ flex: 1, color: p.label, fontSize: 17, padding: 0 }}
+            style={{ flex: 1, color: p.label, ...type.body, padding: 0 }}
           />
         </View>
         <FlatList
@@ -96,24 +101,34 @@ export function ExercisePickerSheet({
             q && !exact ? (
               <Row
                 onPress={() =>
-                  pick({ id: makeExerciseId(), name: query.trim(), muscleGroup: "Other" })
+                  pick({ id: makeExerciseId(), name: query.trim(), muscleGroup: null })
                 }
               >
-                <Ionicons name="add-circle" size={22} color={p.blue} />
-                <Text style={{ flex: 1, color: p.blue, fontSize: 17 }}>
-                  Create “{query.trim()}”
+                <SymbolView
+                  name={{ ios: "plus.circle.fill", android: "add_circle" }}
+                  size={22}
+                  tintColor={p.blue}
+                />
+                <Text style={{ flex: 1, color: p.blue, ...type.body }}>
+                  {t.exercisePicker.create(query.trim())}
                 </Text>
               </Row>
             ) : null
           }
           renderItem={({ item }) => (
             <Row onPress={() => pick(item)}>
-              <View style={{ flex: 1, gap: 2 }}>
-                <Text style={{ color: p.label, fontSize: 17 }}>{item.name}</Text>
-                <Text style={{ color: p.secondary, fontSize: 13 }}>{item.muscleGroup}</Text>
+              <View style={{ flex: 1, gap: spacing.xxs }}>
+                <Text style={{ color: p.label, ...type.body }}>{item.name}</Text>
+                {item.muscleGroup ? (
+                  <Text style={{ color: p.secondary, ...type.footnote }}>
+                    {t.muscleGroup[item.muscleGroup]}
+                  </Text>
+                ) : null}
               </View>
               {inRoutine.includes(item.id) ? (
-                <Text style={{ color: p.secondary, fontSize: 13 }}>In Routine</Text>
+                <Text style={{ color: p.secondary, ...type.footnote }}>
+                  {t.exercisePicker.inRoutine}
+                </Text>
               ) : null}
             </Row>
           )}
@@ -124,7 +139,7 @@ export function ExercisePickerSheet({
 }
 
 function Row({ children, onPress }: { children: React.ReactNode; onPress: () => void }) {
-  const p = usePalette();
+  const p = useColors();
   return (
     <Pressable
       onPress={onPress}

@@ -1,0 +1,93 @@
+// The English catalog is the source of truth: its shape is the type every other catalog fills in.
+export const en = {
+  tabs: {
+    workout: "Workout",
+    history: "History",
+    exercises: "Exercises",
+    settings: "Settings",
+  },
+  empty: {
+    workout: "No Workout in progress.",
+    history: "No Workouts yet.",
+    exercises: "No Exercises yet.",
+    settings: "No settings yet.",
+  },
+  effort: {
+    RIR: "RIR",
+    RPE: "RPE",
+  },
+  unit: {
+    kg: "kg",
+    lb: "lb",
+    level: "lvl",
+  },
+  muscleGroup: {
+    chest: "Chest",
+    lats: "Lats",
+    upperBack: "Upper back",
+    sideDelts: "Side delts",
+    rearDelts: "Rear delts",
+    biceps: "Biceps",
+    triceps: "Triceps",
+    quads: "Quads",
+    hamstrings: "Hamstrings",
+    calves: "Calves",
+  },
+  stackLevel: (level: string) => `L${level}`,
+  dragToReorder: "Drag to reorder",
+  ledger: {
+    meta: (gym: string, startedAt: string) => `${gym} · started ${startedAt}`,
+    target: (volume: string, effort: string, rest: string) =>
+      `Target ${volume} · ${effort} · rest ${rest}`,
+    setColumn: "Set",
+    lastHereColumn: "Last here",
+    repsColumn: "Reps",
+    warmupMarker: "W",
+    makeWorking: "Warm-up set, tap to make working",
+    makeWarmup: "Working set, tap to make warm-up",
+    completeSet: "Complete set",
+    reopenSet: "Reopen set",
+    addSet: "Add set",
+  },
+  restCard: {
+    title: (exercise: string) => `Rest · ${exercise}`,
+    subtract: "−15",
+    add: "+15",
+    skip: "Skip",
+  },
+  routine: {
+    untitled: "New Routine",
+    namePlaceholder: "Routine name",
+    summary: (exercises: number, workingSets: number) =>
+      `${exercises} ${exercises === 1 ? "exercise" : "exercises"} · ${workingSets} working ${workingSets === 1 ? "set" : "sets"}`,
+    addExercise: "Add Exercise",
+    remove: "Remove",
+    removeExercise: (exercise: string) => `Remove ${exercise}`,
+    rest: (duration: string) => `Rest ${duration}`,
+    noWarmup: "No warm-up",
+    warmups: (count: number) => `${count} warm-up`,
+    warmupSets: "Warm-up sets",
+    none: "None",
+    workingSetsByReps: "Working sets × reps",
+    sets: "Sets",
+    reps: "Reps",
+    effortPanel: (effort: string) => `Effort (${effort})`,
+    close: "Close",
+    done: "Done",
+    customReps: "Custom…",
+    minReps: "Minimum reps",
+    repRangeTo: "to",
+    maxReps: "Maximum reps",
+    setReps: "Set",
+  },
+  exercisePicker: {
+    title: "Add Exercise",
+    cancel: "Cancel",
+    search: "Search exercises",
+    create: (name: string) => `Create “${name}”`,
+    inRoutine: "In Routine",
+  },
+};
+
+export type Messages = typeof en;
+export type MuscleGroup = keyof Messages["muscleGroup"];

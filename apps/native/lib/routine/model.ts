@@ -1,3 +1,4 @@
+import type { I18n } from "@/lib/i18n";
 import type { ExerciseSummary } from "@/lib/exercise/sample-library";
 import type { Target } from "@/lib/workout/model";
 
@@ -59,6 +60,6 @@ export function applyPatch(entry: RoutineExercise, patch: RoutineExercisePatch):
   return { ...entry, warmups, restSeconds, target: { ...entry.target, ...target } };
 }
 
-export function formatWarmups(warmups: number) {
-  return warmups === 0 ? "No warm-up" : `${warmups} warm-up`;
+export function formatWarmups(warmups: number, i18n: I18n) {
+  return warmups === 0 ? i18n.t.routine.noWarmup : i18n.t.routine.warmups(warmups);
 }

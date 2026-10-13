@@ -2,7 +2,8 @@ import { DropdownMenu, DropdownMenuItem, Host, Text } from "@expo/ui/jetpack-com
 import { clickable } from "@expo/ui/jetpack-compose/modifiers";
 import { useState } from "react";
 
-import { usePalette } from "@/lib/palette";
+import { useI18n } from "@/lib/i18n";
+import { type, useColors } from "@/lib/theme";
 import { formatClock } from "@/lib/workout/model";
 
 import { restOptions } from "./rest-options";
@@ -14,7 +15,8 @@ export function RestPicker({
   seconds: number;
   onChange: (seconds: number) => void;
 }) {
-  const p = usePalette();
+  const p = useColors();
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   return (
     <Host matchContents style={{ alignSelf: "flex-start" }}>
@@ -22,10 +24,10 @@ export function RestPicker({
         <DropdownMenu.Trigger>
           <Text
             color={p.blue}
-            style={{ fontSize: 13 }}
+            style={{ fontSize: type.footnote.fontSize }}
             modifiers={[clickable(() => setExpanded(true))]}
           >
-            {`Rest ${formatClock(seconds)} ▾`}
+            {`${t.routine.rest(formatClock(seconds))} ▾`}
           </Text>
         </DropdownMenu.Trigger>
         <DropdownMenu.Items>

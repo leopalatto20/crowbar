@@ -1,7 +1,8 @@
 import { HStack, Host, Image, Menu, Picker, Text } from "@expo/ui/swift-ui";
 import { font, pickerStyle, tag } from "@expo/ui/swift-ui/modifiers";
 
-import { usePalette } from "@/lib/palette";
+import { useI18n } from "@/lib/i18n";
+import { type, useColors } from "@/lib/theme";
 import { formatClock } from "@/lib/workout/model";
 
 import { restOptions } from "./rest-options";
@@ -15,13 +16,16 @@ export function RestPicker({
   seconds: number;
   onChange: (seconds: number) => void;
 }) {
-  const p = usePalette();
+  const p = useColors();
+  const { t } = useI18n();
   return (
     <Host matchContents style={{ alignSelf: "flex-start" }}>
       <Menu
         label={
           <HStack spacing={3}>
-            <Text modifiers={[font({ size: 13 })]}>{`Rest ${formatClock(seconds)}`}</Text>
+            <Text modifiers={[font({ size: type.footnote.fontSize })]}>
+              {t.routine.rest(formatClock(seconds))}
+            </Text>
             <Image systemName="chevron.down" size={10} color={p.blue} />
           </HStack>
         }

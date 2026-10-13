@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Pressable, type StyleProp, type ViewStyle } from "react-native";
 import Animated, { useReducedMotion } from "react-native-reanimated";
 
-import { EASE_OUT } from "@/lib/motion";
+import { motion } from "@/lib/theme";
 
 export function PressableScale({
   children,
@@ -10,7 +10,7 @@ export function PressableScale({
   style,
   disabled,
   accessibilityLabel,
-  scaleTo = 0.97,
+  scaleTo = motion.pressScale,
 }: {
   children: ReactNode;
   onPress: () => void;
@@ -36,8 +36,8 @@ export function PressableScale({
             {
               transform: [{ scale: pressed && !reduced ? scaleTo : 1 }],
               transitionProperty: "transform",
-              transitionDuration: 120,
-              transitionTimingFunction: EASE_OUT,
+              transitionDuration: motion.press,
+              transitionTimingFunction: motion.easeOut,
             },
           ]}
         >

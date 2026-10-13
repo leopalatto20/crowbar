@@ -1,10 +1,10 @@
 import { Stack } from "expo-router";
 
 import { RoutineEditor } from "@/components/routine/routine-editor";
-import { usePalette } from "@/lib/palette";
+import { useColors } from "@/lib/theme";
 
 export default function RoutineScreen() {
-  const p = usePalette();
+  const p = useColors();
   return (
     <>
       <Stack.Screen

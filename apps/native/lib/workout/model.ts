@@ -1,3 +1,5 @@
+import type { I18n } from "@/lib/i18n";
+
 export type Effort = "RIR" | "RPE";
 export type Unit = "kg" | "lb" | "level";
 export type SetKind = "warmup" | "working";
@@ -45,15 +47,6 @@ export function effective(set: LoggedSet, field: Field): number | null {
   return set[field] ?? set.previous?.[field] ?? null;
 }
 
-export function unitLabel(unit: Unit) {
-  return unit === "level" ? "lvl" : unit;
-}
-
-export function formatNumber(value: number | null) {
-  if (value === null) return "–";
-  return Number.isInteger(value) ? String(value) : value.toFixed(1);
-}
-
 // RPE = 10 - RIR, so the stored value is always RIR and only the display flips.
 export function toEffortDisplay(rir: number | null, effort: Effort) {
   if (rir === null) return null;
@@ -81,13 +74,22 @@ export function formatEffortRange(rirMin: number, rirMax: number, effort: Effort
   return formatRange(low, high);
 }
 
-export function formatTarget(target: Target, effort: Effort) {
-  return `${formatVolume(target)} · ${effort} ${formatEffortRange(target.rirMin, target.rirMax, effort)}`;
+export function formatEffort(rirMin: number, rirMax: number, effort: Effort, i18n: I18n) {
+  return `${i18n.t.effort[effort]} ${formatEffortRange(rirMin, rirMax, effort)}`;
 }
 
-export function formatPerformance(p: Performance | null, unit: Unit, effort: Effort) {
+export function formatTarget(target: Target, restSeconds: number, effort: Effort, i18n: I18n) {
+  return i18n.t.ledger.target(
+    formatVolume(target),
+    formatEffort(target.rirMin, target.rirMax, effort, i18n),
+    formatClock(restSeconds),
+  );
+}
+
+export function formatPerformance(p: Performance | null, unit: Unit, effort: Effort, i18n: I18n) {
   if (!p) return "–";
-  const load = unit === "level" ? `L${formatNumber(p.weight)}` : formatNumber(p.weight);
+  const weight = i18n.formatDecimal(p.weight);
+  const load = unit === "level" ? i18n.t.stackLevel(weight) : weight;
   const e = toEffortDisplay(p.rir, effort);
   return e === null ? `${load} × ${p.reps}` : `${load} × ${p.reps} @${e}`;
 }

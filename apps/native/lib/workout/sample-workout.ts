@@ -10,7 +10,7 @@ import {
 export const SAMPLE_WORKOUT = {
   routine: "Upper A",
   gym: "Downtown Iron",
-  startedAt: "6:42 PM",
+  startedAt: new Date().setHours(18, 42, 0, 0),
 };
 
 function sets(kinds: SetKind[], previous: (Performance | null)[]): LoggedSet[] {

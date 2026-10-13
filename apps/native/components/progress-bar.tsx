@@ -1,6 +1,8 @@
 import { View } from "react-native";
 import Animated from "react-native-reanimated";
 
+import { motion } from "@/lib/theme";
+
 // The fill is absolutely positioned with no children, and the timer ticks steadily, so a linear
 // scaleX transition between ticks reads as continuous motion.
 export function ProgressBar({
@@ -27,7 +29,7 @@ export function ProgressBar({
           transformOrigin: "left",
           transform: [{ scaleX: Math.min(1, Math.max(0, progress)) }],
           transitionProperty: "transform",
-          transitionDuration: 250,
+          transitionDuration: motion.progressTick,
           transitionTimingFunction: "linear",
         }}
       />
