@@ -66,13 +66,23 @@ export function fromEffortDisplay(value: number | null, effort: Effort) {
   return Math.max(0, Math.min(10, rir));
 }
 
+export function formatRange(min: number, max: number) {
+  return min === max ? `${min}` : `${min}–${max}`;
+}
+
+export function formatVolume(target: Pick<Target, "sets" | "repMin" | "repMax">) {
+  return `${target.sets} × ${formatRange(target.repMin, target.repMax)}`;
+}
+
+// RPE runs opposite to RIR, so the low end of the displayed range comes from the other bound.
+export function formatEffortRange(rirMin: number, rirMax: number, effort: Effort) {
+  const low = toEffortDisplay(effort === "RIR" ? rirMin : rirMax, effort) ?? 0;
+  const high = toEffortDisplay(effort === "RIR" ? rirMax : rirMin, effort) ?? 0;
+  return formatRange(low, high);
+}
+
 export function formatTarget(target: Target, effort: Effort) {
-  const reps =
-    target.repMin === target.repMax ? `${target.repMin}` : `${target.repMin}–${target.repMax}`;
-  const low = toEffortDisplay(effort === "RIR" ? target.rirMin : target.rirMax, effort);
-  const high = toEffortDisplay(effort === "RIR" ? target.rirMax : target.rirMin, effort);
-  const effortRange = low === high ? `${low}` : `${low}–${high}`;
-  return `${target.sets} × ${reps} · ${effort} ${effortRange}`;
+  return `${formatVolume(target)} · ${effort} ${formatEffortRange(target.rirMin, target.rirMax, effort)}`;
 }
 
 export function formatPerformance(p: Performance | null, unit: Unit, effort: Effort) {
