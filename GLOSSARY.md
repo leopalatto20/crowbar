@@ -61,7 +61,7 @@ One Exercise as performed on specific equipment at one Gym; it carries the weigh
 _Avoid_: Machine, setup, equipment, gym exercise
 
 **Retired Station**:
-A Station whose equipment is gone from its Gym; its history remains, but nothing new is logged to it.
+A Station whose equipment is gone from its Gym; its history remains, but nothing new is logged to it until it is returned to service.
 _Avoid_: Deleted, archived station
 
 **Target**:
