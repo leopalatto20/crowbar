@@ -1,4 +1,5 @@
-- No dead code: every identifier, sentinel error and helper is used.
+- No dead code: every identifier, sentinel error and helper is used. Schema the originating issue asks for counts as used.
 - Comments explain a non-trivial decision or implementation, per the global rule.
 - Tautological tests considered harmful.
 - Avoid unnecesary abstractions, keep code legible.
+- Data module code must behave the same on expo-sqlite and bun:sqlite; tests only exercise bun, so treat raw SQL and transactions as unverified on device.
