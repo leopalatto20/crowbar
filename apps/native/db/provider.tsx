@@ -10,7 +10,9 @@ import { Component, type ReactNode, Suspense, useEffect, useMemo } from "react";
 import { DatabaseFailure } from "@/components/database-failure";
 import { useSettings } from "@/lib/settings";
 
+import { BUILT_IN_EXERCISES } from "./built-in-exercises";
 import { DatabaseContext } from "./context";
+import { seedBuiltInExercises } from "./exercises";
 import migrations from "./migrations/migrations";
 import { type Snapshot, openDatabase } from "./open";
 import { invalidateOnChange } from "./query";
@@ -32,6 +34,7 @@ async function initDatabase(sqlite: SQLiteDatabase) {
     snapshot: snapshotBeside(sqlite.databasePath),
   });
   seedSettings(db, getLocales()[0]?.regionCode ?? null);
+  seedBuiltInExercises(db, BUILT_IN_EXERCISES);
 }
 
 // Covers both opening the file and initDatabase, so OpenFailureBoundary can tell these apart

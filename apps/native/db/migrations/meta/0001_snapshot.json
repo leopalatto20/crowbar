@@ -1,0 +1,195 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "a4c735b4-6123-492f-89b8-69f817e26807",
+  "prevId": "bfe835e9-654d-45ac-9c9a-0fce8d015d33",
+  "tables": {
+    "exercise": {
+      "name": "exercise",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name_es": {
+          "name": "name_es",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "equipment_type": {
+          "name": "equipment_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'other'"
+        },
+        "load_type": {
+          "name": "load_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'external'"
+        },
+        "unilateral": {
+          "name": "unilateral",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "muscle_group": {
+          "name": "muscle_group",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "built_in": {
+          "name": "built_in",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "hidden": {
+          "name": "hidden",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "exercise_equipment_type": {
+          "name": "exercise_equipment_type",
+          "value": "\"exercise\".\"equipment_type\" in ('barbell', 'dumbbell', 'machine', 'cable', 'smithMachine', 'ezBar', 'trapBar', 'kettlebell', 'band', 'bodyweight', 'other')"
+        },
+        "exercise_load_type": {
+          "name": "exercise_load_type",
+          "value": "\"exercise\".\"load_type\" in ('external', 'bodyweight', 'assisted')"
+        },
+        "exercise_muscle_group": {
+          "name": "exercise_muscle_group",
+          "value": "\"exercise\".\"muscle_group\" in ('chest', 'lats', 'upperBack', 'lowerBack', 'frontDelts', 'sideDelts', 'rearDelts', 'biceps', 'triceps', 'forearms', 'abs', 'quads', 'hamstrings', 'glutes', 'adductors', 'abductors', 'calves', 'other')"
+        }
+      }
+    },
+    "settings": {
+      "name": "settings",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "effort_scale": {
+          "name": "effort_scale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'RIR'"
+        },
+        "default_weight_unit": {
+          "name": "default_weight_unit",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "rest_timer_enabled": {
+          "name": "rest_timer_enabled",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
+        "default_rest_seconds": {
+          "name": "default_rest_seconds",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 120
+        },
+        "last_exported_at": {
+          "name": "last_exported_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "undo_restore_path": {
+          "name": "undo_restore_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "undo_restore_replaced_at": {
+          "name": "undo_restore_replaced_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "settings_single_row": {
+          "name": "settings_single_row",
+          "value": "\"settings\".\"id\" = 1"
+        },
+        "settings_effort_scale": {
+          "name": "settings_effort_scale",
+          "value": "\"settings\".\"effort_scale\" in ('RIR', 'RPE')"
+        },
+        "settings_default_weight_unit": {
+          "name": "settings_default_weight_unit",
+          "value": "\"settings\".\"default_weight_unit\" in ('kg', 'lb', 'level')"
+        },
+        "settings_default_rest_seconds": {
+          "name": "settings_default_rest_seconds",
+          "value": "\"settings\".\"default_rest_seconds\" > 0"
+        }
+      }
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}
