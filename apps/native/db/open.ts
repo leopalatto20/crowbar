@@ -15,7 +15,9 @@ export async function openDatabase(
   db: Database,
   { migrate, snapshot }: { migrate: () => void | Promise<void>; snapshot: Snapshot },
 ) {
-  db.run(sql`PRAGMA journal_mode = WAL`);
+  // all(), not run(): this pragma returns a row, and expo-sqlite's run() leaves such a statement
+  // open mid-step, which makes SQLite refuse the COMMIT of every later transaction.
+  db.all(sql`PRAGMA journal_mode = WAL`);
   db.run(sql`PRAGMA synchronous = FULL`);
   db.run(sql`PRAGMA foreign_keys = ON`);
   db.run(sql.raw(`PRAGMA application_id = ${CROWBAR_APPLICATION_ID}`));

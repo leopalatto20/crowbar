@@ -36,8 +36,9 @@ async function initDatabase(sqlite: SQLiteDatabase) {
 
 // Covers both opening the file and initDatabase, so OpenFailureBoundary can tell these apart
 // from errors anywhere else in the app.
+// The cause's message is repeated because error overlays and crash reports show only the top one.
 function rethrowAsOpenError(cause: Error): never {
-  throw new DatabaseOpenError("Crowbar couldn't open its database", { cause });
+  throw new DatabaseOpenError(`Crowbar couldn't open its database: ${cause.message}`, { cause });
 }
 
 function snapshotBeside(databasePath: string): Snapshot {
