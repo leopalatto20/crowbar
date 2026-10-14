@@ -1,10 +1,10 @@
+import type { ExerciseListing } from "@/db/exercises";
 import type { I18n } from "@/lib/i18n";
-import type { ExerciseSummary } from "@/lib/exercise/sample-library";
 import type { Target } from "@/lib/workout/model";
 
 export type RoutineExercise = {
   id: string;
-  exercise: ExerciseSummary;
+  exercise: Pick<ExerciseListing, "id" | "name">;
   warmups: number;
   target: Target;
   restSeconds: number;
@@ -45,7 +45,7 @@ export function makeRoutineExerciseId() {
   return `routine-exercise-${nextId}`;
 }
 
-export function newRoutineExercise(exercise: ExerciseSummary): RoutineExercise {
+export function newRoutineExercise(exercise: RoutineExercise["exercise"]): RoutineExercise {
   return {
     id: makeRoutineExerciseId(),
     exercise,

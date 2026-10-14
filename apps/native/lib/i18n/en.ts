@@ -1,4 +1,4 @@
-import type { MuscleGroup } from "@/lib/exercise/model";
+import type { EquipmentType, LoadType, MuscleGroup } from "@/lib/exercise/model";
 
 // The English catalog is the source of truth: its shape is the type every other catalog fills in.
 export const en = {
@@ -17,6 +17,7 @@ export const en = {
     search: "Search",
     noMatches: (query: string) => `No Exercises match “${query}”.`,
     noMuscleGroup: "No Muscle group",
+    newExercise: "New Exercise",
   },
   settings: {
     logging: "Logging",
@@ -58,6 +59,24 @@ export const en = {
     calves: "Calves",
     other: "Other",
   } satisfies Record<MuscleGroup, string>,
+  equipmentType: {
+    barbell: "Barbell",
+    dumbbell: "Dumbbell",
+    machine: "Machine",
+    cable: "Cable",
+    smithMachine: "Smith machine",
+    ezBar: "EZ bar",
+    trapBar: "Trap bar",
+    kettlebell: "Kettlebell",
+    band: "Band",
+    bodyweight: "Bodyweight",
+    other: "Other",
+  } satisfies Record<EquipmentType, string>,
+  loadType: {
+    external: "External",
+    bodyweight: "Bodyweight",
+    assisted: "Assisted",
+  } satisfies Record<LoadType, string>,
   stackLevel: (level: string) => `L${level}`,
   dragToReorder: "Drag to reorder",
   ledger: {
@@ -110,7 +129,23 @@ export const en = {
     cancel: "Cancel",
     search: "Search exercises",
     create: (name: string) => `Create “${name}”`,
+    unhide: (name: string) => `Unhide “${name}”`,
     inRoutine: "In Routine",
+  },
+  customExercise: {
+    title: "New Exercise",
+    cancel: "Cancel",
+    save: "Save",
+    name: "Name",
+    equipmentType: "Equipment type",
+    loadType: "Load type",
+    unilateral: "Unilateral",
+    muscleGroup: "Muscle group",
+    noMuscleGroup: "None",
+    nameTaken: (name: string) => `“${name}” already exists.`,
+    nameTakenHidden: (name: string) => `“${name}” already exists but is hidden.`,
+    unhide: "Unhide",
+    useExisting: "Use it",
   },
 };
 
