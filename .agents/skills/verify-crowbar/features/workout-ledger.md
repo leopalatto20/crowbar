@@ -43,3 +43,4 @@ Proof: a `gym` row with the typed name, a `workout` row with `finished_at` null 
 - Ledger set fields are React Native `TextInput`s whose placeholder is the "Last here" ghost value or "–". Find them by frame in `cv tree`.
 - The Finish sheet's Finish button shares its label with the toolbar's, so `cv tap Finish` refuses while the sheet is open.
 - Number pads have no Return key; tap elsewhere or use Finish (it dismisses the keyboard first, so typed values are committed).
+- "Discard Workout" labels both the More menu action and the confirmation's destructive button. Wait for "Discard this Workout?" before tapping it a second time, or one `cv tap` can land on the alert and discard.
