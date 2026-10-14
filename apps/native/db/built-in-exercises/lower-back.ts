@@ -1,0 +1,68 @@
+import type { BuiltInExercise } from ".";
+
+export const LOWER_BACK: BuiltInExercise[] = [
+  {
+    id: "barbell-deadlift",
+    name: { en: "Barbell Deadlift", es: "Peso muerto con barra" },
+    equipmentType: "barbell",
+    loadType: "external",
+    unilateral: false,
+    muscleGroup: "lowerBack",
+  },
+  {
+    id: "barbell-sumo-deadlift",
+    name: { en: "Barbell Sumo Deadlift", es: "Peso muerto sumo con barra" },
+    equipmentType: "barbell",
+    loadType: "external",
+    unilateral: false,
+    muscleGroup: "lowerBack",
+  },
+  {
+    id: "barbell-deficit-deadlift",
+    name: { en: "Barbell Deficit Deadlift", es: "Peso muerto con déficit con barra" },
+    equipmentType: "barbell",
+    loadType: "external",
+    unilateral: false,
+    muscleGroup: "lowerBack",
+  },
+  {
+    id: "barbell-rack-pull",
+    name: { en: "Barbell Rack Pull", es: "Rack pull con barra" },
+    equipmentType: "barbell",
+    loadType: "external",
+    unilateral: false,
+    muscleGroup: "lowerBack",
+  },
+  {
+    id: "trap-bar-deadlift",
+    name: { en: "Trap Bar Deadlift", es: "Peso muerto con barra hexagonal" },
+    equipmentType: "trapBar",
+    loadType: "external",
+    unilateral: false,
+    muscleGroup: "lowerBack",
+  },
+  {
+    id: "back-extension",
+    name: { en: "Back Extension", es: "Hiperextensión" },
+    equipmentType: "bodyweight",
+    loadType: "bodyweight",
+    unilateral: false,
+    muscleGroup: "lowerBack",
+  },
+  {
+    id: "machine-reverse-hyperextension",
+    name: { en: "Machine Reverse Hyperextension", es: "Hiperextensión inversa en máquina" },
+    equipmentType: "machine",
+    loadType: "external",
+    unilateral: false,
+    muscleGroup: "lowerBack",
+  },
+  {
+    id: "barbell-paused-deadlift",
+    name: { en: "Barbell Paused Deadlift", es: "Peso muerto pausado con barra" },
+    equipmentType: "barbell",
+    loadType: "external",
+    unilateral: false,
+    muscleGroup: "lowerBack",
+  },
+];
