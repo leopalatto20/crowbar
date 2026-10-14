@@ -14,7 +14,8 @@ export default function TabsLayout() {
   // The tabs mount once per launch, once the root Stack can navigate, so a Workout left in
   // progress by a killed app reopens in the Ledger over them.
   useEffect(() => {
-    if (currentWorkoutId(db)) router.push("/workout");
+    // navigate, not push: a Ledger already on the stack is never stacked twice.
+    if (currentWorkoutId(db)) router.navigate("/workout");
   }, [db, router]);
 
   return (

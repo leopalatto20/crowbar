@@ -4,7 +4,6 @@ import { useI18n } from "@/lib/i18n";
 
 import type { WorkoutInProgressAlertProps } from "./workout-in-progress-alert.types";
 
-// Starting a Workout while one is in progress never splits the session silently.
 export function WorkoutInProgressAlert({
   visible,
   onResume,

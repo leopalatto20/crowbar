@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
-import { mkdtempSync } from "node:fs";
+import { afterEach, describe, expect, test } from "bun:test";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -16,6 +16,7 @@ import {
   addWorkoutExercise,
   confirmSet,
   currentWorkoutId,
+  discardAndStartWorkout,
   discardWorkout,
   finishWorkout,
   getLedger,
@@ -117,7 +118,8 @@ describe("one Workout at a time", () => {
     expect(currentWorkoutId(db)).toBe(workoutId);
   });
 
-  test("a new Workout starts once the last one is finished", async () => {
+  // Two finished Workouts must coexist, so the constraint covers only unfinished ones.
+  test("Workouts keep starting after earlier ones are finished", async () => {
     const { db, gymId, workoutId, workoutExerciseId } = await benchInWorkout();
     confirmSet(db, setsOf(db, workoutId, workoutExerciseId)[0]!.id, { load: 100, reps: 5 });
     finishWorkout(db, workoutId);
@@ -131,11 +133,33 @@ describe("one Workout at a time", () => {
     const third = startWorkout(db, { gymId, timeZone: TIME_ZONE });
     expect(currentWorkoutId(db)).toBe(third);
   });
+
+  test("discarding and starting replaces the Workout in progress", async () => {
+    const { db, workoutId, workoutExerciseId } = await benchInWorkout();
+    confirmSet(db, setsOf(db, workoutId, workoutExerciseId)[0]!.id, { load: 100, reps: 5 });
+    const garage = createGym(db, "Garage");
+
+    const next = discardAndStartWorkout(db, workoutId, {
+      gymId: garage,
+      timeZone: TIME_ZONE,
+      now: 2_000,
+    });
+
+    expect(getLedger(db, workoutId, "en")).toBeUndefined();
+    expect(currentWorkoutId(db)).toBe(next);
+    expect(ledger(db, next)).toMatchObject({ gymName: "Garage", startedAt: 2_000, exercises: [] });
+  });
 });
 
 describe("resuming after the app is killed", () => {
+  let directory: string | undefined;
+  afterEach(() => {
+    if (directory) rmSync(directory, { recursive: true, force: true });
+  });
+
   test("a relaunch finds the Workout in progress with every committed field", async () => {
-    const path = join(mkdtempSync(join(tmpdir(), "crowbar-")), "crowbar.db");
+    directory = mkdtempSync(join(tmpdir(), "crowbar-"));
+    const path = join(directory, "crowbar.db");
     const db = await createTestDatabase(path);
     seedSettings(db, "MX");
     seedBuiltInExercises(db, [benchPress, pullUp]);
