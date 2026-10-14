@@ -9,6 +9,7 @@ export type Unit = (typeof UNITS)[number];
 export const SET_KINDS = ["warmup", "working"] as const;
 export type SetKind = (typeof SET_KINDS)[number];
 export type Field = "load" | "reps" | "rir";
+export type Performance = { load: number; reps: number; rir: number | null };
 
 // RPE = 10 - RIR, so the stored value is always RIR and only the display flips.
 export function toEffortDisplay(rir: number | null, effort: Effort) {
@@ -46,6 +47,18 @@ export function parseSetValue(field: Field, text: string, effort: Effort) {
   if (field === "load") return value;
   if (!Number.isInteger(value)) return undefined;
   return field === "rir" ? fromEffortDisplay(value, effort) : value;
+}
+
+export function formatPerformance(
+  performance: Performance,
+  unit: Unit,
+  effort: Effort,
+  i18n: I18n,
+) {
+  const load = i18n.formatDecimal(performance.load);
+  const loadByReps = `${unit === "level" ? i18n.t.stackLevel(load) : load} × ${performance.reps}`;
+  const shown = toEffortDisplay(performance.rir, effort);
+  return shown === null ? loadByReps : `${loadByReps} @${shown}`;
 }
 
 export function formatClock(totalSeconds: number) {

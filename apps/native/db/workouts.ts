@@ -1,7 +1,7 @@
-import { and, asc, desc, eq, inArray, isNotNull, isNull, max, notExists } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, max, notExists } from "drizzle-orm";
 
 import type { Language } from "@/lib/i18n/locale";
-import type { SetKind, Unit } from "@/lib/workout/model";
+import type { Performance, SetKind, Unit } from "@/lib/workout/model";
 
 import type { Database } from "./database";
 import { newId } from "./id";
@@ -37,6 +37,8 @@ export type LedgerSet = {
   reps: number | null;
   rir: number | null;
   done: boolean;
+  // What was logged for this set number last time at the same Station; also its ghost values.
+  lastHere: Performance | null;
 };
 
 export type LedgerExercise = {
@@ -74,6 +76,7 @@ export function getLedger(db: Database, id: string, language: Language): Ledger 
       exerciseId: exercise.id,
       name: exercise.name,
       nameEs: exercise.nameEs,
+      stationId: workoutExercise.stationId,
       unit: station.unit,
     })
     .from(workoutExercise)
@@ -101,7 +104,7 @@ export function getLedger(db: Database, id: string, language: Language): Ledger 
     )
     .orderBy(asc(workoutSet.position))
     .all();
-  const setsByEntry = new Map<string, LedgerSet[]>();
+  const setsByEntry = new Map<string, Omit<LedgerSet, "lastHere">[]>();
   for (const { workoutExerciseId, ...set } of sets) {
     setsByEntry.set(workoutExerciseId, [...(setsByEntry.get(workoutExerciseId) ?? []), set]);
   }
@@ -110,12 +113,93 @@ export function getLedger(db: Database, id: string, language: Language): Ledger 
 
   return {
     ...found,
-    exercises: entries.map(({ id, exerciseId, name, nameEs, unit }) => ({
-      id,
-      exercise: { id: exerciseId, name: language === "es" ? (nameEs ?? name) : name },
-      unit: unit ?? defaultWeightUnit,
-      sets: setsByEntry.get(id) ?? [],
-    })),
+    exercises: entries.map(({ id, exerciseId, name, nameEs, stationId, unit }) => {
+      const entrySets = setsByEntry.get(id) ?? [];
+      const lastHere = matchLastHere(entrySets, previousSetsAt(db, stationId, found.startedAt));
+      return {
+        id,
+        exercise: { id: exerciseId, name: language === "es" ? (nameEs ?? name) : name },
+        unit: unit ?? defaultWeightUnit,
+        sets: entrySets.map((set, index) => ({ ...set, lastHere: lastHere[index]! })),
+      };
+    }),
+  };
+}
+
+type PreviousSet = Performance & { kind: SetKind };
+
+// The sets of the most recent Workout at the Station that started before `before`. "Earlier" is
+// by start time, not by finish, so a past Workout logged later still reads only what preceded it.
+function previousSetsAt(db: Database, stationId: string | null, before: number): PreviousSet[] {
+  if (!stationId) return [];
+  const previous = db
+    .select({ id: workout.id })
+    .from(workout)
+    .innerJoin(workoutExercise, eq(workoutExercise.workoutId, workout.id))
+    .where(and(eq(workoutExercise.stationId, stationId), lt(workout.startedAt, before)))
+    .orderBy(desc(workout.startedAt))
+    .limit(1)
+    .get();
+  if (!previous) return [];
+  return (
+    db
+      .select({
+        kind: workoutSet.kind,
+        load: workoutSet.load,
+        reps: workoutSet.reps,
+        rir: workoutSet.rir,
+      })
+      .from(workoutSet)
+      .innerJoin(workoutExercise, eq(workoutExercise.id, workoutSet.workoutExerciseId))
+      .where(
+        and(
+          eq(workoutExercise.workoutId, previous.id),
+          eq(workoutExercise.stationId, stationId),
+          eq(workoutSet.done, true),
+        ),
+      )
+      .orderBy(asc(workoutExercise.position), asc(workoutSet.position))
+      .all()
+      // The set_logged check guarantees a confirmed set has its load and reps.
+      .map(({ load, reps, ...set }) => ({ ...set, load: load!, reps: reps! }))
+  );
+}
+
+// Sets match by number, as the Ledger numbers them: Working sets among Working sets, warm-ups
+// among warm-ups. So a warm-up added in front never shifts which Working set is compared.
+function matchLastHere(sets: { kind: SetKind }[], previous: PreviousSet[]) {
+  const counts: Record<SetKind, number> = { warmup: 0, working: 0 };
+  return sets.map(({ kind }): Performance | null => {
+    const ordinal = counts[kind]++;
+    const match = previous.filter((set) => set.kind === kind)[ordinal];
+    return match ? { load: match.load, reps: match.reps, rir: match.rir } : null;
+  });
+}
+
+function lastHereOfSet(db: Database, set: { id: string; workoutExerciseId: string }) {
+  const entry = db
+    .select({ stationId: workoutExercise.stationId, startedAt: workout.startedAt })
+    .from(workoutExercise)
+    .innerJoin(workout, eq(workout.id, workoutExercise.workoutId))
+    .where(eq(workoutExercise.id, set.workoutExerciseId))
+    .get();
+  if (!entry) throw new Error(`Workout Exercise ${set.workoutExerciseId} doesn't exist`);
+  const sets = db
+    .select({ id: workoutSet.id, kind: workoutSet.kind })
+    .from(workoutSet)
+    .where(eq(workoutSet.workoutExerciseId, set.workoutExerciseId))
+    .orderBy(asc(workoutSet.position))
+    .all();
+  const lastHere = matchLastHere(sets, previousSetsAt(db, entry.stationId, entry.startedAt));
+  return lastHere[sets.findIndex(({ id }) => id === set.id)] ?? null;
+}
+
+// A field the lifter left empty shows its ghost value, so that's what an empty field means.
+function withGhosts(set: Pick<LedgerSet, "load" | "reps" | "rir">, ghost: Performance | null) {
+  return {
+    load: set.load ?? ghost?.load ?? null,
+    reps: set.reps ?? ghost?.reps ?? null,
+    rir: set.rir ?? ghost?.rir ?? null,
   };
 }
 
@@ -176,7 +260,8 @@ export function toggleSetKind(db: Database, id: string) {
   });
 }
 
-// A set added mid-Workout copies the set above, so an extra set is one tap like any other.
+// A set added mid-Workout has its own ghost values when last time reached its number. Otherwise
+// it copies what the set above shows, ghost values included, so an extra set is still one tap.
 export function addSet(db: Database, workoutExerciseId: string) {
   db.transaction((tx) => {
     const above = tx
@@ -186,33 +271,37 @@ export function addSet(db: Database, workoutExerciseId: string) {
       .orderBy(desc(workoutSet.position))
       .limit(1)
       .get();
-    tx.insert(workoutSet)
-      .values({
-        id: newId(tx),
-        workoutExerciseId,
-        position: (above?.position ?? -1) + 1,
-        kind: above?.kind,
-        load: above?.load,
-        reps: above?.reps,
-        rir: above?.rir,
-      })
-      .run();
+    const added = {
+      id: newId(tx),
+      workoutExerciseId,
+      position: (above?.position ?? -1) + 1,
+      kind: above?.kind,
+    };
+    tx.insert(workoutSet).values(added).run();
+    if (above && !lastHereOfSet(tx, added)) {
+      tx.update(workoutSet)
+        .set(withGhosts(above, lastHereOfSet(tx, above)))
+        .where(eq(workoutSet.id, added.id))
+        .run();
+    }
   });
 }
 
-// Confirming also commits whatever the lifter typed but hadn't committed yet. The first logged
-// set of an Exercise at a Gym is what creates its Station (ADR 0001), never the Workout start.
+// Confirming also commits whatever the lifter typed but hadn't committed yet, and the ghost
+// values of every field left empty, so an unchanged set is one tap. The first logged set of an
+// Exercise at a Gym is what creates its Station (ADR 0001), never the Workout start.
 export function confirmSet(db: Database, id: string, change: SetChange = {}) {
   db.transaction((tx) => {
-    const set = { ...findSet(tx, id), ...change };
-    if (set.load === null || set.reps === null) {
+    const found = findSet(tx, id);
+    const logged = withGhosts({ ...found, ...change }, lastHereOfSet(tx, found));
+    if (logged.load === null || logged.reps === null) {
       throw new Error(`Set ${id} can't be confirmed without load and reps`);
     }
     tx.update(workoutSet)
-      .set({ ...change, done: true })
+      .set({ ...logged, done: true })
       .where(eq(workoutSet.id, id))
       .run();
-    ensureStation(tx, set.workoutExerciseId);
+    ensureStation(tx, found.workoutExerciseId);
   });
 }
 

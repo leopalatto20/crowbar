@@ -226,6 +226,7 @@ describe("addWorkoutExercise", () => {
             reps: null,
             rir: null,
             done: false,
+            lastHere: null,
           },
         ],
       },
@@ -260,7 +261,7 @@ describe("updateSet", () => {
     updateSet(db, set!.id, { load: 100 });
     updateSet(db, set!.id, { reps: 5, rir: 2 });
     expect(setsOf(db, workoutId, workoutExerciseId)).toEqual([
-      { id: set!.id, kind: "working", load: 100, reps: 5, rir: 2, done: false },
+      { id: set!.id, kind: "working", load: 100, reps: 5, rir: 2, done: false, lastHere: null },
     ]);
   });
 
@@ -501,5 +502,178 @@ describe("discardWorkout", () => {
     addWorkoutExercise(db, next, benchPress.id);
     addWorkoutExercise(db, next, lateralRaise.id);
     expect(ledger(db, next).exercises.map((entry) => entry.unit)).toEqual(["lb", "kg"]);
+  });
+});
+
+describe("prefill from last time at the same Station", () => {
+  // Logs one finished Workout of Bench Press at the Gym, one confirmed set per value.
+  function logBench(
+    db: Database,
+    gymId: string,
+    now: number,
+    sets: { load: number; reps: number; rir?: number; warmup?: boolean }[],
+  ) {
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now });
+    const entry = addWorkoutExercise(db, workoutId, benchPress.id);
+    for (let i = 1; i < sets.length; i++) addSet(db, entry);
+    setsOf(db, workoutId, entry).forEach((set, index) => {
+      const { load, reps, rir = null, warmup } = sets[index]!;
+      if (warmup) toggleSetKind(db, set.id);
+      confirmSet(db, set.id, { load, reps, rir });
+    });
+    finishWorkout(db, workoutId, now + 1);
+    return workoutId;
+  }
+
+  function lastHereOf(db: Database, workoutId: string, workoutExerciseId: string) {
+    return setsOf(db, workoutId, workoutExerciseId).map((set) => set.lastHere);
+  }
+
+  test("shows each set what was logged for its number in the most recent Workout", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    logBench(db, gymId, 1_000, [{ load: 90, reps: 5 }]);
+    logBench(db, gymId, 2_000, [
+      { load: 100, reps: 5, rir: 2 },
+      { load: 100, reps: 4, rir: 1 },
+    ]);
+
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 3_000 });
+    const bench = addWorkoutExercise(db, workoutId, benchPress.id);
+    addSet(db, bench);
+    expect(lastHereOf(db, workoutId, bench)).toEqual([
+      { load: 100, reps: 5, rir: 2 },
+      { load: 100, reps: 4, rir: 1 },
+    ]);
+  });
+
+  test("matches Working sets and warm-ups by their own numbers", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    logBench(db, gymId, 1_000, [
+      { load: 60, reps: 8, warmup: true },
+      { load: 100, reps: 5, rir: 2 },
+    ]);
+
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 2_000 });
+    const bench = addWorkoutExercise(db, workoutId, benchPress.id);
+    addSet(db, bench);
+    addSet(db, bench);
+    const [, second, third] = setsOf(db, workoutId, bench);
+    toggleSetKind(db, second!.id);
+    toggleSetKind(db, third!.id);
+    expect(lastHereOf(db, workoutId, bench)).toEqual([
+      { load: 100, reps: 5, rir: 2 },
+      { load: 60, reps: 8, rir: null },
+      null,
+    ]);
+  });
+
+  test("has nothing to show for a set number last time didn't reach", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    logBench(db, gymId, 1_000, [{ load: 100, reps: 5 }]);
+
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 2_000 });
+    const bench = addWorkoutExercise(db, workoutId, benchPress.id);
+    toggleSetKind(db, setsOf(db, workoutId, bench)[0]!.id);
+    expect(lastHereOf(db, workoutId, bench)).toEqual([null]);
+  });
+
+  test("the same Exercise at another Gym prefills from that Gym only", async () => {
+    const db = await libraryDatabase();
+    const downtown = createGym(db, "Downtown Iron");
+    const garage = createGym(db, "Garage");
+    logBench(db, downtown, 1_000, [{ load: 100, reps: 5 }]);
+    logBench(db, garage, 2_000, [{ load: 80, reps: 8 }]);
+
+    const atDowntown = startWorkout(db, { gymId: downtown, timeZone: TIME_ZONE, now: 3_000 });
+    const bench = addWorkoutExercise(db, atDowntown, benchPress.id);
+    expect(lastHereOf(db, atDowntown, bench)).toEqual([{ load: 100, reps: 5, rir: null }]);
+    discardWorkout(db, atDowntown);
+
+    const atNewGym = startWorkout(db, {
+      gymId: createGym(db, "Hotel"),
+      timeZone: TIME_ZONE,
+      now: 4_000,
+    });
+    expect(lastHereOf(db, atNewGym, addWorkoutExercise(db, atNewGym, benchPress.id))).toEqual([
+      null,
+    ]);
+  });
+
+  test("a past Workout reads only the Workouts that started before it", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    const first = logBench(db, gymId, 1_000, [{ load: 90, reps: 5 }]);
+    const third = logBench(db, gymId, 3_000, [{ load: 100, reps: 5 }]);
+    const second = logBench(db, gymId, 2_000, [{ load: 95, reps: 5 }]);
+
+    expect(
+      [first, second, third].map((id) => ledger(db, id).exercises[0]!.sets[0]!.lastHere?.load),
+    ).toEqual([undefined, 90, 95]);
+  });
+
+  test("confirming an untouched set stores its ghost values", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    logBench(db, gymId, 1_000, [{ load: 100, reps: 5, rir: 2 }]);
+
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 2_000 });
+    const bench = addWorkoutExercise(db, workoutId, benchPress.id);
+    confirmSet(db, setsOf(db, workoutId, bench)[0]!.id);
+    expect(setsOf(db, workoutId, bench)[0]).toMatchObject({
+      load: 100,
+      reps: 5,
+      rir: 2,
+      done: true,
+    });
+  });
+
+  test("a typed value overrides its ghost and the rest still commit", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    logBench(db, gymId, 1_000, [{ load: 100, reps: 5, rir: 2 }]);
+
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 2_000 });
+    const bench = addWorkoutExercise(db, workoutId, benchPress.id);
+    const [set] = setsOf(db, workoutId, bench);
+    updateSet(db, set!.id, { load: 102.5 });
+    confirmSet(db, set!.id, { reps: 4 });
+    expect(setsOf(db, workoutId, bench)[0]).toMatchObject({ load: 102.5, reps: 4, rir: 2 });
+  });
+
+  test("a set added mid-Workout copies what the set above shows", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    logBench(db, gymId, 1_000, [{ load: 100, reps: 5, rir: 2 }]);
+
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 2_000 });
+    const bench = addWorkoutExercise(db, workoutId, benchPress.id);
+    updateSet(db, setsOf(db, workoutId, bench)[0]!.id, { reps: 6 });
+    addSet(db, bench);
+    expect(setsOf(db, workoutId, bench)[1]).toMatchObject({
+      load: 100,
+      reps: 6,
+      rir: 2,
+      done: false,
+      lastHere: null,
+    });
+  });
+
+  test("a set added mid-Workout prefills from its own number when last time reached it", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    logBench(db, gymId, 1_000, [
+      { load: 100, reps: 5, rir: 2 },
+      { load: 100, reps: 4, rir: 1 },
+    ]);
+
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 2_000 });
+    const bench = addWorkoutExercise(db, workoutId, benchPress.id);
+    addSet(db, bench);
+    const second = setsOf(db, workoutId, bench)[1]!;
+    confirmSet(db, second.id);
+    expect(setsOf(db, workoutId, bench)[1]).toMatchObject({ load: 100, reps: 4, rir: 1 });
   });
 });
