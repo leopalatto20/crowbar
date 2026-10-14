@@ -1,5 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
+import type { EquipmentType, LoadType, MuscleGroup } from "@/lib/exercise/model";
 import type { Language } from "@/lib/i18n/locale";
 
 import type { BuiltInExercise } from "./built-in-exercises";
@@ -21,7 +22,13 @@ export function seedBuiltInExercises(db: Database, builtIns: readonly BuiltInExe
     .run();
 }
 
-export type ExerciseListing = Pick<typeof exercise.$inferSelect, "id" | "name" | "muscleGroup">;
+export type ExerciseListing = Pick<
+  typeof exercise.$inferSelect,
+  "id" | "name" | "muscleGroup" | "hidden"
+> & {
+  // Every name the Exercise has in any language, which is what names are unique across.
+  names: string[];
+};
 
 export function listExercises(db: Database, language: Language): ExerciseListing[] {
   const collator = new Intl.Collator(language);
@@ -31,14 +38,14 @@ export function listExercises(db: Database, language: Language): ExerciseListing
       name: exercise.name,
       nameEs: exercise.nameEs,
       muscleGroup: exercise.muscleGroup,
+      hidden: exercise.hidden,
     })
     .from(exercise)
-    .where(eq(exercise.hidden, false))
     .all()
-    .map(({ id, name, nameEs, muscleGroup }) => ({
-      id,
-      name: language === "es" ? (nameEs ?? name) : name,
-      muscleGroup,
+    .map(({ nameEs, ...listing }) => ({
+      ...listing,
+      name: language === "es" ? (nameEs ?? listing.name) : listing.name,
+      names: nameEs ? [listing.name, nameEs] : [listing.name],
     }))
     .sort((a, b) => collator.compare(a.name, b.name));
 }
@@ -53,5 +60,57 @@ function foldCaseAndAccents(text: string) {
 
 export function searchExercises(exercises: ExerciseListing[], query: string) {
   const folded = foldCaseAndAccents(query.trim());
-  return exercises.filter((listing) => foldCaseAndAccents(listing.name).includes(folded));
+  return exercises.filter(
+    (listing) => !listing.hidden && foldCaseAndAccents(listing.name).includes(folded),
+  );
+}
+
+// Unlike search, an exact match keeps accents and finds Hidden Exercises and names in other
+// languages: it decides whether a name is free for a new Exercise.
+export function exerciseNamed(exercises: ExerciseListing[], name: string) {
+  const wanted = name.trim().toLowerCase();
+  return exercises.find((listing) => listing.names.some((taken) => taken.toLowerCase() === wanted));
+}
+
+export function unhideExercise(db: Database, id: string) {
+  db.update(exercise).set({ hidden: false }).where(eq(exercise.id, id)).run();
+}
+
+// UUIDv7: time-ordered, so Custom Exercises sort by creation in the index. The random bits come from
+// SQLite because Hermes has no crypto, and hex() reads back as the same string on both drivers.
+function newId(db: Database) {
+  const [{ random }] = db.all<{ random: string }>(sql`select lower(hex(randomblob(10))) as random`);
+  const time = Date.now().toString(16).padStart(12, "0");
+  const variant = ((parseInt(random.slice(3, 4), 16) & 0x3) | 0x8).toString(16);
+  return [
+    time.slice(0, 8),
+    time.slice(8, 12),
+    `7${random.slice(0, 3)}`,
+    `${variant}${random.slice(4, 7)}`,
+    random.slice(7, 19),
+  ].join("-");
+}
+
+export type NewCustomExercise = {
+  name: string;
+  equipmentType?: EquipmentType;
+  loadType?: LoadType;
+  unilateral?: boolean;
+  muscleGroup?: MuscleGroup | null;
+};
+
+// Names are unique case-insensitively across every name an Exercise has, hidden ones included,
+// so no language ever shows two Exercises under one name.
+export function createCustomExercise(db: Database, fields: NewCustomExercise): ExerciseListing {
+  const name = fields.name.trim();
+  if (!name) throw new Error("A Custom Exercise needs a name");
+  // Compared in JS rather than SQL: SQLite's lower() folds only ASCII, so "EXTENSIÓN" would
+  // slip past "Extensión".
+  const taken = exerciseNamed(listExercises(db, "en"), name);
+  if (taken) throw new Error(`"${name}" is already taken by Exercise ${taken.id}`);
+  const id = newId(db);
+  db.insert(exercise)
+    .values({ ...fields, id, name, builtIn: false })
+    .run();
+  return { id, name, muscleGroup: fields.muscleGroup ?? null, hidden: false, names: [name] };
 }

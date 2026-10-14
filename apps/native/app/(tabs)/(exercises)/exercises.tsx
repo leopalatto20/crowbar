@@ -2,14 +2,17 @@ import { FieldGroup, Host, Text } from "@expo/ui";
 import { Stack } from "expo-router";
 import { Suspense, useState } from "react";
 
+import { CustomExerciseSheet } from "@/components/custom-exercise-sheet";
 import { EmptyState } from "@/components/empty-state";
+import { searchExercises } from "@/db/exercises";
 import { MUSCLE_GROUPS } from "@/lib/exercise/model";
-import { useExercises } from "@/lib/exercise/use-exercises";
+import { useExerciseLibrary } from "@/lib/exercise/use-exercises";
 import { useI18n } from "@/lib/i18n";
 
 export default function ExercisesTab() {
   const { t } = useI18n();
   const [search, setSearch] = useState("");
+  const [creating, setCreating] = useState(false);
   return (
     <>
       <Stack.Screen
@@ -23,6 +26,18 @@ export default function ExercisesTab() {
           },
         }}
       />
+      <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Button
+          icon="plus"
+          accessibilityLabel={t.exercises.newExercise}
+          onPress={() => setCreating(true)}
+        />
+      </Stack.Toolbar>
+      <CustomExerciseSheet
+        name={creating ? "" : null}
+        onClose={() => setCreating(false)}
+        onSave={() => setCreating(false)}
+      />
       {/* Here rather than the app-wide boundary, so the first read blanks only this tab. */}
       <Suspense fallback={null}>
         <ExerciseLibrary search={search} />
@@ -33,7 +48,7 @@ export default function ExercisesTab() {
 
 function ExerciseLibrary({ search }: { search: string }) {
   const { t } = useI18n();
-  const exercises = useExercises(search);
+  const exercises = searchExercises(useExerciseLibrary(), search);
 
   if (exercises.length === 0) {
     const query = search.trim();
