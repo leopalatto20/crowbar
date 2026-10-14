@@ -17,7 +17,14 @@ import {
 } from "@/db/workouts";
 import { haptics } from "@/lib/haptics";
 import { useI18n } from "@/lib/i18n";
-import { LEDGER_MAX_FONT_SCALE, motion, radii, type, useColors } from "@/lib/theme";
+import {
+  LEDGER_MAX_FONT_SCALE,
+  motion,
+  radii,
+  transitionEaseOut,
+  type,
+  useColors,
+} from "@/lib/theme";
 import { useEffort } from "@/lib/workout/effort";
 import {
   type Field,
@@ -204,7 +211,7 @@ function SetRow({
         backgroundColor: set.done ? p.greenTint : "transparent",
         transitionProperty: "backgroundColor",
         transitionDuration: motion.confirmTint,
-        transitionTimingFunction: motion.easeOut,
+        transitionTimingFunction: transitionEaseOut,
       }}
     >
       <PressableScale
@@ -361,7 +368,7 @@ function CheckButton({
           transform: [{ scale: done && !reduced ? 1.12 : 1 }],
           transitionProperty: "transform",
           transitionDuration: motion.confirmPop,
-          transitionTimingFunction: motion.easeOut,
+          transitionTimingFunction: transitionEaseOut,
         }}
       >
         <SymbolView
