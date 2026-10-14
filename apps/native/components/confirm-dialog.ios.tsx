@@ -1,4 +1,4 @@
-import { Button, ConfirmationDialog, Host, Text } from "@expo/ui/swift-ui";
+import { Alert, Button, Host, Text } from "@expo/ui/swift-ui";
 
 import { DialogAnchor } from "./dialog-anchor";
 import type { ConfirmDialogProps } from "./confirm-dialog.types";
@@ -14,25 +14,27 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   return (
     <Host matchContents>
-      <ConfirmationDialog
+      {/* An Alert, not a ConfirmationDialog: on iOS 26 a ConfirmationDialog is a popover whose
+          tail points at its trigger, and the trigger can't sit on a toolbar menu like the
+          Ledger's More button, so the tail pointed at empty space (#69). */}
+      <Alert
         title={title}
-        titleVisibility="visible"
         isPresented={visible}
         onIsPresentedChange={(presented) => {
           if (!presented) onDismiss();
         }}
       >
-        <ConfirmationDialog.Trigger>
+        <Alert.Trigger>
           <DialogAnchor />
-        </ConfirmationDialog.Trigger>
-        <ConfirmationDialog.Actions>
+        </Alert.Trigger>
+        <Alert.Actions>
           <Button label={confirmLabel} role="destructive" onPress={onConfirm} />
           <Button label={cancelLabel} role="cancel" onPress={onDismiss} />
-        </ConfirmationDialog.Actions>
-        <ConfirmationDialog.Message>
+        </Alert.Actions>
+        <Alert.Message>
           <Text>{message}</Text>
-        </ConfirmationDialog.Message>
-      </ConfirmationDialog>
+        </Alert.Message>
+      </Alert>
     </Host>
   );
 }
