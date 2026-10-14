@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `workout_in_progress` ON `workout` (("finished_at" is null)) WHERE "workout"."finished_at" is null;

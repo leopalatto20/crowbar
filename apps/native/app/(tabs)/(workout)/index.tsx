@@ -3,10 +3,11 @@ import { Suspense, useState } from "react";
 
 import { GymNamePrompt } from "@/components/gym-name-prompt";
 import { RoutineList } from "@/components/routine/routine-list";
+import { WorkoutInProgressAlert } from "@/components/workout-in-progress-alert";
 import { useDb } from "@/db/context";
 import { createGym, lastUsedGym } from "@/db/gyms";
 import { createRoutine, deleteRoutine, duplicateRoutine, reorderRoutines } from "@/db/routines";
-import { currentWorkoutId, startWorkout } from "@/db/workouts";
+import { currentWorkoutId, discardWorkout, startWorkout } from "@/db/workouts";
 import { useI18n } from "@/lib/i18n";
 import { useRoutines } from "@/lib/routine/use-routine";
 
@@ -33,12 +34,10 @@ function Routines() {
   }));
   const [editing, setEditing] = useState(false);
   const [namingGym, setNamingGym] = useState(false);
+  const [inProgressId, setInProgressId] = useState<string>();
 
   function openLedger(gymId: string) {
-    // Until one Workout at a time is enforced with its own prompt, starting again resumes it.
-    if (!currentWorkoutId(db)) {
-      startWorkout(db, { gymId, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
-    }
+    startWorkout(db, { gymId, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
     router.push("/workout");
   }
 
@@ -46,6 +45,12 @@ function Routines() {
     const gym = lastUsedGym(db);
     if (gym) openLedger(gym.id);
     else setNamingGym(true);
+  }
+
+  function requestEmptyWorkout() {
+    const current = currentWorkoutId(db);
+    if (current) setInProgressId(current);
+    else startEmptyWorkout();
   }
 
   function edit(id: string) {
@@ -80,7 +85,7 @@ function Routines() {
       <RoutineList
         routines={routines}
         editing={editing}
-        onStartEmptyWorkout={startEmptyWorkout}
+        onStartEmptyWorkout={requestEmptyWorkout}
         onCreate={create}
         onEdit={edit}
         onDuplicate={(routine) =>
@@ -96,6 +101,19 @@ function Routines() {
           openLedger(createGym(db, name));
         }}
         onDismiss={() => setNamingGym(false)}
+      />
+      <WorkoutInProgressAlert
+        visible={inProgressId !== undefined}
+        onResume={() => {
+          setInProgressId(undefined);
+          router.push("/workout");
+        }}
+        onDiscardAndStart={() => {
+          setInProgressId(undefined);
+          if (inProgressId) discardWorkout(db, inProgressId);
+          startEmptyWorkout();
+        }}
+        onDismiss={() => setInProgressId(undefined)}
       />
     </>
   );

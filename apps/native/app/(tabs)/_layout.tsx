@@ -1,9 +1,22 @@
+import { useRouter } from "expo-router";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
+import { useEffect } from "react";
 
+import { useDb } from "@/db/context";
+import { currentWorkoutId } from "@/db/workouts";
 import { useI18n } from "@/lib/i18n";
 
 export default function TabsLayout() {
   const { t } = useI18n();
+  const db = useDb();
+  const router = useRouter();
+
+  // The tabs mount once per launch, once the root Stack can navigate, so a Workout left in
+  // progress by a killed app reopens in the Ledger over them.
+  useEffect(() => {
+    if (currentWorkoutId(db)) router.push("/workout");
+  }, [db, router]);
+
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="(workout)">

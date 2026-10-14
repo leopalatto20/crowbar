@@ -96,6 +96,13 @@ export const en = {
     cancel: "Cancel",
     start: "Start",
   },
+  workoutInProgress: {
+    title: "A Workout is in progress",
+    message: "Discarding it deletes its logged sets.",
+    resume: "Resume current",
+    discardAndStart: "Discard and start new",
+    cancel: "Cancel",
+  },
   ledger: {
     title: "Workout",
     meta: (gym: string, startedAt: string) => `${gym} · started ${startedAt}`,

@@ -1,4 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import type { BuiltInExercise } from "./built-in-exercises";
 import { seedBuiltInExercises } from "./exercises";
@@ -104,6 +107,80 @@ describe("startWorkout", () => {
     const db = await libraryDatabase();
     const gymId = createGym(db, "Downtown Iron");
     expect(lastUsedGym(db)).toEqual({ id: gymId, name: "Downtown Iron" });
+  });
+});
+
+describe("one Workout at a time", () => {
+  test("a second Workout can't start while one is in progress", async () => {
+    const { db, gymId, workoutId } = await startedWorkout();
+    expect(() => startWorkout(db, { gymId, timeZone: TIME_ZONE })).toThrow();
+    expect(currentWorkoutId(db)).toBe(workoutId);
+  });
+
+  test("a new Workout starts once the last one is finished", async () => {
+    const { db, gymId, workoutId, workoutExerciseId } = await benchInWorkout();
+    confirmSet(db, setsOf(db, workoutId, workoutExerciseId)[0]!.id, { load: 100, reps: 5 });
+    finishWorkout(db, workoutId);
+    const second = startWorkout(db, { gymId, timeZone: TIME_ZONE });
+    confirmSet(db, setsOf(db, second, addWorkoutExercise(db, second, benchPress.id))[0]!.id, {
+      load: 100,
+      reps: 6,
+    });
+    finishWorkout(db, second);
+
+    const third = startWorkout(db, { gymId, timeZone: TIME_ZONE });
+    expect(currentWorkoutId(db)).toBe(third);
+  });
+});
+
+describe("resuming after the app is killed", () => {
+  test("a relaunch finds the Workout in progress with every committed field", async () => {
+    const path = join(mkdtempSync(join(tmpdir(), "crowbar-")), "crowbar.db");
+    const db = await createTestDatabase(path);
+    seedSettings(db, "MX");
+    seedBuiltInExercises(db, [benchPress, pullUp]);
+    const workoutId = startWorkout(db, {
+      gymId: createGym(db, "Downtown Iron"),
+      timeZone: TIME_ZONE,
+      now: 1_000,
+    });
+    const bench = addWorkoutExercise(db, workoutId, benchPress.id);
+    addSet(db, bench);
+    const [first, second] = setsOf(db, workoutId, bench);
+    confirmSet(db, first!.id, { load: 100, reps: 5, rir: 2 });
+    updateSet(db, second!.id, { load: 102.5 });
+    const pull = addWorkoutExercise(db, workoutId, pullUp.id);
+    toggleSetKind(db, setsOf(db, workoutId, pull)[0]!.id);
+
+    const relaunched = await createTestDatabase(path);
+
+    expect(currentWorkoutId(relaunched)).toBe(workoutId);
+    const resumed = ledger(relaunched, workoutId);
+    expect(resumed).toMatchObject({ gymName: "Downtown Iron", startedAt: 1_000, finishedAt: null });
+    expect(
+      resumed.exercises.map((entry) => ({
+        exercise: entry.exercise.id,
+        sets: entry.sets.map(({ kind, load, reps, rir, done }) => ({
+          kind,
+          load,
+          reps,
+          rir,
+          done,
+        })),
+      })),
+    ).toEqual([
+      {
+        exercise: benchPress.id,
+        sets: [
+          { kind: "working", load: 100, reps: 5, rir: 2, done: true },
+          { kind: "working", load: 102.5, reps: null, rir: null, done: false },
+        ],
+      },
+      {
+        exercise: pullUp.id,
+        sets: [{ kind: "warmup", load: null, reps: null, rir: null, done: false }],
+      },
+    ]);
   });
 });
 
