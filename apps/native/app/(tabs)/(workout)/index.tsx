@@ -3,10 +3,11 @@ import { Suspense, useState } from "react";
 
 import { GymNamePrompt } from "@/components/gym-name-prompt";
 import { RoutineList } from "@/components/routine/routine-list";
+import { WorkoutInProgressAlert } from "@/components/workout-in-progress-alert";
 import { useDb } from "@/db/context";
 import { createGym, lastUsedGym } from "@/db/gyms";
 import { createRoutine, deleteRoutine, duplicateRoutine, reorderRoutines } from "@/db/routines";
-import { currentWorkoutId, startWorkout } from "@/db/workouts";
+import { currentWorkoutId, discardAndStartWorkout, startWorkout } from "@/db/workouts";
 import { useI18n } from "@/lib/i18n";
 import { useRoutines } from "@/lib/routine/use-routine";
 
@@ -33,12 +34,10 @@ function Routines() {
   }));
   const [editing, setEditing] = useState(false);
   const [namingGym, setNamingGym] = useState(false);
+  const [askingAboutCurrent, setAskingAboutCurrent] = useState(false);
 
   function openLedger(gymId: string) {
-    // Until one Workout at a time is enforced with its own prompt, starting again resumes it.
-    if (!currentWorkoutId(db)) {
-      startWorkout(db, { gymId, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
-    }
+    startWorkout(db, { gymId, timeZone: currentTimeZone() });
     router.push("/workout");
   }
 
@@ -46,6 +45,22 @@ function Routines() {
     const gym = lastUsedGym(db);
     if (gym) openLedger(gym.id);
     else setNamingGym(true);
+  }
+
+  function requestEmptyWorkout() {
+    if (currentWorkoutId(db)) setAskingAboutCurrent(true);
+    else startEmptyWorkout();
+  }
+
+  // A Workout in progress always has a Gym, so the new one starts at that Gym, read before the
+  // discard drops it out of the last-used Gym.
+  function discardAndStartEmptyWorkout() {
+    setAskingAboutCurrent(false);
+    const current = currentWorkoutId(db);
+    const gym = lastUsedGym(db);
+    if (!current || !gym) return;
+    discardAndStartWorkout(db, current, { gymId: gym.id, timeZone: currentTimeZone() });
+    router.push("/workout");
   }
 
   function edit(id: string) {
@@ -80,7 +95,7 @@ function Routines() {
       <RoutineList
         routines={routines}
         editing={editing}
-        onStartEmptyWorkout={startEmptyWorkout}
+        onStartEmptyWorkout={requestEmptyWorkout}
         onCreate={create}
         onEdit={edit}
         onDuplicate={(routine) =>
@@ -97,6 +112,19 @@ function Routines() {
         }}
         onDismiss={() => setNamingGym(false)}
       />
+      <WorkoutInProgressAlert
+        visible={askingAboutCurrent}
+        onResume={() => {
+          setAskingAboutCurrent(false);
+          router.push("/workout");
+        }}
+        onDiscardAndStart={discardAndStartEmptyWorkout}
+        onDismiss={() => setAskingAboutCurrent(false)}
+      />
     </>
   );
+}
+
+function currentTimeZone() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }

@@ -10,8 +10,9 @@ import * as schema from "./schema";
 export const MIGRATIONS_FOLDER = join(import.meta.dir, "migrations");
 
 // Opens like the app does, so tests run with the same pragmas and the real generated migrations.
-export async function createTestDatabase(): Promise<Database> {
-  const db = drizzle(new BunSqlite(":memory:"), { schema });
+// A file path lets a test reopen the same data on a new connection, as a cold launch does.
+export async function createTestDatabase(path = ":memory:"): Promise<Database> {
+  const db = drizzle(new BunSqlite(path), { schema });
   await openDatabase(db, {
     migrate: () => migrate(db, { migrationsFolder: MIGRATIONS_FOLDER }),
     // A fresh database holds nothing worth a snapshot, so this is never written.

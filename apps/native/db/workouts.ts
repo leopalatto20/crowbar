@@ -8,13 +8,22 @@ import { newId } from "./id";
 import { exercise, gym, station, workout, workoutExercise, workoutSet } from "./schema";
 import { getSettings } from "./settings";
 
-export function startWorkout(
-  db: Database,
-  { gymId, timeZone, now = Date.now() }: { gymId: string; timeZone: string; now?: number },
-) {
+type WorkoutStart = { gymId: string; timeZone: string; now?: number };
+
+// The database rejects a second unfinished Workout, so one in progress must be finished or
+// discarded first.
+export function startWorkout(db: Database, { gymId, timeZone, now = Date.now() }: WorkoutStart) {
   const id = newId(db);
   db.insert(workout).values({ id, gymId, startedAt: now, timeZone }).run();
   return id;
+}
+
+// One transaction, so a failed start never leaves the lifter with the old Workout gone.
+export function discardAndStartWorkout(db: Database, discardedId: string, start: WorkoutStart) {
+  return db.transaction((tx) => {
+    deleteWorkout(tx, discardedId);
+    return startWorkout(tx, start);
+  });
 }
 
 export function currentWorkoutId(db: Database) {
@@ -246,11 +255,13 @@ export function finishWorkout(db: Database, id: string, now = Date.now()) {
 }
 
 export function discardWorkout(db: Database, id: string) {
-  db.transaction((tx) => {
-    const stationIds = stationsOf(tx, id);
-    tx.delete(workout).where(eq(workout.id, id)).run();
-    deleteEmptyStations(tx, stationIds);
-  });
+  db.transaction((tx) => deleteWorkout(tx, id));
+}
+
+function deleteWorkout(db: Database, id: string) {
+  const stationIds = stationsOf(db, id);
+  db.delete(workout).where(eq(workout.id, id)).run();
+  deleteEmptyStations(db, stationIds);
 }
 
 function stationsOf(db: Database, workoutId: string) {

@@ -95,6 +95,13 @@ export const es: Messages = {
     cancel: "Cancelar",
     start: "Empezar",
   },
+  workoutInProgress: {
+    title: "Hay un entrenamiento en curso",
+    message: "Descartarlo borra sus series registradas.",
+    resume: "Continuar el actual",
+    discardAndStart: "Descartar y empezar otro",
+    cancel: "Cancelar",
+  },
   ledger: {
     title: "Entrenamiento",
     meta: (gym, startedAt) => `${gym} · inicio ${startedAt}`,

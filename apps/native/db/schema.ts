@@ -1,5 +1,13 @@
 import { type SQLWrapper, sql } from "drizzle-orm";
-import { check, index, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import {
+  check,
+  index,
+  integer,
+  real,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from "drizzle-orm/sqlite-core";
 
 // Relative imports: drizzle-kit loads this file without the app's path aliases.
 import { EQUIPMENT_TYPES, LOAD_TYPES, MUSCLE_GROUPS } from "../lib/exercise/model";
@@ -138,7 +146,14 @@ export const workout = sqliteTable(
     // IANA name, so a Workout's times read in the zone it was logged in, wherever it's viewed.
     timeZone: text("time_zone").notNull(),
   },
-  (t) => [index("workout_gym_id").on(t.gymId)],
+  (t) => [
+    index("workout_gym_id").on(t.gymId),
+    // At most one Workout is in progress. Unique on the expression, not on finished_at itself,
+    // because a unique index treats every null as distinct.
+    uniqueIndex("workout_in_progress")
+      .on(sql`(${t.finishedAt} is null)`)
+      .where(sql`${t.finishedAt} is null`),
+  ],
 );
 
 export const workoutExercise = sqliteTable(
