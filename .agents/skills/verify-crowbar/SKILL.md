@@ -19,7 +19,7 @@ Run it with no arguments for the command list. Below, `cv` stands for that path.
 
 The user's own setup is `bun run dev` (Metro on :8081) and the `iPhone 17 Pro` simulator. Never touch either. The helper owns:
 
-- a simulator named `crowbar-verify` (created on first `up`)
+- a simulator named `crowbar-verify` (created on first `up`), its keyboard pinned to US English with autocorrect, autocapitalization and predictions off, so `cv type` lands exactly what it was given
 - Metro on **:8082** (override with `CROWBAR_VERIFY_PORT`), started by the helper, pid in its state dir
 - state and evidence under `~/.cache/crowbar-verify/`
 
@@ -49,6 +49,7 @@ Run `cv doctor` first, and again whenever anything looks off. It's read-only and
 - the build matches the native dependencies
 - the app is installed and loads JS from `localhost:8082`
 - the database exists
+- the keyboard is pinned (a sim created before pinning existed fails here until the next `up`)
 - the Metro log has no `ERROR` lines
 
 A WARN about ERROR lines means read `cv logs` before trusting anything on screen.
@@ -64,7 +65,7 @@ cv tap Exercises --element-type RadioButton   # tabs are RadioButtons; value 1 =
 cv tap --value "Routine name" --element-type TextField   # empty fields: placeholder is AXValue
 cv type "Push Day"                        # paced typing into the focused field
 cv erase 8                                # backspace
-cv wait "Every set is logged." 10         # block until a label appears
+cv wait "Every set is logged." 10         # block until a label appears (labels only, never a placeholder)
 ```
 
 - Labels are the English UI strings in `apps/native/lib/i18n/en.ts`. The simulator runs in English, so read the catalog for the exact text.
@@ -73,6 +74,8 @@ cv wait "Every set is logged." 10         # block until a label appears
 - The software keyboard never shows. The headless sim behaves as if a hardware keyboard is attached, so the keyboard stays below the screen even after tapping a field. Its keys still appear in `cv tree` (at y beyond the screen height), so their presence proves nothing. To prove a field has focus, show its blinking cursor in a `shot` and `cv type` into it without tapping first. Keyboard visibility can only be checked on a physical device.
 - Native SwiftUI menus (`PopUpButton`, such as Equipment type) open as a list of `Button`s. Tap the option by its label.
 - A red-box **Render Error** replaces the screen when JS throws. `cv tree` shows its message as StaticText, and `cv logs` has the stack. Treat it as a finding, not a harness problem.
+- Text-style buttons inside form rows ("Use it", "Unhide" in New Exercise) respond only on their text, but `tap` aims at the centre of the full-width row and does nothing. Tap the text by frame: `cv tap --pre-delay 0 -x <left edge + 40> -y <row centre>`.
+- Long-press and swipe have no `cv` command. Use AXe directly with the UDID from `cv doctor`: `axe touch -x <x> -y <y> --down --up --delay 1.0 --udid <udid>` for a long-press, `axe swipe --start-x 330 --start-y <y> --end-x 120 --end-y <y> --duration 0.3 --udid <udid>` to swipe a row left.
 - Killing the app mid-flow (`cv launch`) is the real way to test resume-after-kill.
 
 ## Evidence

@@ -10,6 +10,7 @@ EVIDENCE_ROOT="$STATE/evidence"
 SIM_NAME="crowbar-verify"
 SIM_DEVICE_TYPE="iPhone 17 Pro"
 BUNDLE_ID="com.anonymous.crowbar"
+KEYBOARD="en_US@sw=QWERTY;hw=Automatic"
 # The user's own `bun run dev` owns 8081; a verification run never shares it.
 PORT="${CROWBAR_VERIFY_PORT:-8082}"
 
@@ -36,6 +37,31 @@ newest_ios_runtime() {
 # Anything that changes the native binary. When it differs from the installed build's, rebuild.
 native_fingerprint() {
   cat "$APP_DIR/package.json" "$APP_DIR/app.json" "$REPO/bun.lock" | shasum | cut -d' ' -f1
+}
+
+text_input_pinned() {
+  local u="$1"
+  [ "$(xcrun simctl spawn "$u" defaults read com.apple.keyboard.preferences KeyboardAutocorrection 2>/dev/null)" = 0 ] &&
+    [ "$(xcrun simctl spawn "$u" defaults read -g AppleKeyboards 2>/dev/null | tr -d ' \n')" = "(\"$KEYBOARD\")" ]
+}
+
+# `type` must land exactly the text it was given. A new simulator copies the host's keyboards (a
+# Spanish one beside English, say), and multilingual autocorrect then rewrites input: "Push"
+# became "Puse". A reboot is the proven way to make the keyboard pick these up.
+pin_text_input() {
+  local u="$1" key
+  text_input_pinned "$u" && return
+  xcrun simctl spawn "$u" defaults write -g AppleKeyboards -array "$KEYBOARD"
+  xcrun simctl spawn "$u" defaults write com.apple.keyboard.preferences KeyboardsCurrentAndNext -array "$KEYBOARD"
+  xcrun simctl spawn "$u" defaults write com.apple.keyboard.preferences KeyboardLastUsed "$KEYBOARD"
+  xcrun simctl spawn "$u" defaults delete com.apple.keyboard.preferences KeyboardLastUsedForLanguage 2>/dev/null || true
+  for key in KeyboardAutocorrection KeyboardAutocapitalization KeyboardPrediction KeyboardCheckSpelling KeyboardSmartPunctuation; do
+    xcrun simctl spawn "$u" defaults write com.apple.keyboard.preferences "$key" -bool NO
+  done
+  xcrun simctl shutdown "$u"
+  xcrun simctl boot "$u"
+  xcrun simctl bootstatus "$u" -b >/dev/null
+  echo "pinned the simulator keyboard to US English, autocorrect off"
 }
 
 metro_pid() { [ -f "$STATE/metro.pid" ] && cat "$STATE/metro.pid" || true; }
@@ -154,6 +180,7 @@ cmd_up() {
   fi
   xcrun simctl boot "$u" 2>/dev/null || true
   xcrun simctl bootstatus "$u" -b >/dev/null
+  pin_text_input "$u"
 
   if metro_ours && metro_ready; then
     echo "metro already running on :$PORT (pid $(metro_pid))"
@@ -217,6 +244,10 @@ cmd_doctor() {
     [ "$loc" = "localhost:$PORT" ] && echo "ok   app installed, loads JS from $loc" || { echo "FAIL app loads JS from '${loc:-default :8081}'"; ok=0; }
     if [ -f "$(db_path "$u")" ]; then echo "ok   database at $(db_path "$u")"; else echo "info database not created yet (app never launched)"; fi
   else echo "FAIL $BUNDLE_ID not installed on $SIM_NAME"; ok=0; fi
+  if [ "${state:-}" = Booted ]; then
+    text_input_pinned "$u" && echo "ok   keyboard is US English with autocorrect off" ||
+      { echo "FAIL keyboard not pinned, so typed text may be autocorrected; run: crowbar-verify up"; ok=0; }
+  fi
   local errors; errors="$(sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' "$STATE/metro.log" 2>/dev/null | grep -c " ERROR " || true)"
   [ "${errors:-0}" = 0 ] && echo "ok   no ERROR lines in metro log" || echo "WARN $errors ERROR lines in metro log; run: crowbar-verify logs"
   [ "$ok" = 1 ]
