@@ -132,7 +132,10 @@ function Editor({ routine }: { routine: RoutineDetail }) {
 
       <ExercisePickerSheet
         visible={picking}
-        inRoutine={routine.exercises.map((e) => e.exercise.id)}
+        marked={{
+          ids: routine.exercises.map((e) => e.exercise.id),
+          label: t.exercisePicker.inRoutine,
+        }}
         onClose={() => setPicking(false)}
         onPick={(exercise) => {
           const added = addRoutineExercise(db, routine.id, exercise.id);

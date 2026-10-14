@@ -18,14 +18,17 @@ import { radii, spacing, type, useColors } from "@/lib/theme";
 // The one Exercise picker, shared by the Ledger, the Routine editor and the library. When no
 // Exercise has exactly the typed name, its first row creates one; when a Hidden Exercise does, it
 // offers to unhide it instead. Either way the Exercise goes straight to whoever opened the picker.
+// `marked` flags the Exercises the opener already holds, such as "In Routine".
+type Marked = { ids: string[]; label: string };
+
 export function ExercisePickerSheet({
   visible,
-  inRoutine,
+  marked,
   onClose,
   onPick,
 }: {
   visible: boolean;
-  inRoutine: string[];
+  marked: Marked;
   onClose: () => void;
   onPick: (exercise: ExerciseListing) => void;
 }) {
@@ -40,7 +43,7 @@ export function ExercisePickerSheet({
       <View style={{ flex: 1, backgroundColor: p.background }}>
         <Suspense fallback={null}>
           {/* Modal renders nothing while closed, so every opening starts with an empty search. */}
-          <ExercisePicker inRoutine={inRoutine} onClose={onClose} onPick={onPick} />
+          <ExercisePicker marked={marked} onClose={onClose} onPick={onPick} />
         </Suspense>
       </View>
     </Modal>
@@ -48,11 +51,11 @@ export function ExercisePickerSheet({
 }
 
 function ExercisePicker({
-  inRoutine,
+  marked,
   onClose,
   onPick,
 }: {
-  inRoutine: string[];
+  marked: Marked;
   onClose: () => void;
   onPick: (exercise: ExerciseListing) => void;
 }) {
@@ -170,10 +173,8 @@ function ExercisePicker({
                 </Text>
               ) : null}
             </View>
-            {inRoutine.includes(item.id) ? (
-              <Text style={{ color: p.secondary, ...type.footnote }}>
-                {t.exercisePicker.inRoutine}
-              </Text>
+            {marked.ids.includes(item.id) ? (
+              <Text style={{ color: p.secondary, ...type.footnote }}>{marked.label}</Text>
             ) : null}
           </Row>
         )}

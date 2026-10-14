@@ -34,6 +34,15 @@ export default function RootLayout() {
         <DatabaseProvider>
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="finish-workout"
+              options={{
+                presentation: "formSheet",
+                headerShown: false,
+                sheetAllowedDetents: "fitToContents",
+                sheetGrabberVisible: true,
+              }}
+            />
           </Stack>
         </DatabaseProvider>
       </GestureHandlerRootView>

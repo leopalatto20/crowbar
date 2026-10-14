@@ -1,9 +1,9 @@
 import { type SQLWrapper, sql } from "drizzle-orm";
-import { check, index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { check, index, integer, real, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // Relative imports: drizzle-kit loads this file without the app's path aliases.
 import { EQUIPMENT_TYPES, LOAD_TYPES, MUSCLE_GROUPS } from "../lib/exercise/model";
-import { EFFORTS, UNITS } from "../lib/workout/model";
+import { EFFORTS, SET_KINDS, UNITS } from "../lib/workout/model";
 
 export const SETTINGS_ID = 1;
 
@@ -97,5 +97,95 @@ export const routineExercise = sqliteTable(
     check("routine_exercise_rir", sql`(${t.rirMin} is null) = (${t.rirMax} is null)`),
     check("routine_exercise_rir_range", sql`0 <= ${t.rirMin} and ${t.rirMin} <= ${t.rirMax}`),
     check("routine_exercise_rest_seconds", sql`${t.restSeconds} > 0`),
+  ],
+);
+
+export const gym = sqliteTable("gym", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+});
+
+// One Exercise on specific equipment at one Gym (ADR 0001). Created implicitly by the first
+// logged set of an Exercise at a Gym.
+export const station = sqliteTable(
+  "station",
+  {
+    id: text("id").primaryKey(),
+    exerciseId: text("exercise_id")
+      .notNull()
+      .references(() => exercise.id, { onDelete: "cascade" }),
+    gymId: text("gym_id")
+      .notNull()
+      .references(() => gym.id, { onDelete: "cascade" }),
+    unit: text("unit", { enum: UNITS }).notNull(),
+  },
+  (t) => [
+    index("station_exercise_id_gym_id").on(t.exerciseId, t.gymId),
+    index("station_gym_id").on(t.gymId),
+    check("station_unit", oneOf(t.unit, UNITS)),
+  ],
+);
+
+export const workout = sqliteTable(
+  "workout",
+  {
+    id: text("id").primaryKey(),
+    gymId: text("gym_id")
+      .notNull()
+      .references(() => gym.id, { onDelete: "cascade" }),
+    startedAt: integer("started_at").notNull(),
+    finishedAt: integer("finished_at"),
+    // IANA name, so a Workout's times read in the zone it was logged in, wherever it's viewed.
+    timeZone: text("time_zone").notNull(),
+  },
+  (t) => [index("workout_gym_id").on(t.gymId)],
+);
+
+export const workoutExercise = sqliteTable(
+  "workout_exercise",
+  {
+    id: text("id").primaryKey(),
+    workoutId: text("workout_id")
+      .notNull()
+      .references(() => workout.id, { onDelete: "cascade" }),
+    exerciseId: text("exercise_id")
+      .notNull()
+      .references(() => exercise.id, { onDelete: "cascade" }),
+    // Null until the first logged set when the Gym has no Station for the Exercise yet.
+    stationId: text("station_id").references(() => station.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+  },
+  (t) => [
+    index("workout_exercise_workout_id").on(t.workoutId),
+    index("workout_exercise_exercise_id").on(t.exerciseId),
+    index("workout_exercise_station_id").on(t.stationId),
+  ],
+);
+
+// Every visible set in the Ledger is a row, written field by field as the lifter commits it.
+export const workoutSet = sqliteTable(
+  "set",
+  {
+    id: text("id").primaryKey(),
+    workoutExerciseId: text("workout_exercise_id")
+      .notNull()
+      .references(() => workoutExercise.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    kind: text("kind", { enum: SET_KINDS }).notNull().default("working"),
+    // As entered; the unit comes from the Station.
+    load: real("load"),
+    reps: integer("reps"),
+    // Effort is always stored as RIR; RPE is only a display.
+    rir: integer("rir"),
+    done: integer("done", { mode: "boolean" }).notNull().default(false),
+  },
+  (t) => [
+    index("set_workout_exercise_id").on(t.workoutExerciseId),
+    check("set_kind", oneOf(t.kind, SET_KINDS)),
+    check("set_logged", sql`not ${t.done} or (${t.load} is not null and ${t.reps} is not null)`),
+    check("set_warmup_effort", sql`${t.kind} = 'working' or ${t.rir} is null`),
+    check("set_load", sql`${t.load} >= 0`),
+    check("set_reps", sql`${t.reps} >= 0`),
+    check("set_rir", sql`${t.rir} between 0 and 10`),
   ],
 );

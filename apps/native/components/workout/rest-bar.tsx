@@ -7,17 +7,26 @@ import { ProgressBar } from "@/components/progress-bar";
 import { useI18n } from "@/lib/i18n";
 import { motion, radii, spacing, type, useColors } from "@/lib/theme";
 import { formatClock } from "@/lib/workout/model";
-import { type Workout, useRestRemaining } from "@/lib/workout/use-workout";
+import { type Rest, useRestRemaining } from "@/lib/workout/use-workout";
 
 import { LedgerText } from "./ledger-text";
 
-export function RestBar({ workout }: { workout: Workout }) {
+export function RestBar({
+  rest,
+  exerciseName,
+  onAdjust,
+  onEnd,
+}: {
+  rest: Rest | null;
+  exerciseName: string;
+  onAdjust: (seconds: number) => void;
+  onEnd: () => void;
+}) {
   const p = useColors();
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
-  const remaining = useRestRemaining(workout.rest, workout.finishRest);
-  if (!workout.rest || !remaining) return null;
-  const exercise = workout.exercises.find((ex) => ex.id === workout.rest?.exerciseId);
+  const remaining = useRestRemaining(rest, onEnd);
+  if (!rest || !remaining) return null;
 
   return (
     <Animated.View
@@ -39,15 +48,15 @@ export function RestBar({ workout }: { workout: Workout }) {
       <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.lg }}>
         <View style={{ flex: 1 }}>
           <LedgerText style={{ color: p.secondary, ...type.caption, fontWeight: "600" }}>
-            {t.restCard.title(exercise?.shortName ?? "")}
+            {t.restCard.title(exerciseName)}
           </LedgerText>
           <LedgerText style={{ color: p.label, ...type.title, fontVariant: ["tabular-nums"] }}>
             {formatClock(remaining.remaining)}
           </LedgerText>
         </View>
-        <RestButton label={t.restCard.subtract} onPress={() => workout.adjustRest(-15)} />
-        <RestButton label={t.restCard.add} onPress={() => workout.adjustRest(15)} />
-        <RestButton label={t.restCard.skip} onPress={workout.skipRest} accent />
+        <RestButton label={t.restCard.subtract} onPress={() => onAdjust(-15)} />
+        <RestButton label={t.restCard.add} onPress={() => onAdjust(15)} />
+        <RestButton label={t.restCard.skip} onPress={onEnd} accent />
       </View>
       <ProgressBar progress={remaining.progress} color={p.blue} track={p.fill} />
     </Animated.View>

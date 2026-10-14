@@ -1,0 +1,40 @@
+import { AlertDialog, Host, Text, TextButton } from "@expo/ui/jetpack-compose";
+
+import { useColors } from "@/lib/theme";
+
+import type { ConfirmDialogProps } from "./confirm-dialog.types";
+
+export function ConfirmDialog({
+  visible,
+  title,
+  message,
+  confirmLabel,
+  cancelLabel,
+  onConfirm,
+  onDismiss,
+}: ConfirmDialogProps) {
+  const p = useColors();
+  if (!visible) return null;
+  return (
+    <Host matchContents>
+      <AlertDialog onDismissRequest={onDismiss}>
+        <AlertDialog.Title>
+          <Text>{title}</Text>
+        </AlertDialog.Title>
+        <AlertDialog.Text>
+          <Text>{message}</Text>
+        </AlertDialog.Text>
+        <AlertDialog.ConfirmButton>
+          <TextButton onClick={onConfirm}>
+            <Text color={p.red}>{confirmLabel}</Text>
+          </TextButton>
+        </AlertDialog.ConfirmButton>
+        <AlertDialog.DismissButton>
+          <TextButton onClick={onDismiss}>
+            <Text>{cancelLabel}</Text>
+          </TextButton>
+        </AlertDialog.DismissButton>
+      </AlertDialog>
+    </Host>
+  );
+}
