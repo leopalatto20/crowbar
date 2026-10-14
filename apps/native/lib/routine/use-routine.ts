@@ -1,29 +1,26 @@
-import { useState } from "react";
+import { useSuspenseQuery } from "@tanstack/react-query";
 
-import { type RoutineExercise, type RoutineExercisePatch, applyPatch } from "./model";
-import { SAMPLE_ROUTINE_NAME, sampleRoutineExercises } from "./sample-routine";
+import { useDb } from "@/db/context";
+import { dbQuery } from "@/db/query";
+import { getRoutine, listRoutines } from "@/db/routines";
+import { exercise, routine, routineExercise } from "@/db/schema";
+import { useI18n } from "@/lib/i18n";
 
-export function useRoutine() {
-  const [name, setName] = useState(SAMPLE_ROUTINE_NAME);
-  const [exercises, setExercises] = useState<RoutineExercise[]>(sampleRoutineExercises);
-
-  return {
-    name,
-    setName,
-    exercises,
-    add(entry: RoutineExercise) {
-      setExercises((all) => [...all, entry]);
-    },
-    update(id: string, patch: RoutineExercisePatch) {
-      setExercises((all) => all.map((e) => (e.id === id ? applyPatch(e, patch) : e)));
-    },
-    remove(id: string) {
-      setExercises((all) => all.filter((e) => e.id !== id));
-    },
-    reorder(ids: string[]) {
-      setExercises((all) => ids.map((id) => all.find((e) => e.id === id)).filter((e) => !!e));
-    },
-  };
+export function useRoutines() {
+  const db = useDb();
+  return useSuspenseQuery(dbQuery(db, { tables: [routine], key: ["routines"], fn: listRoutines }))
+    .data;
 }
 
-export type Routine = ReturnType<typeof useRoutine>;
+// Null once the Routine is deleted, so a screen still showing it can step aside.
+export function useRoutine(id: string) {
+  const db = useDb();
+  const { language } = useI18n();
+  return useSuspenseQuery(
+    dbQuery(db, {
+      tables: [routine, routineExercise, exercise],
+      key: ["routine", id, language],
+      fn: (db) => getRoutine(db, id, language) ?? null,
+    }),
+  ).data;
+}

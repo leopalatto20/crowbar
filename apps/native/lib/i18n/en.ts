@@ -9,9 +9,19 @@ export const en = {
     settings: "Settings",
   },
   empty: {
-    workout: "No Workout in progress.",
     history: "No Workouts yet.",
     exercises: "No Exercises yet.",
+  },
+  workoutTab: {
+    startEmptyWorkout: "Start empty Workout",
+    routines: "Routines",
+    createFirstRoutine: "Create your first Routine",
+    newRoutine: "New Routine",
+    edit: "Edit",
+    done: "Done",
+    duplicate: "Duplicate",
+    delete: "Delete",
+    copyName: (name: string) => `${name} copy`,
   },
   exercises: {
     search: "Search",

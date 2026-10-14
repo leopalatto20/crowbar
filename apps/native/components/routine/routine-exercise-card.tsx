@@ -5,25 +5,20 @@ import ReanimatedSwipeable from "react-native-gesture-handler/ReanimatedSwipeabl
 import Animated, { FadeIn } from "react-native-reanimated";
 
 import { PressableScale } from "@/components/pressable-scale";
+import type { RoutineExercise, TargetsChange } from "@/db/routines";
 import { type I18n, useI18n } from "@/lib/i18n";
 import {
   REP_PRESETS,
   RIR_PRESETS,
-  type RoutineExercise,
-  type RoutineExercisePatch,
   SET_PRESETS,
   WARMUP_PRESETS,
+  formatPlannedEffort,
+  formatPlannedVolume,
   formatWarmups,
 } from "@/lib/routine/model";
 import { motion, radii, spacing, type, useColors } from "@/lib/theme";
 import { useEffort } from "@/lib/workout/effort";
-import {
-  type Effort,
-  formatEffort,
-  formatEffortRange,
-  formatRange,
-  formatVolume,
-} from "@/lib/workout/model";
+import { type Effort, formatEffortRange, formatRange } from "@/lib/workout/model";
 
 import { RestPicker } from "./rest-picker";
 import { type ChipSection, ChipSections, PanelHeader } from "./target-panel";
@@ -39,14 +34,13 @@ function pillLabel(entry: RoutineExercise, pill: TargetPill, effort: Effort, i18
     case "warmups":
       return formatWarmups(entry.warmups, i18n);
     case "volume":
-      return formatVolume(entry.target);
+      return formatPlannedVolume(entry);
     case "effort":
-      return formatEffort(entry.target.rirMin, entry.target.rirMax, effort, i18n);
+      return formatPlannedEffort(entry, effort, i18n);
   }
 }
 
 function panel(entry: RoutineExercise, pill: TargetPill, effort: Effort, { t }: I18n) {
-  const { target } = entry;
   switch (pill) {
     case "warmups":
       return {
@@ -73,7 +67,7 @@ function panel(entry: RoutineExercise, pill: TargetPill, effort: Effort, { t }: 
             advances: false,
             chips: SET_PRESETS.map((n) => ({
               label: `${n}`,
-              selected: target.sets === n,
+              selected: entry.sets === n,
               patch: { sets: n },
             })),
           },
@@ -83,7 +77,7 @@ function panel(entry: RoutineExercise, pill: TargetPill, effort: Effort, { t }: 
             customReps: true,
             chips: REP_PRESETS.map(([min, max]) => ({
               label: formatRange(min, max),
-              selected: target.repMin === min && target.repMax === max,
+              selected: entry.repMin === min && entry.repMax === max,
               patch: { repMin: min, repMax: max },
             })),
           },
@@ -98,7 +92,7 @@ function panel(entry: RoutineExercise, pill: TargetPill, effort: Effort, { t }: 
             advances: true,
             chips: RIR_PRESETS.map(([min, max]) => ({
               label: formatEffortRange(min, max, effort),
-              selected: target.rirMin === min && target.rirMax === max,
+              selected: entry.rirMin === min && entry.rirMax === max,
               patch: { rirMin: min, rirMax: max },
             })),
           },
@@ -121,9 +115,9 @@ export function RoutineExerciseCard({
   open: TargetPill | null;
   handle: (children: ReactNode) => ReactNode;
   onPill: (pill: TargetPill) => void;
-  onPick: (pill: TargetPill, patch: RoutineExercisePatch, advances: boolean) => void;
+  onPick: (pill: TargetPill, patch: TargetsChange, advances: boolean) => void;
   onClose: () => void;
-  onChange: (patch: RoutineExercisePatch) => void;
+  onChange: (patch: TargetsChange) => void;
   onRemove: () => void;
 }) {
   const p = useColors();

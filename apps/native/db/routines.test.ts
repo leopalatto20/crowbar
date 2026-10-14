@@ -1,0 +1,320 @@
+import { describe, expect, test } from "bun:test";
+
+import type { BuiltInExercise } from "./built-in-exercises";
+import type { Database } from "./database";
+import { seedBuiltInExercises } from "./exercises";
+import {
+  addRoutineExercise,
+  createRoutine,
+  deleteRoutine,
+  discardBlankRoutine,
+  duplicateRoutine,
+  getRoutine,
+  listRoutines,
+  removeRoutineExercise,
+  renameRoutine,
+  reorderRoutineExercises,
+  reorderRoutines,
+  updateRoutineExercise,
+} from "./routines";
+import { createTestDatabase } from "./test-database";
+
+const benchPress: BuiltInExercise = {
+  id: "barbell-bench-press",
+  name: { en: "Barbell Bench Press", es: "Press de banca con barra" },
+  equipmentType: "barbell",
+  loadType: "external",
+  unilateral: false,
+  muscleGroup: "chest",
+};
+
+const pullUp: BuiltInExercise = {
+  id: "pull-up",
+  name: { en: "Pull-Up", es: "Dominada" },
+  equipmentType: "bodyweight",
+  loadType: "bodyweight",
+  unilateral: false,
+  muscleGroup: "lats",
+};
+
+const lateralRaise: BuiltInExercise = {
+  id: "dumbbell-lateral-raise",
+  name: { en: "Dumbbell Lateral Raise", es: "Elevación lateral con mancuernas" },
+  equipmentType: "dumbbell",
+  loadType: "external",
+  unilateral: false,
+  muscleGroup: "sideDelts",
+};
+
+async function libraryDatabase() {
+  const db = await createTestDatabase();
+  seedBuiltInExercises(db, [benchPress, pullUp, lateralRaise]);
+  return db;
+}
+
+function exerciseIds(db: Database, routineId: string) {
+  return getRoutine(db, routineId, "en")?.exercises.map((entry) => entry.exercise.id);
+}
+
+describe("createRoutine", () => {
+  test("adds the Routine at the end of the manual order", async () => {
+    const db = await createTestDatabase();
+
+    const upper = createRoutine(db, "Upper A");
+    const lower = createRoutine(db, "Lower A");
+
+    expect(listRoutines(db)).toEqual([
+      { id: upper, name: "Upper A" },
+      { id: lower, name: "Lower A" },
+    ]);
+  });
+});
+
+describe("renameRoutine", () => {
+  test("renames only that Routine, trimming the name", async () => {
+    const db = await createTestDatabase();
+    const upper = createRoutine(db, "Upper A");
+    const lower = createRoutine(db, "Lower A");
+
+    renameRoutine(db, upper, "  Push  ");
+
+    expect(listRoutines(db)).toEqual([
+      { id: upper, name: "Push" },
+      { id: lower, name: "Lower A" },
+    ]);
+  });
+});
+
+describe("addRoutineExercise", () => {
+  test("adds the Exercise last, at 3 × 8–12 @ RIR 1–2, 2:00 rest and no warm-ups", async () => {
+    const db = await libraryDatabase();
+    const upper = createRoutine(db, "Upper A");
+
+    addRoutineExercise(db, upper, "pull-up");
+    const added = addRoutineExercise(db, upper, "barbell-bench-press");
+
+    expect(getRoutine(db, upper, "es")).toEqual({
+      id: upper,
+      name: "Upper A",
+      exercises: [
+        expect.objectContaining({ exercise: { id: "pull-up", name: "Dominada" } }),
+        {
+          id: added,
+          exercise: { id: "barbell-bench-press", name: "Press de banca con barra" },
+          warmups: 0,
+          sets: 3,
+          repMin: 8,
+          repMax: 12,
+          rirMin: 1,
+          rirMax: 2,
+          restSeconds: 120,
+        },
+      ],
+    });
+  });
+});
+
+describe("updateRoutineExercise", () => {
+  test("changes only the Targets given, on only that Routine Exercise", async () => {
+    const db = await libraryDatabase();
+    const upper = createRoutine(db, "Upper A");
+    const bench = addRoutineExercise(db, upper, "barbell-bench-press");
+    addRoutineExercise(db, upper, "pull-up");
+
+    updateRoutineExercise(db, bench, { warmups: 2, repMin: 5, repMax: 7 });
+    updateRoutineExercise(db, bench, { rirMin: 0, rirMax: 1, restSeconds: 180 });
+
+    expect(getRoutine(db, upper, "en")?.exercises).toEqual([
+      expect.objectContaining({
+        warmups: 2,
+        sets: 3,
+        repMin: 5,
+        repMax: 7,
+        rirMin: 0,
+        rirMax: 1,
+        restSeconds: 180,
+      }),
+      expect.objectContaining({ warmups: 0, sets: 3, repMin: 8, repMax: 12, restSeconds: 120 }),
+    ]);
+  });
+
+  test("a Target can be left blank", async () => {
+    const db = await libraryDatabase();
+    const upper = createRoutine(db, "Upper A");
+    const bench = addRoutineExercise(db, upper, "barbell-bench-press");
+
+    updateRoutineExercise(db, bench, { sets: null, repMin: null, repMax: null, restSeconds: null });
+
+    expect(getRoutine(db, upper, "en")?.exercises[0]).toMatchObject({
+      sets: null,
+      repMin: null,
+      repMax: null,
+      rirMin: 1,
+      rirMax: 2,
+      restSeconds: null,
+    });
+  });
+
+  test("a rep range that ends below where it starts is refused", async () => {
+    const db = await libraryDatabase();
+    const bench = addRoutineExercise(db, createRoutine(db, "Upper A"), "barbell-bench-press");
+
+    expect(() => updateRoutineExercise(db, bench, { repMin: 10, repMax: 6 })).toThrow();
+  });
+});
+
+describe("reorderRoutineExercises", () => {
+  test("keeps the order the lifter dragged into", async () => {
+    const db = await libraryDatabase();
+    const upper = createRoutine(db, "Upper A");
+    const bench = addRoutineExercise(db, upper, "barbell-bench-press");
+    const pull = addRoutineExercise(db, upper, "pull-up");
+    const raise = addRoutineExercise(db, upper, "dumbbell-lateral-raise");
+
+    reorderRoutineExercises(db, [raise, bench, pull]);
+
+    expect(exerciseIds(db, upper)).toEqual([
+      "dumbbell-lateral-raise",
+      "barbell-bench-press",
+      "pull-up",
+    ]);
+  });
+
+  test("an Exercise added after reordering goes last", async () => {
+    const db = await libraryDatabase();
+    const upper = createRoutine(db, "Upper A");
+    const bench = addRoutineExercise(db, upper, "barbell-bench-press");
+    const pull = addRoutineExercise(db, upper, "pull-up");
+    reorderRoutineExercises(db, [pull, bench]);
+
+    addRoutineExercise(db, upper, "dumbbell-lateral-raise");
+
+    expect(exerciseIds(db, upper)).toEqual([
+      "pull-up",
+      "barbell-bench-press",
+      "dumbbell-lateral-raise",
+    ]);
+  });
+});
+
+describe("removeRoutineExercise", () => {
+  test("takes the Exercise out of the Routine and keeps the rest in order", async () => {
+    const db = await libraryDatabase();
+    const upper = createRoutine(db, "Upper A");
+    addRoutineExercise(db, upper, "barbell-bench-press");
+    const pull = addRoutineExercise(db, upper, "pull-up");
+    addRoutineExercise(db, upper, "dumbbell-lateral-raise");
+
+    removeRoutineExercise(db, pull);
+
+    expect(exerciseIds(db, upper)).toEqual(["barbell-bench-press", "dumbbell-lateral-raise"]);
+  });
+});
+
+describe("reorderRoutines", () => {
+  test("keeps the manual order the lifter dragged into, and new Routines go last", async () => {
+    const db = await createTestDatabase();
+    const upper = createRoutine(db, "Upper A");
+    const lower = createRoutine(db, "Lower A");
+    const arms = createRoutine(db, "Arms");
+
+    reorderRoutines(db, [arms, upper, lower]);
+    createRoutine(db, "Upper B");
+
+    expect(listRoutines(db).map((listing) => listing.name)).toEqual([
+      "Arms",
+      "Upper A",
+      "Lower A",
+      "Upper B",
+    ]);
+  });
+});
+
+describe("deleteRoutine", () => {
+  test("removes the Routine with its Exercises, leaving other Routines alone", async () => {
+    const db = await libraryDatabase();
+    const upper = createRoutine(db, "Upper A");
+    const lower = createRoutine(db, "Lower A");
+    addRoutineExercise(db, upper, "barbell-bench-press");
+    addRoutineExercise(db, lower, "pull-up");
+
+    deleteRoutine(db, upper);
+
+    expect(listRoutines(db)).toEqual([{ id: lower, name: "Lower A" }]);
+    expect(getRoutine(db, upper, "en")).toBeUndefined();
+    expect(exerciseIds(db, lower)).toEqual(["pull-up"]);
+  });
+});
+
+describe("duplicateRoutine", () => {
+  test("copies the Exercises and Targets in order, right after the original", async () => {
+    const db = await libraryDatabase();
+    const upper = createRoutine(db, "Upper A");
+    const lower = createRoutine(db, "Lower A");
+    const bench = addRoutineExercise(db, upper, "barbell-bench-press");
+    addRoutineExercise(db, upper, "pull-up");
+    updateRoutineExercise(db, bench, {
+      warmups: 2,
+      sets: 4,
+      repMin: 5,
+      repMax: 7,
+      restSeconds: null,
+    });
+
+    const copy = duplicateRoutine(db, upper, "Upper A copy");
+
+    expect(listRoutines(db)).toEqual([
+      { id: upper, name: "Upper A" },
+      { id: copy, name: "Upper A copy" },
+      { id: lower, name: "Lower A" },
+    ]);
+    expect(getRoutine(db, copy, "en")?.exercises).toEqual([
+      expect.objectContaining({
+        exercise: { id: "barbell-bench-press", name: "Barbell Bench Press" },
+        warmups: 2,
+        sets: 4,
+        repMin: 5,
+        repMax: 7,
+        rirMin: 1,
+        rirMax: 2,
+        restSeconds: null,
+      }),
+      expect.objectContaining({ exercise: { id: "pull-up", name: "Pull-Up" }, sets: 3 }),
+    ]);
+  });
+
+  test("the copy is edited independently of the original", async () => {
+    const db = await libraryDatabase();
+    const upper = createRoutine(db, "Upper A");
+    addRoutineExercise(db, upper, "barbell-bench-press");
+    const copy = duplicateRoutine(db, upper, "Upper A copy");
+
+    const [copiedBench] = getRoutine(db, copy, "en")!.exercises;
+    updateRoutineExercise(db, copiedBench!.id, { sets: 5 });
+
+    expect(getRoutine(db, upper, "en")?.exercises[0]?.sets).toBe(3);
+  });
+});
+
+describe("discardBlankRoutine", () => {
+  test("deletes a Routine left with no name and no Exercises", async () => {
+    const db = await createTestDatabase();
+    const blank = createRoutine(db, "  ");
+
+    discardBlankRoutine(db, blank);
+
+    expect(listRoutines(db)).toEqual([]);
+  });
+
+  test("keeps a Routine with a name or with Exercises", async () => {
+    const db = await libraryDatabase();
+    const named = createRoutine(db, "Upper A");
+    const unnamed = createRoutine(db, "");
+    addRoutineExercise(db, unnamed, "pull-up");
+
+    discardBlankRoutine(db, named);
+    discardBlankRoutine(db, unnamed);
+
+    expect(listRoutines(db).map((listing) => listing.id)).toEqual([named, unnamed]);
+  });
+});

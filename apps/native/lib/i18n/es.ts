@@ -8,9 +8,19 @@ export const es: Messages = {
     settings: "Ajustes",
   },
   empty: {
-    workout: "No hay ningún entrenamiento en curso.",
     history: "Aún no hay entrenamientos.",
     exercises: "Aún no hay ejercicios.",
+  },
+  workoutTab: {
+    startEmptyWorkout: "Empezar entrenamiento vacío",
+    routines: "Rutinas",
+    createFirstRoutine: "Crea tu primera rutina",
+    newRoutine: "Nueva rutina",
+    edit: "Editar",
+    done: "Listo",
+    duplicate: "Duplicar",
+    delete: "Eliminar",
+    copyName: (name) => `${name} (copia)`,
   },
   exercises: {
     search: "Buscar",
