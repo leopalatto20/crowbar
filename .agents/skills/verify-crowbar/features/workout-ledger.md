@@ -56,5 +56,5 @@ Proof: a `gym` row with the typed name, a `workout` row with `finished_at` null 
 
 - Do not create the Gym through SQL to skip the prompt: that's not the user path, and it would hide a regression of #65 (a SwiftUI dialog without a trigger never presents).
 - Ledger set fields are React Native `TextInput`s whose placeholder is the "Last here" ghost value or "–". Find them by frame in `cv tree` and tap the centre with `cv tap --pre-delay 0 -x <x> -y <y>` (a leading flag stops `cv` from treating `-x` as a label).
-- Number pads have no Return key; tap elsewhere or use Finish (it dismisses the keyboard first, so typed values are committed).
+- Number pads have no Return key; tap elsewhere or use the toolbar Finish (it dismisses the keyboard first, so typed values are committed).
 - "Discard Workout" labels both the More menu action and the confirmation's destructive button. Wait for "Discard this Workout?" before tapping it a second time, or one `cv tap` can land on the alert and discard.
