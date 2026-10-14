@@ -112,6 +112,15 @@ export const es: Messages = {
     assisted: "Asistida",
   },
   stackLevel: (level) => `N${level}`,
+  load: {
+    bodyweight: "PC",
+    perSide: (reps) => `${reps}/lado`,
+    hints: {
+      barbell: "total con barra",
+      dumbbell: "por mancuerna",
+      kettlebell: "por kettlebell",
+    },
+  },
   dragToReorder: "Arrastra para reordenar",
   gymPrompt: {
     title: "¿Dónde entrenas?",

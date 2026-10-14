@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, max, notExists } from "drizzle-orm";
 
+import type { EquipmentType, LoadType } from "@/lib/exercise/model";
 import type { Language } from "@/lib/i18n/locale";
 import type { Performance, SetKind, Target, Unit } from "@/lib/workout/model";
 
@@ -117,7 +118,13 @@ export type LedgerSet = {
 
 export type LedgerExercise = {
   id: string;
-  exercise: { id: string; name: string };
+  exercise: {
+    id: string;
+    name: string;
+    equipmentType: EquipmentType;
+    loadType: LoadType;
+    unilateral: boolean;
+  };
   unit: Unit;
   // Null when nothing was planned, as for an Exercise added mid-Workout.
   target: Target | null;
@@ -157,6 +164,9 @@ export function getLedger(db: Database, id: string, language: Language): Ledger 
       exerciseId: exercise.id,
       name: exercise.name,
       nameEs: exercise.nameEs,
+      equipmentType: exercise.equipmentType,
+      loadType: exercise.loadType,
+      unilateral: exercise.unilateral,
       stationId: workoutExercise.stationId,
       unit: station.unit,
       sets: workoutExercise.sets,
@@ -195,23 +205,47 @@ export function getLedger(db: Database, id: string, language: Language): Ledger 
   for (const { workoutExerciseId, ...set } of sets) {
     setsByEntry.set(workoutExerciseId, [...(setsByEntry.get(workoutExerciseId) ?? []), set]);
   }
-  // An Exercise with no Station yet shows the unit its Station will be created with.
   const { defaultWeightUnit } = getSettings(db);
 
   return {
     ...found,
-    exercises: entries.map(({ id, exerciseId, name, nameEs, stationId, unit, ...target }) => {
-      const entrySets = setsByEntry.get(id) ?? [];
-      const lastHere = matchLastHere(entrySets, previousSetsAt(db, stationId, found.startedAt));
-      return {
+    exercises: entries.map(
+      ({
         id,
-        exercise: { id: exerciseId, name: language === "es" ? (nameEs ?? name) : name },
-        unit: unit ?? defaultWeightUnit,
-        target: Object.values(target).every((value) => value === null) ? null : target,
-        sets: entrySets.map((set, index) => ({ ...set, lastHere: lastHere[index]! })),
-      };
-    }),
+        exerciseId,
+        name,
+        nameEs,
+        equipmentType,
+        loadType,
+        unilateral,
+        stationId,
+        unit,
+        ...target
+      }) => {
+        const entrySets = setsByEntry.get(id) ?? [];
+        const lastHere = matchLastHere(entrySets, previousSetsAt(db, stationId, found.startedAt));
+        return {
+          id,
+          exercise: {
+            id: exerciseId,
+            name: language === "es" ? (nameEs ?? name) : name,
+            equipmentType,
+            loadType,
+            unilateral,
+          },
+          // An Exercise with no Station yet shows the unit its Station will be created with.
+          unit: unit ?? newStationUnit(defaultWeightUnit, loadType),
+          target: Object.values(target).every((value) => value === null) ? null : target,
+          sets: entrySets.map((set, index) => ({ ...set, lastHere: lastHere[index]! })),
+        };
+      },
+    ),
   };
+}
+
+// A Bodyweight Exercise adds weight to the lifter's body, which no Stack level can express.
+function newStationUnit(defaultWeightUnit: Unit, loadType: LoadType): Unit {
+  return loadType === "bodyweight" && defaultWeightUnit === "level" ? "kg" : defaultWeightUnit;
 }
 
 type PreviousSet = Performance & { kind: SetKind };
@@ -414,6 +448,10 @@ export function confirmSet(db: Database, id: string, change: SetChange = {}) {
   db.transaction((tx) => {
     const found = findSet(tx, id);
     const logged = withGhosts({ ...found, ...change }, lastHereOfSet(tx, found));
+    // A Bodyweight set with nothing added is bodyweight only, so it needs no load typed.
+    if (logged.load === null && loadTypeOf(tx, found.workoutExerciseId) === "bodyweight") {
+      logged.load = 0;
+    }
     if (logged.load === null || logged.reps === null) {
       throw new Error(`Set ${id} can't be confirmed without load and reps`);
     }
@@ -501,10 +539,12 @@ function ensureStation(db: Database, workoutExerciseId: string) {
     .select({
       stationId: workoutExercise.stationId,
       exerciseId: workoutExercise.exerciseId,
+      loadType: exercise.loadType,
       gymId: workout.gymId,
     })
     .from(workoutExercise)
     .innerJoin(workout, eq(workout.id, workoutExercise.workoutId))
+    .innerJoin(exercise, eq(exercise.id, workoutExercise.exerciseId))
     .where(eq(workoutExercise.id, workoutExerciseId))
     .get();
   if (!entry) throw new Error(`Workout Exercise ${workoutExerciseId} doesn't exist`);
@@ -517,7 +557,7 @@ function ensureStation(db: Database, workoutExerciseId: string) {
         id: stationId,
         exerciseId: entry.exerciseId,
         gymId: entry.gymId,
-        unit: getSettings(db).defaultWeightUnit,
+        unit: newStationUnit(getSettings(db).defaultWeightUnit, entry.loadType),
       })
       .run();
   }
@@ -525,6 +565,17 @@ function ensureStation(db: Database, workoutExerciseId: string) {
     .set({ stationId })
     .where(eq(workoutExercise.id, workoutExerciseId))
     .run();
+}
+
+function loadTypeOf(db: Database, workoutExerciseId: string) {
+  const entry = db
+    .select({ loadType: exercise.loadType })
+    .from(workoutExercise)
+    .innerJoin(exercise, eq(exercise.id, workoutExercise.exerciseId))
+    .where(eq(workoutExercise.id, workoutExerciseId))
+    .get();
+  if (!entry) throw new Error(`Workout Exercise ${workoutExerciseId} doesn't exist`);
+  return entry.loadType;
 }
 
 function findSet(db: Database, id: string) {
