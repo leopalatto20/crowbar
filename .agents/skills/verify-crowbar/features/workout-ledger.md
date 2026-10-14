@@ -9,6 +9,12 @@ Starting a Workout opens the Ledger, the logging screen, as a modal over the tab
 - Workout in progress: "Start empty Workout" asks "A Workout is in progress" ("Discarding it deletes its logged sets.") with "Resume current", "Discard and start new", "Cancel".
 - Ledger: titled "Workout" (or the Routine name), first row the Gym chip (`Button` "Gym: <Gym>. Tap to change", see [gyms.md](gyms.md)) and `started <time>`, "Add Exercise" (picker marks "In Workout"), "Add set", per-set "Complete set"/"Reopen set", warm-up toggle ("Working set, tap to make warm-up" / "Warm-up set, tap to make working").
 - Last here: the column shows the previous Workout's set at the same Station (`60 × 5`, or "–"), and the load and reps fields show it as grey placeholder ghosts. "Complete set" on untouched fields logs the ghosts.
+- Load types (#38): the load column header and "Last here" follow the Exercise's Load type and the Station's unit.
+  - External: header `KG`/`LB`/`LVL`; "Last here" `60 × 5`, or `L7 × 5` on a Stack-level Station.
+  - Bodyweight (Pull-Up): header `+KG`; an empty or 0 load reads "BW" (placeholder), and "Complete set" with it empty logs 0. "Last here" `BW × 8` / `BW +20 × 6`. A new Bodyweight Station is kg when the default unit is Stack level.
+  - Assisted (Machine Assisted Pull-Up/Dip): header `−KG`/`−LVL`, assistance typed as a positive number; "Last here" `BW −30 × 8` / `BW −L3 × 8`.
+  - Unilateral (Dumbbell Bulgarian Split Squat): reps header `REPS/SIDE`, "Last here" `L5 × 10/side`.
+  - A quiet hint line under the name for barbell ("total incl. bar"), dumbbell ("per dumbbell") and kettlebell ("per kettlebell") Exercises only.
 - Rest bar: `Rest · <exercise>` with "−15", "+15", "Skip".
 - Finish: toolbar "Finish" opens the "Finish Workout" sheet ("Every set is logged.", `<n> unlogged sets will be discarded.`, or "Nothing is logged, so this Workout won’t be saved.") and an "End Workout" button that returns to the Workout tab.
 - Discard: "More" menu, then "Discard Workout"; asks "Discard this Workout?" ("Its logged sets will be deleted.", "Discard Workout" / "Keep logging") only if a set is confirmed, otherwise discards at once.
@@ -67,6 +73,9 @@ cv save-db "select count(*) as workouts, count(finished_at) as finished from wor
 Proof: a `gym` row with the typed name, a `workout` row with `finished_at` null while logging, the Ledger reopening after `cv launch`, `finished_at` set after "End Workout", and neither the empty second Workout nor the discarded third leaving a row.
 
 ## Gotchas
+
+- Swiping down on the Ledger to scroll back up minimizes it instead (reopen with the Workout bar). Scroll up with short swipes that start mid-screen, or reopen. Cards past the third push "Add Exercise" under the bottom edge; swipe up first.
+- The "Last here" column and the load field's placeholder are separate: placeholders stay bare numbers ("20", "3") under the signed header; only "Last here" reads `BW +20`.
 
 - To swipe the Ledger down, start the drag at the sheet's top edge and go slowly: `axe swipe --start-x 200 --start-y 120 --end-x 200 --end-y 700 --duration 1.0 --delta 10 --udid <udid>`. Faster swipes, or ones starting lower on the content, leave it open on the simulator.
 - "Workout" labels the tab (`RadioButton`), the Workout tab's heading, and the Workout bar (`Button`, value the elapsed time). Pass `--element-type`.

@@ -56,6 +56,15 @@ const pullUp: BuiltInExercise = {
   muscleGroup: "lats",
 };
 
+const assistedPullUp: BuiltInExercise = {
+  id: "assisted-pull-up",
+  name: { en: "Assisted Pull-Up", es: "Dominada asistida" },
+  equipmentType: "machine",
+  loadType: "assisted",
+  unilateral: false,
+  muscleGroup: "lats",
+};
+
 const lateralRaise: BuiltInExercise = {
   id: "dumbbell-lateral-raise",
   name: { en: "Dumbbell Lateral Raise", es: "Elevación lateral con mancuernas" },
@@ -70,7 +79,7 @@ const TIME_ZONE = "America/Mexico_City";
 async function libraryDatabase() {
   const db = await createTestDatabase();
   seedSettings(db, "MX");
-  seedBuiltInExercises(db, [benchPress, pullUp, lateralRaise]);
+  seedBuiltInExercises(db, [benchPress, pullUp, assistedPullUp, lateralRaise]);
   return db;
 }
 
@@ -230,7 +239,13 @@ describe("addWorkoutExercise", () => {
     expect(ledger(db, workoutId).exercises).toEqual([
       {
         id,
-        exercise: { id: benchPress.id, name: "Barbell Bench Press" },
+        exercise: {
+          id: benchPress.id,
+          name: "Barbell Bench Press",
+          equipmentType: "barbell",
+          loadType: "external",
+          unilateral: false,
+        },
         unit: "kg",
         target: null,
         sets: [
@@ -391,6 +406,19 @@ describe("confirmSet", () => {
     expect(setsOf(db, workoutId, workoutExerciseId)[0]).toMatchObject({ load: null, done: false });
   });
 
+  test("logs a Bodyweight set with no load as bodyweight only", async () => {
+    const { db, workoutId } = await startedWorkout();
+    const pull = addWorkoutExercise(db, workoutId, pullUp.id);
+    confirmSet(db, setsOf(db, workoutId, pull)[0]!.id, { reps: 8 });
+    expect(setsOf(db, workoutId, pull)[0]).toMatchObject({ load: 0, reps: 8, done: true });
+  });
+
+  test("still refuses an Assisted set with no assistance", async () => {
+    const { db, workoutId } = await startedWorkout();
+    const assisted = addWorkoutExercise(db, workoutId, assistedPullUp.id);
+    expect(() => confirmSet(db, setsOf(db, workoutId, assisted)[0]!.id, { reps: 8 })).toThrow();
+  });
+
   test("reopening keeps the values", async () => {
     const { db, workoutId, workoutExerciseId } = await benchInWorkout();
     const [set] = setsOf(db, workoutId, workoutExerciseId);
@@ -432,6 +460,34 @@ describe("implicit Stations", () => {
     updateSettings(db, { defaultWeightUnit: "kg" });
     confirmSet(db, setsOf(db, workoutId, second)[0]!.id, { load: 225, reps: 5 });
     expect(unitOf(db, workoutId)).toEqual(["lb", "lb"]);
+  });
+});
+
+describe("Bodyweight Stations", () => {
+  test("show kg while the default unit is Stack level", async () => {
+    const { db, workoutId } = await startedWorkout();
+    updateSettings(db, { defaultWeightUnit: "level" });
+    addWorkoutExercise(db, workoutId, benchPress.id);
+    addWorkoutExercise(db, workoutId, pullUp.id);
+    expect(ledger(db, workoutId).exercises.map((entry) => entry.unit)).toEqual(["level", "kg"]);
+  });
+
+  test("are created in kg when the default unit is Stack level", async () => {
+    const { db, workoutId } = await startedWorkout();
+    updateSettings(db, { defaultWeightUnit: "level" });
+    const pull = addWorkoutExercise(db, workoutId, pullUp.id);
+    confirmSet(db, setsOf(db, workoutId, pull)[0]!.id, { load: 0, reps: 8 });
+    updateSettings(db, { defaultWeightUnit: "lb" });
+    expect(ledger(db, workoutId).exercises[0]?.unit).toBe("kg");
+  });
+
+  test("follow a kg or lb default like any other Station", async () => {
+    const { db, workoutId } = await startedWorkout();
+    updateSettings(db, { defaultWeightUnit: "lb" });
+    const pull = addWorkoutExercise(db, workoutId, pullUp.id);
+    confirmSet(db, setsOf(db, workoutId, pull)[0]!.id, { load: 25, reps: 8 });
+    updateSettings(db, { defaultWeightUnit: "kg" });
+    expect(ledger(db, workoutId).exercises[0]?.unit).toBe("lb");
   });
 });
 

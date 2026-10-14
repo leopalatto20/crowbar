@@ -109,6 +109,15 @@ export const en = {
     assisted: "Assisted",
   } satisfies Record<LoadType, string>,
   stackLevel: (level: string) => `L${level}`,
+  load: {
+    bodyweight: "BW",
+    perSide: (reps: number | string) => `${reps}/side`,
+    hints: {
+      barbell: "total incl. bar",
+      dumbbell: "per dumbbell",
+      kettlebell: "per kettlebell",
+    } as Partial<Record<EquipmentType, string>>,
+  },
   dragToReorder: "Drag to reorder",
   gymPrompt: {
     title: "Where are you training?",

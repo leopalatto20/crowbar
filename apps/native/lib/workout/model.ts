@@ -1,3 +1,4 @@
+import type { LoadType } from "@/lib/exercise/model";
 import type { I18n } from "@/lib/i18n";
 // Relative: db/schema.ts imports this file, and drizzle-kit loads it without path aliases.
 import { parseDecimal } from "../i18n/locale";
@@ -57,14 +58,36 @@ export function parseSetValue(field: Field, text: string, effort: Effort) {
   return field === "rir" ? fromEffortDisplay(value, effort) : value;
 }
 
+// Assistance is logged as a positive number but counted as negative load, so for every Load
+// type a higher reading is better.
+export function readLoad(load: number, loadType: LoadType) {
+  return loadType === "assisted" ? -load : load;
+}
+
+// How a Station's loads read: the Exercise's Load type and unilateral flag, in the Station's unit.
+export type LoadFormat = { unit: Unit; loadType: LoadType; unilateral: boolean };
+
+function formatLoad(
+  load: number,
+  { unit, loadType }: LoadFormat,
+  i18n: Pick<I18n, "t" | "formatDecimal">,
+) {
+  const amount = i18n.formatDecimal(Math.abs(load));
+  const shown = unit === "level" ? i18n.t.stackLevel(amount) : amount;
+  if (loadType === "external") return shown;
+  const reading = readLoad(load, loadType);
+  if (reading === 0) return i18n.t.load.bodyweight;
+  return `${i18n.t.load.bodyweight} ${reading > 0 ? "+" : "−"}${shown}`;
+}
+
 export function formatPerformance(
   performance: Performance,
-  unit: Unit,
+  format: LoadFormat,
   effort: Effort,
-  i18n: I18n,
+  i18n: Pick<I18n, "t" | "formatDecimal">,
 ) {
-  const load = i18n.formatDecimal(performance.load);
-  const loadByReps = `${unit === "level" ? i18n.t.stackLevel(load) : load} × ${performance.reps}`;
+  const reps = format.unilateral ? i18n.t.load.perSide(performance.reps) : performance.reps;
+  const loadByReps = `${formatLoad(performance.load, format, i18n)} × ${reps}`;
   const shown = toEffortDisplay(performance.rir, effort);
   return shown === null ? loadByReps : `${loadByReps} @${shown}`;
 }
