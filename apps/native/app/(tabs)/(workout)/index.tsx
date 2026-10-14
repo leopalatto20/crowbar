@@ -33,33 +33,33 @@ function Routines() {
     name: routine.name || t.routine.untitled,
   }));
   const [editing, setEditing] = useState(false);
-  const [namingGym, setNamingGym] = useState(false);
-  const [askingAboutCurrent, setAskingAboutCurrent] = useState(false);
+  const [namingGymFor, setNamingGymFor] = useState<PendingStart | null>(null);
+  const [replacingWith, setReplacingWith] = useState<PendingStart | null>(null);
 
-  function openLedger(gymId: string) {
-    startWorkout(db, { gymId, timeZone: currentTimeZone() });
+  function openLedger(gymId: string, { routineId }: PendingStart) {
+    startWorkout(db, { gymId, timeZone: currentTimeZone(), routineId });
     router.push("/workout");
   }
 
-  function startEmptyWorkout() {
+  function startAtLastGym(start: PendingStart) {
     const gym = lastUsedGym(db);
-    if (gym) openLedger(gym.id);
-    else setNamingGym(true);
+    if (gym) openLedger(gym.id, start);
+    else setNamingGymFor(start);
   }
 
-  function requestEmptyWorkout() {
-    if (currentWorkoutId(db)) setAskingAboutCurrent(true);
-    else startEmptyWorkout();
+  function requestStart(start: PendingStart) {
+    if (currentWorkoutId(db)) setReplacingWith(start);
+    else startAtLastGym(start);
   }
 
   // A Workout in progress always has a Gym, so the new one starts at that Gym, read before the
   // discard drops it out of the last-used Gym.
-  function discardAndStartEmptyWorkout() {
-    setAskingAboutCurrent(false);
+  function discardAndStart({ routineId }: PendingStart) {
+    setReplacingWith(null);
     const current = currentWorkoutId(db);
     const gym = lastUsedGym(db);
     if (!current || !gym) return;
-    discardAndStartWorkout(db, current, { gymId: gym.id, timeZone: currentTimeZone() });
+    discardAndStartWorkout(db, current, { gymId: gym.id, timeZone: currentTimeZone(), routineId });
     router.push("/workout");
   }
 
@@ -95,7 +95,8 @@ function Routines() {
       <RoutineList
         routines={routines}
         editing={editing}
-        onStartEmptyWorkout={requestEmptyWorkout}
+        onStartEmptyWorkout={() => requestStart({})}
+        onStart={(routineId) => requestStart({ routineId })}
         onCreate={create}
         onEdit={edit}
         onDuplicate={(routine) =>
@@ -105,25 +106,29 @@ function Routines() {
         onReorder={(ids) => reorderRoutines(db, ids)}
       />
       <GymNamePrompt
-        visible={namingGym}
+        visible={namingGymFor !== null}
         onSave={(name) => {
-          setNamingGym(false);
-          openLedger(createGym(db, name));
+          setNamingGymFor(null);
+          if (namingGymFor) openLedger(createGym(db, name), namingGymFor);
         }}
-        onDismiss={() => setNamingGym(false)}
+        onDismiss={() => setNamingGymFor(null)}
       />
       <WorkoutInProgressAlert
-        visible={askingAboutCurrent}
+        visible={replacingWith !== null}
         onResume={() => {
-          setAskingAboutCurrent(false);
+          setReplacingWith(null);
           router.push("/workout");
         }}
-        onDiscardAndStart={discardAndStartEmptyWorkout}
-        onDismiss={() => setAskingAboutCurrent(false)}
+        onDiscardAndStart={() => replacingWith && discardAndStart(replacingWith)}
+        onDismiss={() => setReplacingWith(null)}
       />
     </>
   );
 }
+
+// A start held up by the Gym prompt or the in-progress alert: a Routine's, or an empty
+// Workout's when routineId is absent.
+type PendingStart = { routineId?: string };
 
 function currentTimeZone() {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;

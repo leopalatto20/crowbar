@@ -10,6 +10,14 @@ export const SET_KINDS = ["warmup", "working"] as const;
 export type SetKind = (typeof SET_KINDS)[number];
 export type Field = "load" | "reps" | "rir";
 export type Performance = { load: number; reps: number; rir: number | null };
+export type Target = {
+  sets: number | null;
+  repMin: number | null;
+  repMax: number | null;
+  rirMin: number | null;
+  rirMax: number | null;
+  restSeconds: number | null;
+};
 
 // RPE = 10 - RIR, so the stored value is always RIR and only the display flips.
 export function toEffortDisplay(rir: number | null, effort: Effort) {

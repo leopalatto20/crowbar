@@ -21,6 +21,18 @@ export const es: Messages = {
     duplicate: "Duplicar",
     delete: "Eliminar",
     copyName: (name) => `${name} (copia)`,
+    lastRun: (ago, gym) => `Último: ${ago} · ${gym}`,
+    ago: ({ unit, count }) => {
+      if (unit === "day" && count === 0) return "hoy";
+      if (unit === "day" && count === 1) return "ayer";
+      const units = {
+        day: ["día", "días"],
+        week: ["semana", "semanas"],
+        month: ["mes", "meses"],
+        year: ["año", "años"],
+      }[unit];
+      return `hace ${count} ${units[count === 1 ? 0 : 1]}`;
+    },
   },
   exercises: {
     search: "Buscar",
@@ -121,6 +133,8 @@ export const es: Messages = {
     completeSet: "Completar serie",
     reopenSet: "Reabrir serie",
     addSet: "Añadir serie",
+    target: (planned) => `Objetivo ${planned}`,
+    targetRest: (duration) => `descanso ${duration}`,
   },
   finish: {
     title: "Terminar entrenamiento",

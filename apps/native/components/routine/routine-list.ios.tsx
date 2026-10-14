@@ -8,18 +8,22 @@ import {
   Spacer,
   SwipeActions,
   Text,
+  VStack,
 } from "@expo/ui/swift-ui";
 import {
   contentShape,
   deleteDisabled,
   environment,
+  font,
+  foregroundStyle,
+  onTapGesture,
   shapes,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
 
 import { useI18n } from "@/lib/i18n";
-import { move } from "@/lib/routine/model";
-import { useColors } from "@/lib/theme";
+import { formatLastRun, move } from "@/lib/routine/model";
+import { type, useColors } from "@/lib/theme";
 
 import type { RoutineListProps } from "./routine-list.types";
 
@@ -27,6 +31,7 @@ export function RoutineList({
   routines,
   editing,
   onStartEmptyWorkout,
+  onStart,
   onCreate,
   onEdit,
   onDuplicate,
@@ -34,7 +39,8 @@ export function RoutineList({
   onReorder,
 }: RoutineListProps) {
   const p = useColors();
-  const { t } = useI18n();
+  const i18n = useI18n();
+  const { t } = i18n;
   const ids = routines.map((routine) => routine.id);
 
   return (
@@ -63,9 +69,27 @@ export function RoutineList({
                 <SwipeActions key={routine.id} modifiers={[deleteDisabled()]}>
                   <ContextMenu>
                     <ContextMenu.Trigger>
-                      {/* The whole row answers the long-press, not just the name. */}
-                      <HStack modifiers={[contentShape(shapes.rectangle())]}>
-                        <Text>{routine.name}</Text>
+                      {/* The whole row answers the tap and long-press, not just the name.
+                          In Edit mode a tap would start a Workout mid-reorder. */}
+                      <HStack
+                        modifiers={[
+                          contentShape(shapes.rectangle()),
+                          ...(editing ? [] : [onTapGesture(() => onStart(routine.id))]),
+                        ]}
+                      >
+                        <VStack alignment="leading" spacing={2}>
+                          <Text>{routine.name}</Text>
+                          {routine.lastRun && (
+                            <Text
+                              modifiers={[
+                                font({ size: type.footnote.fontSize }),
+                                foregroundStyle({ type: "hierarchical", style: "secondary" }),
+                              ]}
+                            >
+                              {formatLastRun(routine.lastRun, i18n)}
+                            </Text>
+                          )}
+                        </VStack>
                         <Spacer />
                       </HStack>
                     </ContextMenu.Trigger>

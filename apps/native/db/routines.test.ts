@@ -17,7 +17,10 @@ import {
   reorderRoutines,
   updateRoutineExercise,
 } from "./routines";
+import { createGym } from "./gyms";
+import { seedSettings } from "./settings";
 import { createTestDatabase } from "./test-database";
+import { addWorkoutExercise, confirmSet, finishWorkout, getLedger, startWorkout } from "./workouts";
 
 const benchPress: BuiltInExercise = {
   id: "barbell-bench-press",
@@ -64,8 +67,8 @@ describe("createRoutine", () => {
     const lower = createRoutine(db, "Lower A");
 
     expect(listRoutines(db)).toEqual([
-      { id: upper, name: "Upper A" },
-      { id: lower, name: "Lower A" },
+      { id: upper, name: "Upper A", lastRun: null },
+      { id: lower, name: "Lower A", lastRun: null },
     ]);
   });
 });
@@ -79,8 +82,8 @@ describe("renameRoutine", () => {
     renameRoutine(db, upper, "  Push  ");
 
     expect(listRoutines(db)).toEqual([
-      { id: upper, name: "Push" },
-      { id: lower, name: "Lower A" },
+      { id: upper, name: "Push", lastRun: null },
+      { id: lower, name: "Lower A", lastRun: null },
     ]);
   });
 });
@@ -240,7 +243,7 @@ describe("deleteRoutine", () => {
 
     deleteRoutine(db, upper);
 
-    expect(listRoutines(db)).toEqual([{ id: lower, name: "Lower A" }]);
+    expect(listRoutines(db)).toEqual([{ id: lower, name: "Lower A", lastRun: null }]);
     expect(getRoutine(db, upper, "en")).toBeUndefined();
     expect(exerciseIds(db, lower)).toEqual(["pull-up"]);
   });
@@ -264,9 +267,9 @@ describe("duplicateRoutine", () => {
     const copy = duplicateRoutine(db, upper, "Upper A copy");
 
     expect(listRoutines(db)).toEqual([
-      { id: upper, name: "Upper A" },
-      { id: copy, name: "Upper A copy" },
-      { id: lower, name: "Lower A" },
+      { id: upper, name: "Upper A", lastRun: null },
+      { id: copy, name: "Upper A copy", lastRun: null },
+      { id: lower, name: "Lower A", lastRun: null },
     ]);
     expect(getRoutine(db, copy, "en")?.exercises).toEqual([
       expect.objectContaining({
@@ -316,5 +319,36 @@ describe("discardBlankRoutine", () => {
     discardBlankRoutine(db, unnamed);
 
     expect(listRoutines(db).map((listing) => listing.id)).toEqual([named, unnamed]);
+  });
+});
+
+describe("last run", () => {
+  const TIME_ZONE = "America/Mexico_City";
+
+  function run(db: Database, gymId: string, routineId: string | undefined, now: number) {
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, routineId, now });
+    const entry = addWorkoutExercise(db, workoutId, benchPress.id);
+    const set = getLedger(db, workoutId, "en")?.exercises.find((e) => e.id === entry)?.sets[0];
+    confirmSet(db, set!.id, { load: 100, reps: 5 });
+    return workoutId;
+  }
+
+  test("shows when and at which Gym each Routine's latest Workout started", async () => {
+    const db = await libraryDatabase();
+    seedSettings(db, "MX");
+    const downtown = createGym(db, "Downtown Iron");
+    const garage = createGym(db, "Garage");
+    const upper = createRoutine(db, "Upper A");
+    const lower = createRoutine(db, "Lower A");
+    finishWorkout(db, run(db, downtown, upper, 1_000), 1_500);
+    finishWorkout(db, run(db, garage, upper, 2_000), 2_500);
+    // An empty Workout and one still in progress don't count as runs of a Routine.
+    finishWorkout(db, run(db, downtown, undefined, 3_000), 3_500);
+    run(db, downtown, upper, 4_000);
+
+    expect(listRoutines(db)).toEqual([
+      { id: upper, name: "Upper A", lastRun: { startedAt: 2_000, gymName: "Garage" } },
+      { id: lower, name: "Lower A", lastRun: null },
+    ]);
   });
 });

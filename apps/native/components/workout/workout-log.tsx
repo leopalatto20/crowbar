@@ -42,9 +42,10 @@ export function WorkoutLog({ ledger }: { ledger: Ledger }) {
             onConfirmed={(set) => {
               // Warm-ups flow straight into the next set.
               if (set.kind === "warmup") return;
+              const duration = entry.target?.restSeconds ?? defaultRestSeconds;
               setRest({
-                endsAt: Date.now() + defaultRestSeconds * 1000,
-                duration: defaultRestSeconds,
+                endsAt: Date.now() + duration * 1000,
+                duration,
                 workoutExerciseId: entry.id,
               });
             }}

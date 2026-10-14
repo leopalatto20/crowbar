@@ -51,6 +51,9 @@ function LedgerScreen({ ledger }: { ledger: Ledger }) {
 
   return (
     <>
+      {ledger.routineName !== null && (
+        <Stack.Screen options={{ title: ledger.routineName || t.routine.untitled }} />
+      )}
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Menu icon={LEDGER_MENU_ICON} accessibilityLabel={t.ledger.more}>
           <Stack.Toolbar.MenuAction
