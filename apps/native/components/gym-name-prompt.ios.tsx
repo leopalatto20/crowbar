@@ -23,7 +23,9 @@ export function GymNamePrompt({ visible, onSave, onDismiss }: GymNamePromptProps
           <DialogAnchor />
         </Alert.Trigger>
         <Alert.Actions>
-          <TextField placeholder={t.gymPrompt.placeholder} onTextChange={setName} autoFocus />
+          {/* No autoFocus: the system alert focuses its first field itself. With autoFocus as
+              well, the field opened unfocused with no keyboard on device (#70). */}
+          <TextField placeholder={t.gymPrompt.placeholder} onTextChange={setName} />
           <Button label={t.gymPrompt.cancel} role="cancel" onPress={onDismiss} />
           <Button
             label={t.gymPrompt.start}

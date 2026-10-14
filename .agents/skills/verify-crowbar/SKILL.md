@@ -70,6 +70,7 @@ cv wait "Every set is logged." 10         # block until a label appears
 - Labels are the English UI strings in `apps/native/lib/i18n/en.ts`. The simulator runs in English, so read the catalog for the exact text.
 - Always run `cv tree` after an action before assuming what's on screen. The tree also lists elements _behind_ a sheet or menu, so a label being present does not prove it's on top. The `shot` screenshot is the arbiter.
 - `tap` waits up to 10s for its target. Pass `--element-type` whenever a label exists twice (`Workout` is both a tab and a back button).
+- The software keyboard never shows. The headless sim behaves as if a hardware keyboard is attached, so the keyboard stays below the screen even after tapping a field. Its keys still appear in `cv tree` (at y beyond the screen height), so their presence proves nothing. To prove a field has focus, show its blinking cursor in a `shot` and `cv type` into it without tapping first. Keyboard visibility can only be checked on a physical device.
 - Native SwiftUI menus (`PopUpButton`, such as Equipment type) open as a list of `Button`s. Tap the option by its label.
 - A red-box **Render Error** replaces the screen when JS throws. `cv tree` shows its message as StaticText, and `cv logs` has the stack. Treat it as a finding, not a harness problem.
 - Killing the app mid-flow (`cv launch`) is the real way to test resume-after-kill.
