@@ -1,0 +1,292 @@
+#!/usr/bin/env bash
+# Drives Crowbar's iOS development build on a dedicated simulator, against its own Metro.
+# Usage: crowbar-verify <command> [args]   (run with no arguments for the command list)
+set -euo pipefail
+
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"
+APP_DIR="$REPO/apps/native"
+STATE="${XDG_CACHE_HOME:-$HOME/.cache}/crowbar-verify"
+EVIDENCE_ROOT="$STATE/evidence"
+SIM_NAME="crowbar-verify"
+SIM_DEVICE_TYPE="iPhone 17 Pro"
+BUNDLE_ID="com.anonymous.crowbar"
+# The user's own `bun run dev` owns 8081; a verification run never shares it.
+PORT="${CROWBAR_VERIFY_PORT:-8082}"
+
+mkdir -p "$STATE" "$EVIDENCE_ROOT"
+
+die() { echo "crowbar-verify: $*" >&2; exit 1; }
+
+udid() {
+  xcrun simctl list devices -j |
+    jq -r --arg n "$SIM_NAME" '[.devices[][] | select(.name == $n and .isAvailable)][0].udid // empty'
+}
+
+require_udid() {
+  local u; u="$(udid)"
+  [ -n "$u" ] || die "simulator '$SIM_NAME' does not exist; run: crowbar-verify up"
+  echo "$u"
+}
+
+newest_ios_runtime() {
+  xcrun simctl list runtimes -j |
+    jq -r '[.runtimes[] | select(.platform == "iOS" and .isAvailable)] | sort_by(.version | split(".") | map(tonumber)) | last.identifier'
+}
+
+# Anything that changes the native binary. When it differs from the installed build's, rebuild.
+native_fingerprint() {
+  cat "$APP_DIR/package.json" "$APP_DIR/app.json" "$REPO/bun.lock" | shasum | cut -d' ' -f1
+}
+
+metro_pid() { [ -f "$STATE/metro.pid" ] && cat "$STATE/metro.pid" || true; }
+
+metro_ours() {
+  local pid; pid="$(metro_pid)"
+  [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null &&
+    lsof -nP -a -p "$(pgrep -P "$pid" -d, 2>/dev/null || echo "$pid"),$pid" -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1
+}
+
+metro_ready() { curl -s --max-time 2 "http://localhost:$PORT/status" | grep -q "packager-status:running"; }
+
+current_run() {
+  [ -f "$STATE/current-run" ] || die "no evidence run started; run: crowbar-verify run <name>"
+  cat "$STATE/current-run"
+}
+
+# Expo Go is never used: it ships its own pinned native modules (Expo Go 57.0.9 vs the project's
+# @expo/ui 57.0.23), so only a development build runs the native code the app actually ships with.
+ensure_build() {
+  local u="$1" want; want="$(native_fingerprint)"
+  if [ -d "$STATE/crowbar.app" ] && [ "$(cat "$STATE/native-fingerprint" 2>/dev/null)" = "$want" ] && [ "${REBUILD:-0}" != 1 ]; then
+    return
+  fi
+  echo "building the development build (several minutes; log: $STATE/build.log)"
+  (cd "$APP_DIR" && bunx expo run:ios --no-bundler --device "$u") >"$STATE/build.log" 2>&1 ||
+    die "build failed; see $STATE/build.log"
+  local built
+  built="$(xcrun simctl get_app_container "$u" "$BUNDLE_ID" app)" || die "build finished but $BUNDLE_ID is not installed"
+  rm -rf "$STATE/crowbar.app" && cp -R "$built" "$STATE/crowbar.app"
+  echo "$want" >"$STATE/native-fingerprint"
+  # run:ios finishes by opening a dev-client URL aimed at :8081, which leaves a system prompt up.
+  if tree_of "$u" | cut -f2 | grep -qF 'Open in “crowbar”?'; then
+    axe tap --label Cancel --udid "$u" >/dev/null
+  fi
+}
+
+install_app() {
+  local u="$1"
+  xcrun simctl terminate "$u" "$BUNDLE_ID" 2>/dev/null || true
+  xcrun simctl install "$u" "$STATE/crowbar.app"
+  # Debug builds read their packager location from this default, so the app loads our Metro.
+  xcrun simctl spawn "$u" defaults write "$BUNDLE_ID" RCT_jsLocation "localhost:$PORT"
+}
+
+wait_for_label() {
+  local u="$1" label="$2" timeout="${3:-60}" i
+  for ((i = 0; i < timeout; i++)); do
+    tree_of "$u" | cut -f2 | grep -qxF "$label" && return 0
+    sleep 1
+  done
+  return 1
+}
+
+tree_of() {
+  axe describe-ui --udid "$1" | jq -r '
+    .. | objects | select(has("AXLabel"))
+    | select((.AXLabel // "") != "" or (.AXValue // "") != "")
+    | "\(.type)\t\(.AXLabel // "")\t\(.AXValue // "")\t\(.frame.x | floor),\(.frame.y | floor) \(.frame.width | floor)x\(.frame.height | floor)"'
+}
+
+db_path() {
+  local data; data="$(xcrun simctl get_app_container "$1" "$BUNDLE_ID" data)" || die "app not installed"
+  echo "$data/Documents/SQLite/crowbar.db"
+}
+
+cmd_up() {
+  local fresh=0
+  for a in "$@"; do case "$a" in --fresh) fresh=1 ;; --rebuild) REBUILD=1 ;; *) die "unknown flag $a" ;; esac; done
+  command -v axe >/dev/null || die "axe is not installed (brew install cameroncooke/axe/axe)"
+
+  local u; u="$(udid)"
+  if [ -z "$u" ]; then
+    u="$(xcrun simctl create "$SIM_NAME" "$SIM_DEVICE_TYPE" "$(newest_ios_runtime)")"
+    echo "created simulator $SIM_NAME ($u)"
+  fi
+  xcrun simctl boot "$u" 2>/dev/null || true
+  xcrun simctl bootstatus "$u" -b >/dev/null
+
+  if metro_ours && metro_ready; then
+    echo "metro already running on :$PORT (pid $(metro_pid))"
+  else
+    if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+      die "port $PORT is held by a process this tool did not start; pick another with CROWBAR_VERIFY_PORT"
+    fi
+    # Without a TTY Expo skips its interactive keys but still watches files, so edits hot-reload.
+    (cd "$APP_DIR" && nohup bunx expo start --port "$PORT" </dev/null >"$STATE/metro.log" 2>&1 &
+      echo $! >"$STATE/metro.pid")
+    local i
+    for ((i = 0; i < 90; i++)); do metro_ready && break; sleep 1; done
+    metro_ready || die "metro did not answer on :$PORT; see $STATE/metro.log"
+    echo "metro running on :$PORT (pid $(metro_pid))"
+  fi
+
+  ensure_build "$u"
+  if [ "$fresh" = 1 ] || ! xcrun simctl get_app_container "$u" "$BUNDLE_ID" app >/dev/null 2>&1; then
+    xcrun simctl uninstall "$u" "$BUNDLE_ID" 2>/dev/null || true
+    install_app "$u"
+    [ "$fresh" = 1 ] && echo "reinstalled with empty app data"
+  else
+    install_app "$u"
+  fi
+  cmd_launch
+}
+
+cmd_launch() {
+  local u; u="$(require_udid)"
+  xcrun simctl terminate "$u" "$BUNDLE_ID" 2>/dev/null || true
+  xcrun simctl launch "$u" "$BUNDLE_ID" >/dev/null
+  # The tab bar renders only after the database opens and settings load.
+  wait_for_label "$u" "Settings" 120 || die "app did not reach its tabs; check: crowbar-verify logs"
+  echo "ready: $SIM_NAME ($u), app loaded from :$PORT"
+}
+
+cmd_doctor() {
+  local ok=1 u state=""
+  u="$(udid)"
+  if [ -z "$u" ]; then echo "FAIL simulator '$SIM_NAME' missing"; ok=0
+  else
+    state="$(xcrun simctl list devices -j | jq -r --arg u "$u" '.devices[][] | select(.udid == $u) | .state')"
+    [ "$state" = Booted ] && echo "ok   simulator $SIM_NAME booted ($u)" || { echo "FAIL simulator $SIM_NAME is $state"; ok=0; }
+  fi
+  if metro_ours && metro_ready; then echo "ok   metro pid $(metro_pid) answering on :$PORT"
+  elif metro_ready; then echo "FAIL :$PORT answers but not from a metro this tool started"; ok=0
+  else echo "FAIL metro not running on :$PORT"; ok=0; fi
+  if [ "$(cat "$STATE/native-fingerprint" 2>/dev/null)" = "$(native_fingerprint)" ]; then
+    echo "ok   development build matches native dependencies"
+  else echo "FAIL development build is missing or stale; run: crowbar-verify up --rebuild"; ok=0; fi
+  # simctl can only see installed apps on a booted simulator.
+  if [ -z "$u" ] || [ "${state:-}" != Booted ]; then echo "skip app checks until the simulator is booted"
+  elif xcrun simctl get_app_container "$u" "$BUNDLE_ID" app >/dev/null 2>&1; then
+    local loc; loc="$(xcrun simctl spawn "$u" defaults read "$BUNDLE_ID" RCT_jsLocation 2>/dev/null || true)"
+    [ "$loc" = "localhost:$PORT" ] && echo "ok   app installed, loads JS from $loc" || { echo "FAIL app loads JS from '${loc:-default :8081}'"; ok=0; }
+    if [ -f "$(db_path "$u")" ]; then echo "ok   database at $(db_path "$u")"; else echo "info database not created yet (app never launched)"; fi
+  else echo "FAIL $BUNDLE_ID not installed on $SIM_NAME"; ok=0; fi
+  local errors; errors="$(sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' "$STATE/metro.log" 2>/dev/null | grep -c " ERROR " || true)"
+  [ "${errors:-0}" = 0 ] && echo "ok   no ERROR lines in metro log" || echo "WARN $errors ERROR lines in metro log; run: crowbar-verify logs"
+  [ "$ok" = 1 ]
+}
+
+cmd_tree() { tree_of "$(require_udid)"; }
+
+cmd_tap() {
+  [ $# -ge 1 ] || die "usage: tap <label> [axe tap flags...] | tap --value <text> [flags...]"
+  # Empty text fields carry their placeholder as AXValue, so they need --value, not a label.
+  if [[ "$1" != --* ]]; then set -- --label "$@"; fi
+  axe tap --wait-timeout 10 --udid "$(require_udid)" "$@" | tail -1
+}
+
+# Paced per character: fields that save on every keystroke (the Routine name) drop and garble
+# characters from a single HID burst ("Push" landed as "Puse").
+cmd_type() {
+  [ $# = 1 ] || die "usage: type <text>"
+  local u i; u="$(require_udid)"
+  for ((i = 0; i < ${#1}; i++)); do
+    axe type "${1:i:1}" --udid "$u" >/dev/null
+    sleep 0.15
+  done
+}
+
+cmd_erase() {
+  [ $# = 1 ] || die "usage: erase <count>"
+  local u i; u="$(require_udid)"
+  for ((i = 0; i < $1; i++)); do axe key 42 --udid "$u" >/dev/null; done  # 42 = HID backspace
+}
+
+cmd_wait() {
+  [ $# -ge 1 ] || die "usage: wait <label> [seconds]"
+  wait_for_label "$(require_udid)" "$1" "${2:-15}" || die "'$1' did not appear"
+}
+
+cmd_run() {
+  [ $# = 1 ] || die "usage: run <name>"
+  local dir="$EVIDENCE_ROOT/$(date +%Y%m%d-%H%M%S)-$1"
+  mkdir -p "$dir"
+  echo "$dir" >"$STATE/current-run"
+  echo "$dir"
+}
+
+cmd_shot() {
+  [ $# = 1 ] || die "usage: shot <name>"
+  local u dir; u="$(require_udid)"; dir="$(current_run)"
+  axe screenshot --udid "$u" --output "$dir/$1.png" >/dev/null
+  tree_of "$u" >"$dir/$1.tree.txt"
+  echo "$dir/$1.png"
+}
+
+cmd_db() {
+  [ $# = 1 ] || die "usage: db <sql>"
+  local path; path="$(db_path "$(require_udid)")"
+  [ -f "$path" ] || die "no database yet at $path"
+  # Queries a copy: a read-only open of a WAL database fails whenever the app has closed it and
+  # removed its -shm, and a copy can never lock or touch the app's file.
+  local copy="$STATE/db-snapshot" f
+  rm -rf "$copy" && mkdir -p "$copy"
+  for f in "$path" "$path-wal" "$path-shm"; do [ -f "$f" ] && cp "$f" "$copy/"; done
+  sqlite3 -header -column "$copy/crowbar.db" "$1"
+}
+
+cmd_save_db() {
+  [ $# = 1 ] || die "usage: save-db <sql>"
+  local dir; dir="$(current_run)"
+  { echo "> $1"; cmd_db "$1"; } | tee -a "$dir/db.txt"
+}
+
+cmd_logs() { sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' "$STATE/metro.log" | tail -n "${1:-40}"; }
+
+cmd_down() {
+  local pid; pid="$(metro_pid)"
+  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+    pkill -TERM -P "$pid" 2>/dev/null || true
+    kill -TERM "$pid" 2>/dev/null || true
+    echo "stopped metro (pid $pid)"
+  fi
+  rm -f "$STATE/metro.pid"
+  local u; u="$(udid)"
+  if [ -n "$u" ]; then xcrun simctl shutdown "$u" 2>/dev/null || true; echo "shut down $SIM_NAME"; fi
+  echo "evidence kept in $EVIDENCE_ROOT"
+}
+
+cmd_destroy() {
+  cmd_down
+  local u; u="$(udid)"
+  [ -n "$u" ] && xcrun simctl delete "$u" && echo "deleted simulator $SIM_NAME"
+  rm -rf "$STATE/crowbar.app" "$STATE/native-fingerprint"
+  echo "evidence kept in $EVIDENCE_ROOT"
+}
+
+usage() {
+  cat <<EOF
+crowbar-verify <command>
+  up [--fresh] [--rebuild]  boot sim, start metro on :$PORT, build if needed, launch app
+  launch                    kill and relaunch the app (same data)
+  doctor                    read-only health check; exit 1 if not drivable
+  tree                      compact accessibility tree: type, label, value, frame
+  tap <label> [axe flags]   tap the element with this accessibility label
+  type <text>               type into the focused field, paced (US keyboard characters only)
+  erase <count>             press backspace count times
+  wait <label> [seconds]    wait for a label to appear
+  run <name>                start an evidence run; prints its directory
+  shot <name>               screenshot + tree into the current run
+  db <sql>                  read-only query against the app's SQLite database
+  save-db <sql>             same, appended to the current run's db.txt
+  logs [n]                  last n lines of metro output, colours stripped
+  down                      stop our metro, shut down the sim; keeps evidence
+  destroy                   down, then delete the sim and cached build; keeps evidence
+EOF
+}
+
+case "${1:-}" in
+  up | launch | doctor | tree | tap | type | erase | wait | run | shot | db | save-db | logs | down | destroy)
+    c="$1"; shift; "cmd_${c//-/_}" "$@" ;;
+  *) usage ;;
+esac
