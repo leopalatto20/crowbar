@@ -96,8 +96,12 @@ export function discardAndStartWorkout(db: Database, discardedId: string, start:
   });
 }
 
-export function currentWorkoutId(db: Database) {
-  return db.select({ id: workout.id }).from(workout).where(isNull(workout.finishedAt)).get()?.id;
+export function currentWorkout(db: Database) {
+  return db
+    .select({ id: workout.id, routineName: workout.routineName, startedAt: workout.startedAt })
+    .from(workout)
+    .where(isNull(workout.finishedAt))
+    .get();
 }
 
 export type LedgerSet = {

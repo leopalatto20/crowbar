@@ -1,6 +1,6 @@
 # Empty Workout and the Ledger
 
-Starting a Workout opens the Ledger, the logging screen: Exercise cards with set rows (load, reps, effort), a Rest bar after each confirmed Working set, and Finish/Discard. Only one Workout runs at a time, and a Workout left in progress reopens after the app is killed.
+Starting a Workout opens the Ledger, the logging screen, as a modal over the tabs: Exercise cards with set rows (load, reps, effort), a Rest bar after each confirmed Working set, and Finish/Discard. Only one Workout runs at a time, and a Workout left in progress reopens after the app is killed.
 
 ## Sub-features
 
@@ -12,7 +12,8 @@ Starting a Workout opens the Ledger, the logging screen: Exercise cards with set
 - Rest bar: `Rest · <exercise>` with "−15", "+15", "Skip".
 - Finish: toolbar "Finish" opens the "Finish Workout" sheet ("Every set is logged.", `<n> unlogged sets will be discarded.`, or "Nothing is logged, so this Workout won’t be saved.") and an "End Workout" button that returns to the Workout tab.
 - Discard: "More" menu, then "Discard Workout"; asks "Discard this Workout?" ("Its logged sets will be deleted.", "Discard Workout" / "Keep logging") only if a set is confirmed, otherwise discards at once.
-- Resume after kill: `cv launch` with a Workout in progress reopens the Ledger over the tabs.
+- Minimize: the "Minimize" chevron (top left) or a swipe down closes the Ledger without ending the Workout, committing a value typed but not yet committed. The Workout bar then sits above the tab bar on every tab (iOS 26: the tab bar's accessory) as a `Button` labelled with the Routine name or "Workout", its value the live elapsed time (`0:42`, `1:02:03` past an hour). Tapping it reopens the Ledger. The bar disappears once the Workout is finished or discarded.
+- Resume after kill: `cv launch` with a Workout in progress reopens the Ledger over the tabs, maximized.
 
 ## How to get to it (user POV)
 
@@ -31,6 +32,10 @@ cv shot 1-ledger
 cv save-db "select g.name as gym, w.started_at, w.finished_at from workout w join gym g on g.id = w.gym_id"
 cv launch                                   # kill and relaunch: the Ledger must reopen
 cv wait "add, Add Exercise" 10 && cv shot 2-resumed
+cv tap Minimize --element-type Button       # Workout bar: Button "Workout", value = elapsed
+cv tap History --element-type RadioButton && cv shot 2a-bar-on-history
+cv tap Workout --element-type Button        # the bar, not the tab (a RadioButton)
+cv wait "add, Add Exercise" 10
 cv tap "add, Add Exercise" --element-type Button
 cv tap "Barbell Bench Press, Chest" --element-type Button
 cv tap --pre-delay 0 -x 178 -y 248 && cv type 60   # KG field of set 1, by frame (see Gotchas)
@@ -62,6 +67,9 @@ cv save-db "select count(*) as workouts, count(finished_at) as finished from wor
 Proof: a `gym` row with the typed name, a `workout` row with `finished_at` null while logging, the Ledger reopening after `cv launch`, `finished_at` set after "End Workout", and neither the empty second Workout nor the discarded third leaving a row.
 
 ## Gotchas
+
+- To swipe the Ledger down, start the drag at the sheet's top edge and go slowly: `axe swipe --start-x 200 --start-y 120 --end-x 200 --end-y 700 --duration 1.0 --delta 10 --udid <udid>`. Faster swipes, or ones starting lower on the content, leave it open on the simulator.
+- "Workout" labels the tab (`RadioButton`), the Workout tab's heading, and the Workout bar (`Button`, value the elapsed time). Pass `--element-type`.
 
 - Do not create the Gym through SQL to skip the prompt: that's not the user path, and it would hide a regression of #65 (a SwiftUI dialog without a trigger never presents).
 - Ledger set fields are React Native `TextInput`s whose placeholder is the "Last here" ghost value or "–". Find them by frame in `cv tree` and tap the centre with `cv tap --pre-delay 0 -x <x> -y <y>` (a leading flag stops `cv` from treating `-x` as a label). The coordinates above hold only for the first card of an empty Workout; a Routine's Target line or earlier cards push rows down.

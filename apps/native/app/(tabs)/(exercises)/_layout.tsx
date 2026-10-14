@@ -1,5 +1,3 @@
-import { Stack } from "expo-router";
+import { TabStack } from "@/components/tab-stack";
 
-export default function TabStackLayout() {
-  return <Stack screenOptions={{ headerLargeTitle: true }} />;
-}
+export default TabStack;

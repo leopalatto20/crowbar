@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { fromEffortDisplay, parseSetValue, toEffortDisplay } from "./model";
+import { formatElapsed, fromEffortDisplay, parseSetValue, toEffortDisplay } from "./model";
 
 describe("effort display", () => {
   test("shows a stored RIR of 2 as RPE 8", () => {
@@ -43,5 +43,18 @@ describe("parseSetValue", () => {
   test("rejects fractional reps and text that isn't a number", () => {
     expect(parseSetValue("reps", "8,5", "RIR")).toBeUndefined();
     expect(parseSetValue("load", "abc", "RIR")).toBeUndefined();
+  });
+});
+
+describe("formatElapsed", () => {
+  test("shows minutes and seconds within the first hour", () => {
+    expect(formatElapsed(0)).toBe("0:00");
+    expect(formatElapsed(59.9)).toBe("0:59");
+    expect(formatElapsed(47 * 60 + 5)).toBe("47:05");
+  });
+
+  test("adds hours once a Workout runs past an hour", () => {
+    expect(formatElapsed(3600)).toBe("1:00:00");
+    expect(formatElapsed(2 * 3600 + 3 * 60 + 9)).toBe("2:03:09");
   });
 });

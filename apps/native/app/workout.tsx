@@ -1,14 +1,15 @@
-import { Stack, useRouter } from "expo-router";
-import { Suspense, useState } from "react";
+import { type NativeStackNavigationProp, Stack, useNavigation, useRouter } from "expo-router";
+import { Suspense, useEffect, useState } from "react";
 import { Keyboard } from "react-native";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { LEDGER_MENU_ICON } from "@/components/workout/ledger-menu-icon";
+import { LEDGER_MENU_ICON, LEDGER_MINIMIZE_ICON } from "@/components/workout/ledger-icons";
 import { WorkoutLog } from "@/components/workout/workout-log";
 import { useDb } from "@/db/context";
 import { type Ledger, discardWorkout } from "@/db/workouts";
 import { useI18n } from "@/lib/i18n";
 import { useColors } from "@/lib/theme";
+import { workoutTitle } from "@/lib/workout/model";
 import { useCurrentWorkout } from "@/lib/workout/use-workout";
 
 export default function WorkoutScreen() {
@@ -39,9 +40,21 @@ function CurrentWorkout() {
 function LedgerScreen({ ledger }: { ledger: Ledger }) {
   const db = useDb();
   const router = useRouter();
-  const { t } = useI18n();
+  const navigation = useNavigation<NativeStackNavigationProp<Record<string, undefined>>>();
+  const i18n = useI18n();
+  const { t } = i18n;
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const confirmed = ledger.exercises.some((entry) => entry.sets.some((set) => set.done));
+
+  // Minimizing, by chevron or swipe, unmounts the Ledger; blurring first saves a value typed but
+  // not yet committed, while its field still exists.
+  useEffect(
+    () =>
+      navigation.addListener("transitionStart", ({ data }) => {
+        if (data.closing) Keyboard.dismiss();
+      }),
+    [navigation],
+  );
 
   function discard() {
     setConfirmingDiscard(false);
@@ -51,9 +64,14 @@ function LedgerScreen({ ledger }: { ledger: Ledger }) {
 
   return (
     <>
-      {ledger.routineName !== null && (
-        <Stack.Screen options={{ title: ledger.routineName || t.routine.untitled }} />
-      )}
+      <Stack.Screen options={{ title: workoutTitle(ledger.routineName, i18n) }} />
+      <Stack.Toolbar placement="left">
+        <Stack.Toolbar.Button
+          icon={LEDGER_MINIMIZE_ICON}
+          accessibilityLabel={t.ledger.minimize}
+          onPress={() => router.back()}
+        />
+      </Stack.Toolbar>
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Menu icon={LEDGER_MENU_ICON} accessibilityLabel={t.ledger.more}>
           <Stack.Toolbar.MenuAction
