@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { useI18n } from "@/lib/i18n";
 
+import { DialogAnchor } from "./dialog-anchor";
 import type { GymNamePromptProps } from "./gym-name-prompt.types";
 
 // The first Workout start asks only for a Gym name, in place of any onboarding.
@@ -18,6 +19,9 @@ export function GymNamePrompt({ visible, onSave, onDismiss }: GymNamePromptProps
           if (!presented) onDismiss();
         }}
       >
+        <Alert.Trigger>
+          <DialogAnchor />
+        </Alert.Trigger>
         <Alert.Actions>
           <TextField placeholder={t.gymPrompt.placeholder} onTextChange={setName} autoFocus />
           <Button label={t.gymPrompt.cancel} role="cancel" onPress={onDismiss} />

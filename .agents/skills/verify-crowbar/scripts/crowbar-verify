@@ -81,10 +81,14 @@ install_app() {
   xcrun simctl spawn "$u" defaults write "$BUNDLE_ID" RCT_jsLocation "localhost:$PORT"
 }
 
+# Usage: wait_for_label <udid> <timeout> <label>... ; returns once any of the labels is on screen.
 wait_for_label() {
-  local u="$1" label="$2" timeout="${3:-60}" i
+  local u="$1" timeout="$2" i label
+  shift 2
+  local patterns=()
+  for label in "$@"; do patterns+=(-e "$label"); done
   for ((i = 0; i < timeout; i++)); do
-    tree_of "$u" | cut -f2 | grep -qxF "$label" && return 0
+    tree_of "$u" | cut -f2 | grep -qxF "${patterns[@]}" && return 0
     sleep 1
   done
   return 1
@@ -145,8 +149,9 @@ cmd_launch() {
   local u; u="$(require_udid)"
   xcrun simctl terminate "$u" "$BUNDLE_ID" 2>/dev/null || true
   xcrun simctl launch "$u" "$BUNDLE_ID" >/dev/null
-  # The tab bar renders only after the database opens and settings load.
-  wait_for_label "$u" "Settings" 120 || die "app did not reach its tabs; check: crowbar-verify logs"
+  # The tab bar renders only after the database opens and settings load. A Workout in progress
+  # reopens the Ledger over the tabs, so its Finish button counts as ready too.
+  wait_for_label "$u" 120 "Settings" "Finish" || die "app did not reach its tabs or the Ledger; check: crowbar-verify logs"
   echo "ready: $SIM_NAME ($u), app loaded from :$PORT"
 }
 
@@ -204,7 +209,7 @@ cmd_erase() {
 
 cmd_wait() {
   [ $# -ge 1 ] || die "usage: wait <label> [seconds]"
-  wait_for_label "$(require_udid)" "$1" "${2:-15}" || die "'$1' did not appear"
+  wait_for_label "$(require_udid)" "${2:-15}" "$1" || die "'$1' did not appear"
 }
 
 cmd_run() {

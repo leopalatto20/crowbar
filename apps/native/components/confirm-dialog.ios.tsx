@@ -1,5 +1,6 @@
 import { Button, ConfirmationDialog, Host, Text } from "@expo/ui/swift-ui";
 
+import { DialogAnchor } from "./dialog-anchor";
 import type { ConfirmDialogProps } from "./confirm-dialog.types";
 
 export function ConfirmDialog({
@@ -21,6 +22,9 @@ export function ConfirmDialog({
           if (!presented) onDismiss();
         }}
       >
+        <ConfirmationDialog.Trigger>
+          <DialogAnchor />
+        </ConfirmationDialog.Trigger>
         <ConfirmationDialog.Actions>
           <Button label={confirmLabel} role="destructive" onPress={onConfirm} />
           <Button label={cancelLabel} role="cancel" onPress={onDismiss} />
