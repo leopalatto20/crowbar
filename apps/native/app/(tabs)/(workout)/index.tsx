@@ -29,38 +29,45 @@ function Routines() {
     name: routine.name || t.routine.untitled,
   }));
   const [editing, setEditing] = useState(false);
-  const reordering = editing && routines.length > 0;
 
   function edit(id: string) {
     router.push({ pathname: "/routine", params: { id } });
   }
 
+  function create() {
+    setEditing(false);
+    edit(createRoutine(db, ""));
+  }
+
+  function remove(id: string) {
+    // Edit mode ends with nothing left to order, so a later first Routine doesn't open in it.
+    if (routines.length === 1) setEditing(false);
+    deleteRoutine(db, id);
+  }
+
   return (
     <>
       <Stack.Toolbar placement="left">
-        <Stack.Toolbar.Button
-          hidden={routines.length === 0}
-          onPress={() => setEditing(!reordering)}
-        >
-          {reordering ? t.workoutTab.done : t.workoutTab.edit}
+        <Stack.Toolbar.Button hidden={routines.length === 0} onPress={() => setEditing(!editing)}>
+          {editing ? t.workoutTab.done : t.workoutTab.edit}
         </Stack.Toolbar.Button>
       </Stack.Toolbar>
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Button
           icon="plus"
           accessibilityLabel={t.workoutTab.newRoutine}
-          onPress={() => edit(createRoutine(db, ""))}
+          onPress={create}
         />
       </Stack.Toolbar>
       <RoutineList
         routines={routines}
-        editing={reordering}
-        onCreate={() => edit(createRoutine(db, ""))}
+        editing={editing}
+        onCreate={create}
         onEdit={edit}
         onDuplicate={(routine) =>
           duplicateRoutine(db, routine.id, t.workoutTab.copyName(routine.name))
         }
-        onDelete={(id) => deleteRoutine(db, id)}
+        onDelete={remove}
         onReorder={(ids) => reorderRoutines(db, ids)}
       />
     </>

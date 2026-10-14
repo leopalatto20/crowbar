@@ -3,6 +3,7 @@ import { clickable } from "@expo/ui/jetpack-compose/modifiers";
 import { useState } from "react";
 
 import { useI18n } from "@/lib/i18n";
+import { formatPlannedRest } from "@/lib/routine/model";
 import { type, useColors } from "@/lib/theme";
 import { formatClock } from "@/lib/workout/model";
 
@@ -27,7 +28,7 @@ export function RestPicker({
             style={{ fontSize: type.footnote.fontSize }}
             modifiers={[clickable(() => setExpanded(true))]}
           >
-            {`${t.routine.rest(seconds === null ? "–" : formatClock(seconds))} ▾`}
+            {`${t.routine.rest(formatPlannedRest(seconds))} ▾`}
           </Text>
         </DropdownMenu.Trigger>
         <DropdownMenu.Items>

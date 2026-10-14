@@ -1,6 +1,6 @@
 import type { RoutineExercise } from "@/db/routines";
 import type { I18n } from "@/lib/i18n";
-import { type Effort, formatEffort, formatRange } from "@/lib/workout/model";
+import { type Effort, formatClock, formatEffort, formatRange } from "@/lib/workout/model";
 
 export type Range = [number, number];
 
@@ -37,6 +37,10 @@ const BLANK = "–";
 
 function formatPlannedRange(min: number | null, max: number | null) {
   return min === null || max === null ? BLANK : formatRange(min, max);
+}
+
+export function formatPlannedRest(seconds: number | null) {
+  return seconds === null ? BLANK : formatClock(seconds);
 }
 
 export function formatPlannedVolume({ sets, repMin, repMax }: RoutineExercise) {

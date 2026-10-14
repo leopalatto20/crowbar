@@ -9,7 +9,13 @@ import {
   SwipeActions,
   Text,
 } from "@expo/ui/swift-ui";
-import { contentShape, environment, shapes, tint } from "@expo/ui/swift-ui/modifiers";
+import {
+  contentShape,
+  deleteDisabled,
+  environment,
+  shapes,
+  tint,
+} from "@expo/ui/swift-ui/modifiers";
 
 import { useI18n } from "@/lib/i18n";
 import { move } from "@/lib/routine/model";
@@ -47,10 +53,10 @@ export function RoutineList({
           ) : (
             <List.ForEach
               onMove={(sources, destination) => onReorder(move(ids, sources, destination))}
-              onDelete={(indices) => indices.forEach((index) => onDelete(ids[index]!))}
             >
               {routines.map((routine) => (
-                <SwipeActions key={routine.id}>
+                // Edit mode is for ordering; Delete stays behind the long-press menu.
+                <SwipeActions key={routine.id} modifiers={[deleteDisabled()]}>
                   <ContextMenu>
                     <ContextMenu.Trigger>
                       {/* The whole row answers the long-press, not just the name. */}
