@@ -107,6 +107,9 @@ function Routines() {
       />
       <GymNamePrompt
         visible={namingGymFor !== null}
+        title={t.gymPrompt.title}
+        message={t.gymPrompt.message}
+        confirmLabel={t.gymPrompt.start}
         onSave={(name) => {
           setNamingGymFor(null);
           if (namingGymFor) openLedger(createGym(db, name), namingGymFor);

@@ -45,6 +45,15 @@ export default function RootLayout() {
                 sheetGrabberVisible: true,
               }}
             />
+            <Stack.Screen
+              name="gym-picker"
+              options={{
+                presentation: "formSheet",
+                headerShown: false,
+                sheetAllowedDetents: "fitToContents",
+                sheetGrabberVisible: true,
+              }}
+            />
           </Stack>
         </DatabaseProvider>
       </GestureHandlerRootView>

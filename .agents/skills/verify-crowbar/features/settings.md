@@ -6,6 +6,8 @@ App-wide logging preferences stored in the single `settings` row: Effort scale (
 
 Both rows sit in a "Logging" section.
 
+A "Training" section holds the "Gyms" row, which pushes the Gyms list; see [gyms.md](gyms.md).
+
 - Effort scale: RIR / RPE. Changes the Routine editor's effort pill and panel, the Ledger's effort column header and its Target line.
 - Default weight unit: kg / lb / Stack level (stored as `level`, shown as "LVL" in the Ledger). Seeded from the device region on first launch (US gives lb). It applies only to Stations created afterwards: an Exercise already logged at a Gym keeps that Station's unit.
 

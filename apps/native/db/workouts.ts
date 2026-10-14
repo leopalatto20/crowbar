@@ -126,6 +126,7 @@ export type LedgerExercise = {
 
 export type Ledger = {
   id: string;
+  gymId: string;
   gymName: string;
   // As the Routine was named when the Workout started; null for an empty Workout.
   routineName: string | null;
@@ -140,6 +141,7 @@ export function getLedger(db: Database, id: string, language: Language): Ledger 
       id: workout.id,
       startedAt: workout.startedAt,
       finishedAt: workout.finishedAt,
+      gymId: workout.gymId,
       gymName: gym.name,
       routineName: workout.routineName,
     })
@@ -318,6 +320,34 @@ export function addWorkoutExercise(db: Database, workoutId: string, exerciseId: 
       .run();
   });
   return id;
+}
+
+// Each Exercise moves to its default Station at the new Gym, so prefill follows the Gym. Sets
+// already logged move with the Workout: they were logged at the wrong Gym, and a Station left
+// with no history at the old one goes with them.
+export function changeWorkoutGym(db: Database, workoutId: string, gymId: string) {
+  db.transaction((tx) => {
+    const previousStationIds = stationsOf(tx, workoutId);
+    tx.update(workout).set({ gymId }).where(eq(workout.id, workoutId)).run();
+    const entries = tx
+      .select({ id: workoutExercise.id, exerciseId: workoutExercise.exerciseId })
+      .from(workoutExercise)
+      .where(eq(workoutExercise.workoutId, workoutId))
+      .all();
+    for (const entry of entries) {
+      tx.update(workoutExercise)
+        .set({ stationId: defaultStation(tx, entry.exerciseId, gymId)?.id ?? null })
+        .where(eq(workoutExercise.id, entry.id))
+        .run();
+      const logged = tx
+        .select({ id: workoutSet.id })
+        .from(workoutSet)
+        .where(and(eq(workoutSet.workoutExerciseId, entry.id), eq(workoutSet.done, true)))
+        .get();
+      if (logged) ensureStation(tx, entry.id);
+    }
+    deleteEmptyStations(tx, previousStationIds);
+  });
 }
 
 // The Station last used for the Exercise at the Gym. Stations only exist through the Workouts

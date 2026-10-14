@@ -7,7 +7,7 @@ Starting a Workout opens the Ledger, the logging screen, as a modal over the tab
 - First start: no Gym yet, so the alert "Where are you training?" ("Progress is tracked separately at each Gym.") asks for a Gym name (placeholder "Gym name", buttons Cancel/Start). The field takes focus by itself (#70).
 - Later starts: go straight to the Ledger at the last-used Gym.
 - Workout in progress: "Start empty Workout" asks "A Workout is in progress" ("Discarding it deletes its logged sets.") with "Resume current", "Discard and start new", "Cancel".
-- Ledger: titled "Workout" (or the Routine name), first row `<Gym> · started <time>`, "Add Exercise" (picker marks "In Workout"), "Add set", per-set "Complete set"/"Reopen set", warm-up toggle ("Working set, tap to make warm-up" / "Warm-up set, tap to make working").
+- Ledger: titled "Workout" (or the Routine name), first row the Gym chip (`Button` "Gym: <Gym>. Tap to change", see [gyms.md](gyms.md)) and `started <time>`, "Add Exercise" (picker marks "In Workout"), "Add set", per-set "Complete set"/"Reopen set", warm-up toggle ("Working set, tap to make warm-up" / "Warm-up set, tap to make working").
 - Last here: the column shows the previous Workout's set at the same Station (`60 × 5`, or "–"), and the load and reps fields show it as grey placeholder ghosts. "Complete set" on untouched fields logs the ghosts.
 - Rest bar: `Rest · <exercise>` with "−15", "+15", "Skip".
 - Finish: toolbar "Finish" opens the "Finish Workout" sheet ("Every set is logged.", `<n> unlogged sets will be discarded.`, or "Nothing is logged, so this Workout won’t be saved.") and an "End Workout" button that returns to the Workout tab.
