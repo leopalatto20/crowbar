@@ -114,6 +114,7 @@ export const en = {
     keepLogging: "Keep logging",
     addExercise: "Add Exercise",
     setColumn: "Set",
+    lastHereColumn: "Last here",
     repsColumn: "Reps",
     warmupMarker: "W",
     makeWorking: "Warm-up set, tap to make working",

@@ -19,11 +19,18 @@ import { haptics } from "@/lib/haptics";
 import { useI18n } from "@/lib/i18n";
 import { LEDGER_MAX_FONT_SCALE, motion, radii, type, useColors } from "@/lib/theme";
 import { useEffort } from "@/lib/workout/effort";
-import { type Field, parseSetValue, toEffortDisplay, workingIndex } from "@/lib/workout/model";
+import {
+  type Field,
+  type Unit,
+  formatPerformance,
+  parseSetValue,
+  toEffortDisplay,
+  workingIndex,
+} from "@/lib/workout/model";
 
 import { LedgerText } from "./ledger-text";
 
-const COLUMNS = { set: 34, field: 1, check: 40 };
+const COLUMNS = { set: 34, lastHere: 1.4, field: 1, check: 40 };
 const FIELDS: Field[] = ["load", "reps", "rir"];
 
 export function ExerciseCard({
@@ -53,6 +60,7 @@ export function ExerciseCard({
 
       <View style={{ flexDirection: "row", paddingHorizontal: 10, paddingVertical: 4, gap: 6 }}>
         <HeaderCell width={COLUMNS.set}>{t.ledger.setColumn}</HeaderCell>
+        <HeaderCell flex={COLUMNS.lastHere}>{t.ledger.lastHereColumn}</HeaderCell>
         <HeaderCell flex={COLUMNS.field}>{t.unit[entry.unit]}</HeaderCell>
         <HeaderCell flex={COLUMNS.field}>{t.ledger.repsColumn}</HeaderCell>
         <HeaderCell flex={COLUMNS.field}>{t.effort[effort]}</HeaderCell>
@@ -63,6 +71,7 @@ export function ExerciseCard({
         <SetRow
           key={set.id}
           set={set}
+          unit={entry.unit}
           workingNumber={workingIndex(entry.sets, index)}
           onConfirmed={() => onConfirmed(set)}
         />
@@ -112,13 +121,16 @@ function HeaderCell({
 }
 
 // Typed text stays a draft until it's committed (blur or confirm), so nothing is written per
-// keystroke. Confirming commits the drafts too, since tapping ✓ doesn't blur the field.
+// keystroke. Confirming commits the drafts too, since tapping ✓ doesn't blur the field. An empty
+// field shows its ghost value from "Last here", which confirming commits.
 function SetRow({
   set,
+  unit,
   workingNumber,
   onConfirmed,
 }: {
   set: LedgerSet;
+  unit: Unit;
   workingNumber: number;
   onConfirmed: () => void;
 }) {
@@ -158,19 +170,21 @@ function SetRow({
   }
 
   const pending = { ...set, ...draftChange() };
-  const canConfirm = pending.load !== null && pending.reps !== null;
+  const canConfirm =
+    (pending.load ?? set.lastHere?.load ?? null) !== null &&
+    (pending.reps ?? set.lastHere?.reps ?? null) !== null;
 
-  function display(field: Field) {
-    const draft = drafts[field];
-    if (draft !== undefined) return draft;
-    const value = field === "rir" ? toEffortDisplay(set.rir, effort) : set[field];
-    return value === null ? "" : i18n.formatEditableDecimal(value);
+  function format(field: Field, value: number | null | undefined) {
+    const shown = field === "rir" ? toEffortDisplay(value ?? null, effort) : value;
+    return shown === null || shown === undefined ? "" : i18n.formatEditableDecimal(shown);
   }
 
   function input(field: Field) {
     return (
       <ValueInput
-        text={display(field)}
+        text={drafts[field] ?? format(field, set[field])}
+        // A confirmed set already holds its ghost values, so an empty field there is just empty.
+        ghost={set.done ? "" : format(field, set.lastHere?.[field])}
         decimal={field === "load"}
         done={set.done}
         onChangeText={(text) => setDrafts((current) => ({ ...current, [field]: text }))}
@@ -223,6 +237,19 @@ function SetRow({
         </LedgerText>
       </PressableScale>
 
+      <LedgerText
+        numberOfLines={1}
+        style={{
+          flex: COLUMNS.lastHere,
+          textAlign: "center",
+          color: p.secondary,
+          ...type.cell,
+          fontVariant: ["tabular-nums"],
+        }}
+      >
+        {set.lastHere ? formatPerformance(set.lastHere, unit, effort, i18n) : "–"}
+      </LedgerText>
+
       {input("load")}
       {input("reps")}
       {warmup ? (
@@ -260,12 +287,14 @@ function SetRow({
 
 function ValueInput({
   text,
+  ghost,
   decimal,
   done,
   onChangeText,
   onCommit,
 }: {
   text: string;
+  ghost: string;
   decimal: boolean;
   done: boolean;
   onChangeText: (text: string) => void;
@@ -275,7 +304,7 @@ function ValueInput({
   return (
     <TextInput
       value={text}
-      placeholder="–"
+      placeholder={ghost || "–"}
       placeholderTextColor={p.tertiary}
       keyboardType={decimal ? "decimal-pad" : "number-pad"}
       selectTextOnFocus

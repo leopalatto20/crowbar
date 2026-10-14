@@ -113,6 +113,7 @@ export const es: Messages = {
     keepLogging: "Seguir registrando",
     addExercise: "Añadir ejercicio",
     setColumn: "Serie",
+    lastHereColumn: "Última aquí",
     repsColumn: "Reps",
     warmupMarker: "C",
     makeWorking: "Serie de calentamiento, toca para hacerla efectiva",
