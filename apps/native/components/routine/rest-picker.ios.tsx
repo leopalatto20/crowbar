@@ -13,7 +13,7 @@ export function RestPicker({
   seconds,
   onChange,
 }: {
-  seconds: number;
+  seconds: number | null;
   onChange: (seconds: number) => void;
 }) {
   const p = useColors();
@@ -24,14 +24,14 @@ export function RestPicker({
         label={
           <HStack spacing={3}>
             <Text modifiers={[font({ size: type.footnote.fontSize })]}>
-              {t.routine.rest(formatClock(seconds))}
+              {t.routine.rest(seconds === null ? "–" : formatClock(seconds))}
             </Text>
             <Image systemName="chevron.down" size={10} color={p.blue} />
           </HStack>
         }
       >
         <Picker
-          selection={seconds}
+          selection={seconds ?? undefined}
           onSelectionChange={(value: number) => onChange(value)}
           modifiers={[pickerStyle("inline")]}
         >

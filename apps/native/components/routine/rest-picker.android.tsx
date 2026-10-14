@@ -12,7 +12,7 @@ export function RestPicker({
   seconds,
   onChange,
 }: {
-  seconds: number;
+  seconds: number | null;
   onChange: (seconds: number) => void;
 }) {
   const p = useColors();
@@ -27,7 +27,7 @@ export function RestPicker({
             style={{ fontSize: type.footnote.fontSize }}
             modifiers={[clickable(() => setExpanded(true))]}
           >
-            {`${t.routine.rest(formatClock(seconds))} ▾`}
+            {`${t.routine.rest(seconds === null ? "–" : formatClock(seconds))} ▾`}
           </Text>
         </DropdownMenu.Trigger>
         <DropdownMenu.Items>

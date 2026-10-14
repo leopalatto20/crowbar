@@ -2,11 +2,11 @@ import { useState } from "react";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
 
 import { PressableScale } from "@/components/pressable-scale";
+import type { RoutineExercise, TargetsChange } from "@/db/routines";
 import { useI18n } from "@/lib/i18n";
-import type { RoutineExercise, RoutineExercisePatch } from "@/lib/routine/model";
 import { radii, spacing, type, useColors } from "@/lib/theme";
 
-export type ChipSpec = { label: string; selected: boolean; patch: RoutineExercisePatch };
+export type ChipSpec = { label: string; selected: boolean; patch: TargetsChange };
 
 // One group of chips in a panel. Picking from an advancing section moves on to the next pill.
 export type ChipSection = {
@@ -45,7 +45,7 @@ export function ChipSections({
 }: {
   entry: RoutineExercise;
   sections: ChipSection[];
-  onPick: (patch: RoutineExercisePatch, advances: boolean) => void;
+  onPick: (patch: TargetsChange, advances: boolean) => void;
 }) {
   const p = useColors();
   const { t } = useI18n();
@@ -143,8 +143,8 @@ function CustomReps({
 }) {
   const p = useColors();
   const { t } = useI18n();
-  const [min, setMin] = useState(String(entry.target.repMin));
-  const [max, setMax] = useState(String(entry.target.repMax));
+  const [min, setMin] = useState(String(entry.repMin ?? ""));
+  const [max, setMax] = useState(String(entry.repMax ?? ""));
   const a = Number.parseInt(min, 10);
   const b = Number.parseInt(max, 10) || a;
   const valid = a > 0 && b > 0;

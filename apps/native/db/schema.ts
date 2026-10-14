@@ -1,5 +1,5 @@
 import { type SQLWrapper, sql } from "drizzle-orm";
-import { check, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { check, index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // Relative imports: drizzle-kit loads this file without the app's path aliases.
 import { EQUIPMENT_TYPES, LOAD_TYPES, MUSCLE_GROUPS } from "../lib/exercise/model";
@@ -54,5 +54,48 @@ export const exercise = sqliteTable(
     check("exercise_load_type", oneOf(t.loadType, LOAD_TYPES)),
     // A null Muscle group passes: CHECK only rejects false, and `NULL in (...)` is null.
     check("exercise_muscle_group", oneOf(t.muscleGroup, MUSCLE_GROUPS)),
+  ],
+);
+
+export const routine = sqliteTable("routine", {
+  id: text("id").primaryKey(),
+  // May be blank while the lifter is still naming a new Routine.
+  name: text("name").notNull(),
+  // The lifter's manual order on the Workout tab.
+  position: integer("position").notNull(),
+});
+
+// Target columns are nullable: a Routine built from a Workout may not have every Target yet.
+export const routineExercise = sqliteTable(
+  "routine_exercise",
+  {
+    id: text("id").primaryKey(),
+    routineId: text("routine_id")
+      .notNull()
+      .references(() => routine.id, { onDelete: "cascade" }),
+    // Deleting a Custom Exercise takes it out of every Routine.
+    exerciseId: text("exercise_id")
+      .notNull()
+      .references(() => exercise.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    warmups: integer("warmups").notNull().default(0),
+    sets: integer("sets"),
+    repMin: integer("rep_min"),
+    repMax: integer("rep_max"),
+    rirMin: integer("rir_min"),
+    rirMax: integer("rir_max"),
+    restSeconds: integer("rest_seconds"),
+  },
+  (t) => [
+    index("routine_exercise_routine_id").on(t.routineId),
+    index("routine_exercise_exercise_id").on(t.exerciseId),
+    check("routine_exercise_warmups", sql`${t.warmups} >= 0`),
+    check("routine_exercise_sets", sql`${t.sets} > 0`),
+    // A range is either fully planned or left blank.
+    check("routine_exercise_reps", sql`(${t.repMin} is null) = (${t.repMax} is null)`),
+    check("routine_exercise_rep_range", sql`0 < ${t.repMin} and ${t.repMin} <= ${t.repMax}`),
+    check("routine_exercise_rir", sql`(${t.rirMin} is null) = (${t.rirMax} is null)`),
+    check("routine_exercise_rir_range", sql`0 <= ${t.rirMin} and ${t.rirMin} <= ${t.rirMax}`),
+    check("routine_exercise_rest_seconds", sql`${t.restSeconds} > 0`),
   ],
 );

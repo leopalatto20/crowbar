@@ -1,10 +1,11 @@
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 import type { EquipmentType, LoadType, MuscleGroup } from "@/lib/exercise/model";
 import type { Language } from "@/lib/i18n/locale";
 
 import type { BuiltInExercise } from "./built-in-exercises";
 import type { Database } from "./database";
+import { newId } from "./id";
 import { exercise } from "./schema";
 
 // Insert-only: a shipped Built-in Exercise never changes, and its hidden flag belongs to the lifter.
@@ -74,21 +75,6 @@ export function exerciseNamed(exercises: ExerciseListing[], name: string) {
 
 export function unhideExercise(db: Database, id: string) {
   db.update(exercise).set({ hidden: false }).where(eq(exercise.id, id)).run();
-}
-
-// UUIDv7: time-ordered, so Custom Exercises sort by creation in the index. The random bits come from
-// SQLite because Hermes has no crypto, and hex() reads back as the same string on both drivers.
-function newId(db: Database) {
-  const [{ random }] = db.all<{ random: string }>(sql`select lower(hex(randomblob(10))) as random`);
-  const time = Date.now().toString(16).padStart(12, "0");
-  const variant = ((parseInt(random.slice(3, 4), 16) & 0x3) | 0x8).toString(16);
-  return [
-    time.slice(0, 8),
-    time.slice(8, 12),
-    `7${random.slice(0, 3)}`,
-    `${variant}${random.slice(4, 7)}`,
-    random.slice(7, 19),
-  ].join("-");
 }
 
 export type NewCustomExercise = {
