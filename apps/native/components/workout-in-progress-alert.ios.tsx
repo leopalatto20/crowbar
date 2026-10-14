@@ -2,6 +2,7 @@ import { Alert, Button, Host, Text } from "@expo/ui/swift-ui";
 
 import { useI18n } from "@/lib/i18n";
 
+import { DialogAnchor } from "./dialog-anchor";
 import type { WorkoutInProgressAlertProps } from "./workout-in-progress-alert.types";
 
 export function WorkoutInProgressAlert({
@@ -20,6 +21,9 @@ export function WorkoutInProgressAlert({
           if (!presented) onDismiss();
         }}
       >
+        <Alert.Trigger>
+          <DialogAnchor />
+        </Alert.Trigger>
         <Alert.Actions>
           <Button label={t.workoutInProgress.resume} onPress={onResume} />
           <Button
