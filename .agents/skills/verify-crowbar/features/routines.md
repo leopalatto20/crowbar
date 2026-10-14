@@ -36,7 +36,6 @@ Proof: the editor's summary reads `1 exercise · 3 working sets`, the list shows
 
 ## Gotchas
 
-- **Open bug #66 (2026-10-13):** after picking an Exercise, the editor is replaced by a Render Error, `[Worklets] Cannot copy value of type CubicBezierEasing` in `Row` (`components/reorderable-list.tsx:92`). The `routine_exercise` row is still written. A fix is proved when `1-after-add` shows the card instead.
 - The name field saves on every keystroke; fast input loses characters, which is why `cv type` is paced. Check the field's value in `cv tree` after typing.
 - After naming, the TextField's value is the name, not "Routine name"; target it with `--value "<current name>"`.
 - Long-press menus need a press-and-hold: `axe touch` with a hold (see `axe touch --help`), not `tap`.

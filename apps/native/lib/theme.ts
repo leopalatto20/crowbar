@@ -89,8 +89,10 @@ export const radii = {
 // Strong ease-out: as a CSS transition timing function and as a layout-animation easing.
 const EASE_OUT_CURVE = [0.23, 1, 0.32, 1] as const;
 
+// Kept out of `motion`: worklets copy `motion` whole to the UI thread, and this class instance can't be copied.
+export const transitionEaseOut = cubicBezier(...EASE_OUT_CURVE);
+
 export const motion = {
-  easeOut: cubicBezier(...EASE_OUT_CURVE),
   enterEasing: Easing.bezier(...EASE_OUT_CURVE),
   pressScale: 0.97,
   press: 120,
