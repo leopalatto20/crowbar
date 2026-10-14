@@ -45,6 +45,19 @@ export const es: Messages = {
     effortScale: "Escala de esfuerzo",
     defaultWeightUnit: "Unidad de peso predeterminada",
     stackLevel: "Nivel",
+    training: "Entrenamiento",
+    gyms: "Gimnasios",
+  },
+  gyms: {
+    title: "Gimnasios",
+    rename: "Renombrar",
+    delete: "Eliminar",
+    renameTitle: "Renombrar gimnasio",
+    save: "Guardar",
+    deleteTitle: (gym) => `¿Eliminar «${gym}»?`,
+    deleteMessage: ({ stations, workouts, sets }) =>
+      `Se eliminarán ${stations} ${stations === 1 ? "estación" : "estaciones"} y ${sets} ${sets === 1 ? "serie" : "series"} de ${workouts} ${workouts === 1 ? "entrenamiento" : "entrenamientos"}.`,
+    cancel: "Cancelar",
   },
   databaseFailure: {
     title: "Crowbar no pudo abrir tus datos",
@@ -106,6 +119,13 @@ export const es: Messages = {
     placeholder: "Nombre del gimnasio",
     cancel: "Cancelar",
     start: "Empezar",
+    newGymTitle: "Nuevo gimnasio",
+    add: "Añadir",
+  },
+  gymPicker: {
+    title: "Gimnasio",
+    newGym: "Nuevo gimnasio…",
+    current: "Gimnasio actual",
   },
   workoutInProgress: {
     title: "Hay un entrenamiento en curso",
@@ -116,7 +136,8 @@ export const es: Messages = {
   },
   ledger: {
     title: "Entrenamiento",
-    meta: (gym, startedAt) => `${gym} · inicio ${startedAt}`,
+    started: (startedAt) => `inicio ${startedAt}`,
+    changeGym: (gym) => `Gimnasio: ${gym}. Toca para cambiarlo`,
     more: "Más",
     minimize: "Minimizar",
     finish: "Terminar",

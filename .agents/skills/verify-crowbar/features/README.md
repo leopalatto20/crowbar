@@ -8,6 +8,7 @@ One file per user-facing feature. Each says what it is, how a user reaches it, h
 | Routines                              | [routines.md](routines.md)                 | Workout tab, Routines section      | Verified end to end, including Targets, start, last run, list actions |
 | Empty Workout and the Ledger          | [workout-ledger.md](workout-ledger.md)     | Workout tab, "Start empty Workout" | Verified end to end, including Gym prompt, resume, minimize, Finish   |
 | Settings                              | [settings.md](settings.md)                 | Settings tab                       | Verified: both settings write, survive relaunch, reach the Ledger     |
+| Gyms                                  | [gyms.md](gyms.md)                         | Ledger Gym chip; Settings, Gyms    | Verified on iOS: switch, New Gym, rename, counted delete cascade      |
 
 History is an empty state ("No Workouts yet.") until issue #42 lands. Add a file for it then.
 

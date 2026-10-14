@@ -1,4 +1,5 @@
 import type { EquipmentType, LoadType, MuscleGroup } from "@/lib/exercise/model";
+import type { GymHistoryCounts } from "@/db/gyms";
 import type { Age } from "@/lib/routine/model";
 
 // The English catalog is the source of truth: its shape is the type every other catalog fills in.
@@ -41,6 +42,19 @@ export const en = {
     effortScale: "Effort scale",
     defaultWeightUnit: "Default weight unit",
     stackLevel: "Stack level",
+    training: "Training",
+    gyms: "Gyms",
+  },
+  gyms: {
+    title: "Gyms",
+    rename: "Rename",
+    delete: "Delete",
+    renameTitle: "Rename Gym",
+    save: "Save",
+    deleteTitle: (gym: string) => `Delete “${gym}”?`,
+    deleteMessage: ({ stations, workouts, sets }: GymHistoryCounts) =>
+      `Deletes ${stations} ${stations === 1 ? "Station" : "Stations"} and ${sets} ${sets === 1 ? "set" : "sets"} across ${workouts} ${workouts === 1 ? "Workout" : "Workouts"}.`,
+    cancel: "Cancel",
   },
   databaseFailure: {
     title: "Crowbar couldn’t open your data",
@@ -102,6 +116,13 @@ export const en = {
     placeholder: "Gym name",
     cancel: "Cancel",
     start: "Start",
+    newGymTitle: "New Gym",
+    add: "Add",
+  },
+  gymPicker: {
+    title: "Gym",
+    newGym: "New Gym…",
+    current: "Current Gym",
   },
   workoutInProgress: {
     title: "A Workout is in progress",
@@ -112,7 +133,8 @@ export const en = {
   },
   ledger: {
     title: "Workout",
-    meta: (gym: string, startedAt: string) => `${gym} · started ${startedAt}`,
+    started: (startedAt: string) => `started ${startedAt}`,
+    changeGym: (gym: string) => `Gym: ${gym}. Tap to change`,
     more: "More",
     minimize: "Minimize",
     finish: "Finish",

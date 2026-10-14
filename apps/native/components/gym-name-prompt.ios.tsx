@@ -1,4 +1,4 @@
-import { Alert, Button, Host, Text, TextField } from "@expo/ui/swift-ui";
+import { Alert, Button, Host, Text, TextField, useNativeState } from "@expo/ui/swift-ui";
 import { useState } from "react";
 
 import { useI18n } from "@/lib/i18n";
@@ -6,14 +6,22 @@ import { useI18n } from "@/lib/i18n";
 import { DialogAnchor } from "./dialog-anchor";
 import type { GymNamePromptProps } from "./gym-name-prompt.types";
 
-// The first Workout start asks only for a Gym name, in place of any onboarding.
-export function GymNamePrompt({ visible, onSave, onDismiss }: GymNamePromptProps) {
+export function GymNamePrompt({
+  visible,
+  title,
+  message,
+  confirmLabel,
+  initialName = "",
+  onSave,
+  onDismiss,
+}: GymNamePromptProps) {
   const { t } = useI18n();
-  const [name, setName] = useState("");
+  const [name, setName] = useState(initialName);
+  const text = useNativeState(initialName);
   return (
     <Host matchContents>
       <Alert
-        title={t.gymPrompt.title}
+        title={title}
         isPresented={visible}
         onIsPresentedChange={(presented) => {
           if (!presented) onDismiss();
@@ -25,18 +33,20 @@ export function GymNamePrompt({ visible, onSave, onDismiss }: GymNamePromptProps
         <Alert.Actions>
           {/* No autoFocus: the system alert focuses its first field itself. With autoFocus as
               well, the field opened unfocused with no keyboard on device (#70). */}
-          <TextField placeholder={t.gymPrompt.placeholder} onTextChange={setName} />
+          <TextField text={text} placeholder={t.gymPrompt.placeholder} onTextChange={setName} />
           <Button label={t.gymPrompt.cancel} role="cancel" onPress={onDismiss} />
           <Button
-            label={t.gymPrompt.start}
+            label={confirmLabel}
             onPress={() => {
               if (name.trim()) onSave(name);
             }}
           />
         </Alert.Actions>
-        <Alert.Message>
-          <Text>{t.gymPrompt.message}</Text>
-        </Alert.Message>
+        {message && (
+          <Alert.Message>
+            <Text>{message}</Text>
+          </Alert.Message>
+        )}
       </Alert>
     </Host>
   );

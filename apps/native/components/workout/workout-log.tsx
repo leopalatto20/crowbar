@@ -1,4 +1,5 @@
 import { SymbolView } from "expo-symbols";
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import { ScrollView, View } from "react-native";
 
@@ -18,6 +19,7 @@ import { WorkoutMeta } from "./workout-meta";
 
 export function WorkoutLog({ ledger }: { ledger: Ledger }) {
   const db = useDb();
+  const router = useRouter();
   const p = useColors();
   const { t } = useI18n();
   const { defaultRestSeconds } = useSettings();
@@ -34,7 +36,11 @@ export function WorkoutLog({ ledger }: { ledger: Ledger }) {
         automaticallyAdjustKeyboardInsets
         contentContainerStyle={{ padding: spacing.xl, paddingBottom: 160, gap: spacing.xl }}
       >
-        <WorkoutMeta gym={ledger.gymName} startedAt={ledger.startedAt} />
+        <WorkoutMeta
+          gym={ledger.gymName}
+          startedAt={ledger.startedAt}
+          onChangeGym={() => router.push("/gym-picker")}
+        />
         {ledger.exercises.map((entry) => (
           <ExerciseCard
             key={entry.id}
