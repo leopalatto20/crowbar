@@ -34,6 +34,8 @@ export default function RootLayout() {
         <DatabaseProvider>
           <Stack>
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            {/* Dismissing only minimizes it to the Workout bar; the Workout keeps running. */}
+            <Stack.Screen name="workout" options={{ presentation: "modal" }} />
             <Stack.Screen
               name="finish-workout"
               options={{

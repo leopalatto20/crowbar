@@ -69,9 +69,27 @@ export function formatPerformance(
   return shown === null ? loadByReps : `${loadByReps} @${shown}`;
 }
 
+// An empty Workout has no Routine name; one from an unnamed Routine shows the placeholder name.
+export function workoutTitle(routineName: string | null, { t }: I18n) {
+  if (routineName === null) return t.ledger.title;
+  return routineName || t.routine.untitled;
+}
+
 export function formatClock(totalSeconds: number) {
   const s = Math.max(0, Math.ceil(totalSeconds));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+}
+
+// Floors where formatClock rounds up: a countdown shows the second still running, elapsed time
+// only the ones already done.
+export function formatElapsed(totalSeconds: number) {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(s / 3600);
+  const minutes = Math.floor((s % 3600) / 60);
+  const seconds = String(s % 60).padStart(2, "0");
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, "0")}:${seconds}`
+    : `${minutes}:${seconds}`;
 }
 
 export function workingIndex(sets: { kind: SetKind }[], index: number) {

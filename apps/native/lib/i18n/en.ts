@@ -114,6 +114,7 @@ export const en = {
     title: "Workout",
     meta: (gym: string, startedAt: string) => `${gym} · started ${startedAt}`,
     more: "More",
+    minimize: "Minimize",
     finish: "Finish",
     discard: "Discard Workout",
     discardTitle: "Discard this Workout?",
@@ -131,6 +132,9 @@ export const en = {
     addSet: "Add set",
     target: (planned: string) => `Target ${planned}`,
     targetRest: (duration: string) => `rest ${duration}`,
+  },
+  workoutBar: {
+    open: "Opens the Workout",
   },
   finish: {
     title: "Finish Workout",

@@ -26,7 +26,7 @@ import {
   addSet,
   addWorkoutExercise,
   confirmSet,
-  currentWorkoutId,
+  currentWorkout,
   discardAndStartWorkout,
   discardWorkout,
   finishWorkout,
@@ -97,7 +97,7 @@ describe("startWorkout", () => {
     const gymId = createGym(db, "  Downtown Iron ");
     const id = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 1_000 });
 
-    expect(currentWorkoutId(db)).toBe(id);
+    expect(currentWorkout(db)).toEqual({ id, routineName: null, startedAt: 1_000 });
     expect(getLedger(db, id, "en")).toEqual({
       id,
       gymName: "Downtown Iron",
@@ -127,7 +127,7 @@ describe("one Workout at a time", () => {
   test("a second Workout can't start while one is in progress", async () => {
     const { db, gymId, workoutId } = await startedWorkout();
     expect(() => startWorkout(db, { gymId, timeZone: TIME_ZONE })).toThrow();
-    expect(currentWorkoutId(db)).toBe(workoutId);
+    expect(currentWorkout(db)?.id).toBe(workoutId);
   });
 
   // Two finished Workouts must coexist, so the constraint covers only unfinished ones.
@@ -143,7 +143,7 @@ describe("one Workout at a time", () => {
     finishWorkout(db, second);
 
     const third = startWorkout(db, { gymId, timeZone: TIME_ZONE });
-    expect(currentWorkoutId(db)).toBe(third);
+    expect(currentWorkout(db)?.id).toBe(third);
   });
 
   test("discarding and starting replaces the Workout in progress", async () => {
@@ -158,7 +158,7 @@ describe("one Workout at a time", () => {
     });
 
     expect(getLedger(db, workoutId, "en")).toBeUndefined();
-    expect(currentWorkoutId(db)).toBe(next);
+    expect(currentWorkout(db)?.id).toBe(next);
     expect(ledger(db, next)).toMatchObject({ gymName: "Garage", startedAt: 2_000, exercises: [] });
   });
 });
@@ -190,7 +190,7 @@ describe("resuming after the app is killed", () => {
 
     const relaunched = await createTestDatabase(path);
 
-    expect(currentWorkoutId(relaunched)).toBe(workoutId);
+    expect(currentWorkout(relaunched)?.id).toBe(workoutId);
     const resumed = ledger(relaunched, workoutId);
     expect(resumed).toMatchObject({ gymName: "Downtown Iron", startedAt: 1_000, finishedAt: null });
     expect(
@@ -440,7 +440,7 @@ describe("finishWorkout", () => {
       { exercise: benchPress.id, sets: [[100, 5]] },
       { exercise: lateralRaise.id, sets: [[12, 14]] },
     ]);
-    expect(currentWorkoutId(db)).toBeUndefined();
+    expect(currentWorkout(db)?.id).toBeUndefined();
   });
 
   test("removes a Workout with nothing logged", async () => {
@@ -494,7 +494,7 @@ describe("discardWorkout", () => {
     confirmSet(db, setsOf(db, workoutId, workoutExerciseId)[0]!.id, { load: 100, reps: 5 });
     discardWorkout(db, workoutId);
     expect(getLedger(db, workoutId, "en")).toBeUndefined();
-    expect(currentWorkoutId(db)).toBeUndefined();
+    expect(currentWorkout(db)?.id).toBeUndefined();
   });
 
   test("removes the Stations it created but keeps earlier ones", async () => {
@@ -732,9 +732,9 @@ describe("starting from a Routine", () => {
 
   test("snapshots the Exercises, their order, warm-ups, Working sets and Targets", async () => {
     const { db, gymId, routineId } = await upperA();
-    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, routineId });
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, routineId, now: 1_000 });
 
-    expect(currentWorkoutId(db)).toBe(workoutId);
+    expect(currentWorkout(db)).toEqual({ id: workoutId, routineName: "Upper A", startedAt: 1_000 });
     expect(snapshot(db, workoutId)).toEqual({
       routineName: "Upper A",
       exercises: [

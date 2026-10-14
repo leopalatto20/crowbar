@@ -7,7 +7,7 @@ import { WorkoutInProgressAlert } from "@/components/workout-in-progress-alert";
 import { useDb } from "@/db/context";
 import { createGym, lastUsedGym } from "@/db/gyms";
 import { createRoutine, deleteRoutine, duplicateRoutine, reorderRoutines } from "@/db/routines";
-import { currentWorkoutId, discardAndStartWorkout, startWorkout } from "@/db/workouts";
+import { currentWorkout, discardAndStartWorkout, startWorkout } from "@/db/workouts";
 import { useI18n } from "@/lib/i18n";
 import { useRoutines } from "@/lib/routine/use-routine";
 
@@ -48,7 +48,7 @@ function Routines() {
   }
 
   function requestStart(start: PendingStart) {
-    if (currentWorkoutId(db)) setReplacingWith(start);
+    if (currentWorkout(db)) setReplacingWith(start);
     else startAtLastGym(start);
   }
 
@@ -56,7 +56,7 @@ function Routines() {
   // discard drops it out of the last-used Gym.
   function discardAndStart({ routineId }: PendingStart) {
     setReplacingWith(null);
-    const current = currentWorkoutId(db);
+    const current = currentWorkout(db)?.id;
     const gym = lastUsedGym(db);
     if (!current || !gym) return;
     discardAndStartWorkout(db, current, { gymId: gym.id, timeZone: currentTimeZone(), routineId });

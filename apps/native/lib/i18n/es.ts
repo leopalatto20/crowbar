@@ -118,6 +118,7 @@ export const es: Messages = {
     title: "Entrenamiento",
     meta: (gym, startedAt) => `${gym} · inicio ${startedAt}`,
     more: "Más",
+    minimize: "Minimizar",
     finish: "Terminar",
     discard: "Descartar entrenamiento",
     discardTitle: "¿Descartar este entrenamiento?",
@@ -135,6 +136,9 @@ export const es: Messages = {
     addSet: "Añadir serie",
     target: (planned) => `Objetivo ${planned}`,
     targetRest: (duration) => `descanso ${duration}`,
+  },
+  workoutBar: {
+    open: "Abre el entrenamiento",
   },
   finish: {
     title: "Terminar entrenamiento",
