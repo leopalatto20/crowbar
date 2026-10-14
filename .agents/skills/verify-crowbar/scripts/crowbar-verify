@@ -40,10 +40,46 @@ native_fingerprint() {
 
 metro_pid() { [ -f "$STATE/metro.pid" ] && cat "$STATE/metro.pid" || true; }
 
-metro_ours() {
+pgid_of() { ps -o pgid= -p "$1" 2>/dev/null | tr -d ' '; }
+
+# Metro leads its own process group, so the group id is the recorded pid. Checking the leader's
+# command line too keeps a reused pid from making some unrelated group look like ours.
+metro_group_alive() {
   local pid; pid="$(metro_pid)"
-  [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null &&
-    lsof -nP -a -p "$(pgrep -P "$pid" -d, 2>/dev/null || echo "$pid"),$pid" -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1
+  [ -n "$pid" ] && [ "$(pgid_of "$pid")" = "$pid" ] &&
+    ps -o command= -p "$pid" | grep -qF "expo start --port $PORT"
+}
+
+port_listeners() { lsof -nP -t -iTCP:"$PORT" -sTCP:LISTEN 2>/dev/null || true; }
+
+metro_ours() {
+  local listener
+  metro_group_alive || return 1
+  for listener in $(port_listeners); do
+    [ "$(pgid_of "$listener")" = "$(metro_pid)" ] && return 0
+  done
+  return 1
+}
+
+# Signals the whole group, so whatever bunx spawned goes too. Never kills by process name.
+stop_metro() {
+  local pid i; pid="$(metro_pid)"
+  if metro_group_alive; then
+    # Identity is checked once up front; the leader may exit before the rest of its group.
+    kill -TERM -- "-$pid" 2>/dev/null || true
+    for ((i = 0; i < 10; i++)); do kill -0 -- "-$pid" 2>/dev/null || break; sleep 1; done
+    if kill -0 -- "-$pid" 2>/dev/null; then kill -KILL -- "-$pid" 2>/dev/null || true; sleep 1; fi
+    kill -0 -- "-$pid" 2>/dev/null && die "metro group $pid survived SIGKILL"
+    echo "stopped metro (pid $pid)"
+  fi
+  rm -f "$STATE/metro.pid"
+}
+
+# A new session keeps Metro alive when the caller kills its own process group on exit, as agent
+# shells do; nohup alone does not. macOS has no setsid binary, so perl makes the call. It replaces
+# the calling shell so a backgrounded call leaves $! pointing at Metro itself.
+exec_in_new_session() {
+  exec perl -MPOSIX -e 'POSIX::setsid() > 0 or die "setsid: $!\n"; exec @ARGV or die "exec: $!\n"' "$@"
 }
 
 metro_ready() { curl -s --max-time 2 "http://localhost:$PORT/status" | grep -q "packager-status:running"; }
@@ -122,12 +158,17 @@ cmd_up() {
   if metro_ours && metro_ready; then
     echo "metro already running on :$PORT (pid $(metro_pid))"
   else
-    if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+    # Ours but not serving, say stuck starting up: replace it rather than orphan it.
+    stop_metro
+    if [ -n "$(port_listeners)" ]; then
       die "port $PORT is held by a process this tool did not start; pick another with CROWBAR_VERIFY_PORT"
     fi
     # Without a TTY Expo skips its interactive keys but still watches files, so edits hot-reload.
-    (cd "$APP_DIR" && nohup bunx expo start --port "$PORT" </dev/null >"$STATE/metro.log" 2>&1 &
-      echo $! >"$STATE/metro.pid")
+    (
+      cd "$APP_DIR"
+      exec_in_new_session bunx expo start --port "$PORT" </dev/null >"$STATE/metro.log" 2>&1 &
+      echo $! >"$STATE/metro.pid"
+    )
     local i
     for ((i = 0; i < 90; i++)); do metro_ready && break; sleep 1; done
     metro_ready || die "metro did not answer on :$PORT; see $STATE/metro.log"
@@ -249,13 +290,11 @@ cmd_save_db() {
 cmd_logs() { sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' "$STATE/metro.log" | tail -n "${1:-40}"; }
 
 cmd_down() {
-  local pid; pid="$(metro_pid)"
-  if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
-    pkill -TERM -P "$pid" 2>/dev/null || true
-    kill -TERM "$pid" 2>/dev/null || true
-    echo "stopped metro (pid $pid)"
-  fi
-  rm -f "$STATE/metro.pid"
+  stop_metro
+  local holder
+  for holder in $(port_listeners); do
+    echo "warning: :$PORT is still held by pid $holder: $(ps -o command= -p "$holder")" >&2
+  done
   local u; u="$(udid)"
   if [ -n "$u" ]; then xcrun simctl shutdown "$u" 2>/dev/null || true; echo "shut down $SIM_NAME"; fi
   echo "evidence kept in $EVIDENCE_ROOT"
