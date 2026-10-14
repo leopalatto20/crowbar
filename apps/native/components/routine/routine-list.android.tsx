@@ -14,6 +14,7 @@ import { ScrollView, Text as RNText, View } from "react-native";
 import { ReorderableList } from "@/components/reorderable-list";
 import type { RoutineListing } from "@/db/routines";
 import { useI18n } from "@/lib/i18n";
+import { formatLastRun } from "@/lib/routine/model";
 import { spacing, type, useColors } from "@/lib/theme";
 
 import type { RoutineListProps } from "./routine-list.types";
@@ -25,6 +26,7 @@ export function RoutineList(props: RoutineListProps) {
 function RoutineMenuList({
   routines,
   onStartEmptyWorkout,
+  onStart,
   onCreate,
   onEdit,
   onDuplicate,
@@ -58,6 +60,7 @@ function RoutineMenuList({
             <RoutineRow
               key={routine.id}
               routine={routine}
+              onStart={onStart}
               onEdit={onEdit}
               onDuplicate={onDuplicate}
               onDelete={onDelete}
@@ -71,16 +74,20 @@ function RoutineMenuList({
 
 function RoutineRow({
   routine,
+  onStart,
   onEdit,
   onDuplicate,
   onDelete,
 }: {
   routine: RoutineListing;
+  onStart: (id: string) => void;
   onEdit: (id: string) => void;
   onDuplicate: (routine: RoutineListing) => void;
   onDelete: (id: string) => void;
 }) {
-  const { t } = useI18n();
+  const i18n = useI18n();
+  const { t } = i18n;
+  const p = useColors();
   const [menu, setMenu] = useState(false);
   const item = (label: string, action: () => void) => (
     <DropdownMenuItem
@@ -97,10 +104,22 @@ function RoutineRow({
   return (
     <DropdownMenu expanded={menu} onDismissRequest={() => setMenu(false)}>
       <DropdownMenu.Trigger>
-        <ListItem modifiers={[combinedClickable({ onLongClick: () => setMenu(true) })]}>
+        <ListItem
+          modifiers={[
+            combinedClickable({
+              onClick: () => onStart(routine.id),
+              onLongClick: () => setMenu(true),
+            }),
+          ]}
+        >
           <ListItem.HeadlineContent>
             <Text>{routine.name}</Text>
           </ListItem.HeadlineContent>
+          {routine.lastRun && (
+            <ListItem.SupportingContent>
+              <Text color={p.secondary}>{formatLastRun(routine.lastRun, i18n)}</Text>
+            </ListItem.SupportingContent>
+          )}
         </ListItem>
       </DropdownMenu.Trigger>
       <DropdownMenu.Items>

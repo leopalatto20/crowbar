@@ -1,4 +1,5 @@
 import type { EquipmentType, LoadType, MuscleGroup } from "@/lib/exercise/model";
+import type { Age } from "@/lib/routine/model";
 
 // The English catalog is the source of truth: its shape is the type every other catalog fills in.
 export const en = {
@@ -22,6 +23,12 @@ export const en = {
     duplicate: "Duplicate",
     delete: "Delete",
     copyName: (name: string) => `${name} copy`,
+    lastRun: (ago: string, gym: string) => `Last: ${ago} · ${gym}`,
+    ago: ({ unit, count }: Age) => {
+      if (unit === "day" && count === 0) return "today";
+      if (unit === "day" && count === 1) return "yesterday";
+      return `${count} ${unit}${count === 1 ? "" : "s"} ago`;
+    },
   },
   exercises: {
     search: "Search",
@@ -122,6 +129,8 @@ export const en = {
     completeSet: "Complete set",
     reopenSet: "Reopen set",
     addSet: "Add set",
+    target: (planned: string) => `Target ${planned}`,
+    targetRest: (duration: string) => `rest ${duration}`,
   },
   finish: {
     title: "Finish Workout",

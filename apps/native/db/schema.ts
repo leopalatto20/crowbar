@@ -141,6 +141,10 @@ export const workout = sqliteTable(
     gymId: text("gym_id")
       .notNull()
       .references(() => gym.id, { onDelete: "cascade" }),
+    // The Routine it started from. Deleting the Routine only unlinks it; the name stays as it
+    // read at the start, so later renames never rewrite history.
+    routineId: text("routine_id").references(() => routine.id, { onDelete: "set null" }),
+    routineName: text("routine_name"),
     startedAt: integer("started_at").notNull(),
     finishedAt: integer("finished_at"),
     // IANA name, so a Workout's times read in the zone it was logged in, wherever it's viewed.
@@ -148,6 +152,7 @@ export const workout = sqliteTable(
   },
   (t) => [
     index("workout_gym_id").on(t.gymId),
+    index("workout_routine_id_started_at").on(t.routineId, t.startedAt),
     // At most one Workout is in progress. Unique on the expression, not on finished_at itself,
     // because a unique index treats every null as distinct.
     uniqueIndex("workout_in_progress")
@@ -169,6 +174,13 @@ export const workoutExercise = sqliteTable(
     // Null until the first logged set when the Gym has no Station for the Exercise yet.
     stationId: text("station_id").references(() => station.id, { onDelete: "cascade" }),
     position: integer("position").notNull(),
+    // Snapshotted from the Routine slot at the start; blank for an Exercise added mid-Workout.
+    sets: integer("sets"),
+    repMin: integer("rep_min"),
+    repMax: integer("rep_max"),
+    rirMin: integer("rir_min"),
+    rirMax: integer("rir_max"),
+    restSeconds: integer("rest_seconds"),
   },
   (t) => [
     index("workout_exercise_workout_id").on(t.workoutId),

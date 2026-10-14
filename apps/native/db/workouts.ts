@@ -1,28 +1,98 @@
 import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, max, notExists } from "drizzle-orm";
 
 import type { Language } from "@/lib/i18n/locale";
-import type { Performance, SetKind, Unit } from "@/lib/workout/model";
+import type { Performance, SetKind, Target, Unit } from "@/lib/workout/model";
 
 import type { Database } from "./database";
 import { newId } from "./id";
-import { exercise, gym, station, workout, workoutExercise, workoutSet } from "./schema";
+import {
+  exercise,
+  gym,
+  routine,
+  routineExercise,
+  station,
+  workout,
+  workoutExercise,
+  workoutSet,
+} from "./schema";
 import { getSettings } from "./settings";
 
-type WorkoutStart = { gymId: string; timeZone: string; now?: number };
+type WorkoutStart = { gymId: string; timeZone: string; routineId?: string; now?: number };
 
 // The database rejects a second unfinished Workout, so one in progress must be finished or
 // discarded first.
-export function startWorkout(db: Database, { gymId, timeZone, now = Date.now() }: WorkoutStart) {
+export function startWorkout(db: Database, start: WorkoutStart) {
+  return db.transaction((tx) => insertWorkout(tx, start));
+}
+
+function insertWorkout(
+  db: Database,
+  { gymId, timeZone, routineId, now = Date.now() }: WorkoutStart,
+) {
   const id = newId(db);
-  db.insert(workout).values({ id, gymId, startedAt: now, timeZone }).run();
+  const source = routineId ? findRoutine(db, routineId) : undefined;
+  db.insert(workout)
+    .values({ id, gymId, routineId, routineName: source?.name, startedAt: now, timeZone })
+    .run();
+  if (source) snapshotRoutine(db, id, gymId, source.id);
   return id;
+}
+
+function findRoutine(db: Database, id: string) {
+  const found = db
+    .select({ id: routine.id, name: routine.name })
+    .from(routine)
+    .where(eq(routine.id, id))
+    .get();
+  if (!found) throw new Error(`Routine ${id} doesn't exist`);
+  return found;
+}
+
+// Copies rather than references the slots, so later Routine edits never reach this Workout.
+function snapshotRoutine(db: Database, workoutId: string, gymId: string, routineId: string) {
+  const slots = db
+    .select()
+    .from(routineExercise)
+    .where(eq(routineExercise.routineId, routineId))
+    .orderBy(asc(routineExercise.position))
+    .all();
+  slots.forEach(
+    ({ exerciseId, warmups, sets, repMin, repMax, rirMin, rirMax, restSeconds }, position) => {
+      const id = newId(db);
+      db.insert(workoutExercise)
+        .values({
+          id,
+          workoutId,
+          exerciseId,
+          stationId: defaultStation(db, exerciseId, gymId)?.id ?? null,
+          position,
+          sets,
+          repMin,
+          repMax,
+          rirMin,
+          rirMax,
+          restSeconds,
+        })
+        .run();
+      // A slot with no planned set count still starts with one set to log.
+      const kinds: SetKind[] = [
+        ...Array<SetKind>(warmups).fill("warmup"),
+        ...Array<SetKind>(sets ?? 1).fill("working"),
+      ];
+      kinds.forEach((kind, setPosition) => {
+        db.insert(workoutSet)
+          .values({ id: newId(db), workoutExerciseId: id, position: setPosition, kind })
+          .run();
+      });
+    },
+  );
 }
 
 // One transaction, so a failed start never leaves the lifter with the old Workout gone.
 export function discardAndStartWorkout(db: Database, discardedId: string, start: WorkoutStart) {
   return db.transaction((tx) => {
     deleteWorkout(tx, discardedId);
-    return startWorkout(tx, start);
+    return insertWorkout(tx, start);
   });
 }
 
@@ -45,12 +115,16 @@ export type LedgerExercise = {
   id: string;
   exercise: { id: string; name: string };
   unit: Unit;
+  // Null when nothing was planned, as for an Exercise added mid-Workout.
+  target: Target | null;
   sets: LedgerSet[];
 };
 
 export type Ledger = {
   id: string;
   gymName: string;
+  // As the Routine was named when the Workout started; null for an empty Workout.
+  routineName: string | null;
   startedAt: number;
   finishedAt: number | null;
   exercises: LedgerExercise[];
@@ -63,6 +137,7 @@ export function getLedger(db: Database, id: string, language: Language): Ledger 
       startedAt: workout.startedAt,
       finishedAt: workout.finishedAt,
       gymName: gym.name,
+      routineName: workout.routineName,
     })
     .from(workout)
     .innerJoin(gym, eq(gym.id, workout.gymId))
@@ -78,6 +153,12 @@ export function getLedger(db: Database, id: string, language: Language): Ledger 
       nameEs: exercise.nameEs,
       stationId: workoutExercise.stationId,
       unit: station.unit,
+      sets: workoutExercise.sets,
+      repMin: workoutExercise.repMin,
+      repMax: workoutExercise.repMax,
+      rirMin: workoutExercise.rirMin,
+      rirMax: workoutExercise.rirMax,
+      restSeconds: workoutExercise.restSeconds,
     })
     .from(workoutExercise)
     .innerJoin(exercise, eq(exercise.id, workoutExercise.exerciseId))
@@ -113,13 +194,14 @@ export function getLedger(db: Database, id: string, language: Language): Ledger 
 
   return {
     ...found,
-    exercises: entries.map(({ id, exerciseId, name, nameEs, stationId, unit }) => {
+    exercises: entries.map(({ id, exerciseId, name, nameEs, stationId, unit, ...target }) => {
       const entrySets = setsByEntry.get(id) ?? [];
       const lastHere = matchLastHere(entrySets, previousSetsAt(db, stationId, found.startedAt));
       return {
         id,
         exercise: { id: exerciseId, name: language === "es" ? (nameEs ?? name) : name },
         unit: unit ?? defaultWeightUnit,
+        target: Object.values(target).every((value) => value === null) ? null : target,
         sets: entrySets.map((set, index) => ({ ...set, lastHere: lastHere[index]! })),
       };
     }),
@@ -234,12 +316,16 @@ export function addWorkoutExercise(db: Database, workoutId: string, exerciseId: 
   return id;
 }
 
+// The Station last used for the Exercise at the Gym. Stations only exist through the Workouts
+// that logged to them, so any Station of the Exercise there is found through its Workouts.
 function defaultStation(db: Database, exerciseId: string, gymId: string) {
   return db
     .select({ id: station.id })
     .from(station)
+    .innerJoin(workoutExercise, eq(workoutExercise.stationId, station.id))
+    .innerJoin(workout, eq(workout.id, workoutExercise.workoutId))
     .where(and(eq(station.exerciseId, exerciseId), eq(station.gymId, gymId)))
-    .orderBy(desc(station.id))
+    .orderBy(desc(workout.startedAt))
     .limit(1)
     .get();
 }

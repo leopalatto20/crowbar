@@ -5,6 +5,7 @@ export type RoutineListProps = {
   routines: RoutineListing[];
   editing: boolean;
   onStartEmptyWorkout: () => void;
+  onStart: (id: string) => void;
   onCreate: () => void;
   onEdit: (id: string) => void;
   onDuplicate: (routine: RoutineListing) => void;

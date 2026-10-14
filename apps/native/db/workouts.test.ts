@@ -6,7 +6,18 @@ import { join } from "node:path";
 import type { BuiltInExercise } from "./built-in-exercises";
 import { seedBuiltInExercises } from "./exercises";
 import { createGym, lastUsedGym } from "./gyms";
+import {
+  addRoutineExercise,
+  createRoutine,
+  deleteRoutine,
+  removeRoutineExercise,
+  renameRoutine,
+  updateRoutineExercise,
+} from "./routines";
 import type { Database } from "./database";
+import { eq } from "drizzle-orm";
+
+import { station, workoutExercise } from "./schema";
 import { seedSettings, updateSettings } from "./settings";
 import { createTestDatabase } from "./test-database";
 import { parseDecimal } from "@/lib/i18n/locale";
@@ -90,6 +101,7 @@ describe("startWorkout", () => {
     expect(getLedger(db, id, "en")).toEqual({
       id,
       gymName: "Downtown Iron",
+      routineName: null,
       startedAt: 1_000,
       finishedAt: null,
       exercises: [],
@@ -218,6 +230,7 @@ describe("addWorkoutExercise", () => {
         id,
         exercise: { id: benchPress.id, name: "Barbell Bench Press" },
         unit: "kg",
+        target: null,
         sets: [
           {
             id: expect.any(String),
@@ -675,5 +688,141 @@ describe("prefill from last time at the same Station", () => {
     const second = setsOf(db, workoutId, bench)[1]!;
     confirmSet(db, second.id);
     expect(setsOf(db, workoutId, bench)[1]).toMatchObject({ load: 100, reps: 4, rir: 1 });
+  });
+});
+
+describe("starting from a Routine", () => {
+  async function upperA() {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    const routineId = createRoutine(db, "Upper A");
+    const bench = addRoutineExercise(db, routineId, benchPress.id);
+    updateRoutineExercise(db, bench, {
+      warmups: 2,
+      sets: 3,
+      repMin: 5,
+      repMax: 7,
+      rirMin: 1,
+      rirMax: 2,
+      restSeconds: 180,
+    });
+    const pull = addRoutineExercise(db, routineId, pullUp.id);
+    updateRoutineExercise(db, pull, {
+      sets: null,
+      repMin: null,
+      repMax: null,
+      rirMin: null,
+      rirMax: null,
+      restSeconds: null,
+    });
+    return { db, gymId, routineId, bench, pull };
+  }
+
+  function snapshot(db: Database, workoutId: string) {
+    const found = ledger(db, workoutId);
+    return {
+      routineName: found.routineName,
+      exercises: found.exercises.map((entry) => ({
+        exercise: entry.exercise.id,
+        target: entry.target,
+        kinds: entry.sets.map((set) => set.kind),
+      })),
+    };
+  }
+
+  test("snapshots the Exercises, their order, warm-ups, Working sets and Targets", async () => {
+    const { db, gymId, routineId } = await upperA();
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, routineId });
+
+    expect(currentWorkoutId(db)).toBe(workoutId);
+    expect(snapshot(db, workoutId)).toEqual({
+      routineName: "Upper A",
+      exercises: [
+        {
+          exercise: benchPress.id,
+          target: { sets: 3, repMin: 5, repMax: 7, rirMin: 1, rirMax: 2, restSeconds: 180 },
+          kinds: ["warmup", "warmup", "working", "working", "working"],
+        },
+        // A slot with no planned set count still starts with one set to log.
+        { exercise: pullUp.id, target: null, kinds: ["working"] },
+      ],
+    });
+  });
+
+  test("later Routine edits and renames never reach the Workout", async () => {
+    const { db, gymId, routineId, bench, pull } = await upperA();
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, routineId });
+    const before = snapshot(db, workoutId);
+
+    renameRoutine(db, routineId, "Upper B");
+    updateRoutineExercise(db, bench, { warmups: 0, sets: 5, restSeconds: 90 });
+    removeRoutineExercise(db, pull);
+    addRoutineExercise(db, routineId, lateralRaise.id);
+
+    expect(snapshot(db, workoutId)).toEqual(before);
+  });
+
+  test("deleting the Routine keeps the Workout, its name and what was logged", async () => {
+    const { db, gymId, routineId } = await upperA();
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, routineId });
+    const [bench] = ledger(db, workoutId).exercises;
+    confirmSet(db, bench!.sets[2]!.id, { load: 100, reps: 6 });
+    finishWorkout(db, workoutId);
+    const before = snapshot(db, workoutId);
+
+    deleteRoutine(db, routineId);
+
+    expect(snapshot(db, workoutId)).toEqual(before);
+    expect(before.routineName).toBe("Upper A");
+  });
+
+  test("each slot resolves to the Station last used for its Exercise at the Gym", async () => {
+    const { db, gymId, routineId } = await upperA();
+    updateSettings(db, { defaultWeightUnit: "lb" });
+    const first = startWorkout(db, { gymId, timeZone: TIME_ZONE, routineId, now: 1_000 });
+    confirmSet(db, ledger(db, first).exercises[0]!.sets[2]!.id, { load: 225, reps: 5 });
+    finishWorkout(db, first, 2_000);
+    // A Station added at the Gym later, with nothing logged to it yet.
+    db.insert(station)
+      .values({
+        id: "ffffffff-ffff-7fff-bfff-ffffffffffff",
+        exerciseId: benchPress.id,
+        gymId,
+        unit: "kg",
+      })
+      .run();
+
+    const next = startWorkout(db, { gymId, timeZone: TIME_ZONE, routineId, now: 3_000 });
+    const [bench, pull] = ledger(db, next).exercises;
+    expect(bench?.unit).toBe("lb");
+    expect(bench?.sets[2]?.lastHere).toEqual({ load: 225, reps: 5, rir: null });
+    // Never logged at this Gym: no Station until its first set, so the default unit shows.
+    updateSettings(db, { defaultWeightUnit: "kg" });
+    expect(ledger(db, next).exercises[1]?.unit).toBe("kg");
+    expect(pull?.sets[0]?.lastHere).toBeNull();
+  });
+
+  test("of two Stations used at the Gym, the one used most recently wins", async () => {
+    const { db, gymId, routineId } = await upperA();
+    const first = startWorkout(db, { gymId, timeZone: TIME_ZONE, routineId, now: 1_000 });
+    confirmSet(db, ledger(db, first).exercises[0]!.sets[2]!.id, { load: 100, reps: 5 });
+    finishWorkout(db, first, 1_500);
+    // Another bench at the Gym, older by id, logged to after the first. There's no Station
+    // picker yet, so the setup moves the slot onto it directly.
+    const other = "00000000-0000-7000-8000-000000000000";
+    db.insert(station).values({ id: other, exerciseId: benchPress.id, gymId, unit: "lb" }).run();
+    const second = startWorkout(db, { gymId, timeZone: TIME_ZONE, routineId, now: 2_000 });
+    const [bench] = ledger(db, second).exercises;
+    db.update(workoutExercise)
+      .set({ stationId: other })
+      .where(eq(workoutExercise.id, bench!.id))
+      .run();
+    confirmSet(db, bench!.sets[2]!.id, { load: 225, reps: 5 });
+    finishWorkout(db, second, 2_500);
+
+    const third = startWorkout(db, { gymId, timeZone: TIME_ZONE, routineId, now: 3_000 });
+    const [next] = ledger(db, third).exercises;
+    expect(next?.unit).toBe("lb");
+    expect(next?.sets[2]?.lastHere).toEqual({ load: 225, reps: 5, rir: null });
   });
 });

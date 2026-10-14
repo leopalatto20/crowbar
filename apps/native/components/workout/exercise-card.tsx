@@ -17,6 +17,7 @@ import {
 } from "@/db/workouts";
 import { haptics } from "@/lib/haptics";
 import { useI18n } from "@/lib/i18n";
+import { formatTarget } from "@/lib/routine/model";
 import {
   LEDGER_MAX_FONT_SCALE,
   motion,
@@ -50,7 +51,8 @@ export function ExerciseCard({
   const db = useDb();
   const p = useColors();
   const effort = useEffort();
-  const { t } = useI18n();
+  const i18n = useI18n();
+  const { t } = i18n;
 
   return (
     <View
@@ -61,8 +63,14 @@ export function ExerciseCard({
         paddingVertical: 14,
       }}
     >
-      <View style={{ paddingHorizontal: 14, paddingBottom: 10 }}>
+      <View style={{ paddingHorizontal: 14, paddingBottom: 10, gap: 2 }}>
         <LedgerText style={{ color: p.label, ...type.headline }}>{entry.exercise.name}</LedgerText>
+        {/* A guide only: always the same quiet line, however the logged sets compare. */}
+        {entry.target && (
+          <LedgerText style={{ color: p.secondary, ...type.footnote }}>
+            {formatTarget(entry.target, effort, i18n)}
+          </LedgerText>
+        )}
       </View>
 
       <View style={{ flexDirection: "row", paddingHorizontal: 10, paddingVertical: 4, gap: 6 }}>

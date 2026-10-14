@@ -1,19 +1,37 @@
-import { and, asc, eq, gt, max, notExists, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, isNotNull, max, notExists, sql } from "drizzle-orm";
 
 import type { Language } from "@/lib/i18n/locale";
+import type { Target } from "@/lib/workout/model";
 
 import type { Database } from "./database";
 import { newId } from "./id";
-import { exercise, routine, routineExercise } from "./schema";
+import { exercise, gym, routine, routineExercise, workout } from "./schema";
 
-export type RoutineListing = Pick<typeof routine.$inferSelect, "id" | "name">;
+type RoutineName = Pick<typeof routine.$inferSelect, "id" | "name">;
+
+export type LastRun = { startedAt: number; gymName: string };
+
+export type RoutineListing = RoutineName & { lastRun: LastRun | null };
 
 export function listRoutines(db: Database): RoutineListing[] {
   return db
     .select({ id: routine.id, name: routine.name })
     .from(routine)
     .orderBy(asc(routine.position))
-    .all();
+    .all()
+    .map((found) => ({ ...found, lastRun: lastRun(db, found.id) ?? null }));
+}
+
+// Only a finished Workout counts as a run; the one in progress is still underway.
+function lastRun(db: Database, routineId: string) {
+  return db
+    .select({ startedAt: workout.startedAt, gymName: gym.name })
+    .from(workout)
+    .innerJoin(gym, eq(gym.id, workout.gymId))
+    .where(and(eq(workout.routineId, routineId), isNotNull(workout.finishedAt)))
+    .orderBy(desc(workout.startedAt))
+    .limit(1)
+    .get();
 }
 
 export function createRoutine(db: Database, name: string) {
@@ -85,17 +103,14 @@ export function duplicateRoutine(db: Database, id: string, name: string) {
   return copyId;
 }
 
-type Targets = Omit<
-  typeof routineExercise.$inferSelect,
-  "id" | "routineId" | "exerciseId" | "position"
->;
+type Targets = Target & { warmups: number };
 
 export type RoutineExercise = Targets & {
   id: string;
   exercise: { id: string; name: string };
 };
 
-export type RoutineDetail = RoutineListing & { exercises: RoutineExercise[] };
+export type RoutineDetail = RoutineName & { exercises: RoutineExercise[] };
 
 export function getRoutine(
   db: Database,

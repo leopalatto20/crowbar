@@ -1,6 +1,12 @@
-import type { RoutineExercise } from "@/db/routines";
+import type { LastRun } from "@/db/routines";
 import type { I18n } from "@/lib/i18n";
-import { type Effort, formatClock, formatEffort, formatRange } from "@/lib/workout/model";
+import {
+  type Effort,
+  type Target,
+  formatClock,
+  formatEffort,
+  formatRange,
+} from "@/lib/workout/model";
 
 export type Range = [number, number];
 
@@ -43,18 +49,48 @@ export function formatPlannedRest(seconds: number | null) {
   return seconds === null ? BLANK : formatClock(seconds);
 }
 
-export function formatPlannedVolume({ sets, repMin, repMax }: RoutineExercise) {
+export function formatPlannedVolume({ sets, repMin, repMax }: Target) {
   return `${sets ?? BLANK} × ${formatPlannedRange(repMin, repMax)}`;
 }
 
-export function formatPlannedEffort(
-  { rirMin, rirMax }: RoutineExercise,
-  effort: Effort,
-  i18n: I18n,
-) {
+export function formatPlannedEffort({ rirMin, rirMax }: Target, effort: Effort, i18n: I18n) {
   return rirMin === null || rirMax === null
     ? `${i18n.t.effort[effort]} ${BLANK}`
     : formatEffort(rirMin, rirMax, effort, i18n);
+}
+
+// The Ledger's guide line names only what was planned, where the editor shows every blank.
+export function formatTarget(target: Target, effort: Effort, i18n: I18n) {
+  const { sets, repMin, rirMin, rirMax, restSeconds } = target;
+  const parts = [];
+  if (sets !== null || repMin !== null) parts.push(formatPlannedVolume(target));
+  if (rirMin !== null && rirMax !== null) parts.push(formatEffort(rirMin, rirMax, effort, i18n));
+  if (restSeconds !== null) parts.push(i18n.t.ledger.targetRest(formatClock(restSeconds)));
+  return i18n.t.ledger.target(parts.join(" · "));
+}
+
+export type Age = { unit: "day" | "week" | "month" | "year"; count: number };
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function startOfDay(epochMs: number) {
+  const date = new Date(epochMs);
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+}
+
+// Calendar days in the device's zone, so last night's Workout reads "yesterday" this morning.
+// Rounding absorbs the 23- and 25-hour days around a daylight saving change.
+export function ageOf(epochMs: number, now: number): Age {
+  const days = Math.max(0, Math.round((startOfDay(now) - startOfDay(epochMs)) / DAY_MS));
+  if (days < 7) return { unit: "day", count: days };
+  if (days < 30) return { unit: "week", count: Math.floor(days / 7) };
+  if (days < 365) return { unit: "month", count: Math.floor(days / 30) };
+  return { unit: "year", count: Math.floor(days / 365) };
+}
+
+export function formatLastRun({ startedAt, gymName }: LastRun, i18n: I18n) {
+  const { workoutTab } = i18n.t;
+  return workoutTab.lastRun(workoutTab.ago(ageOf(startedAt, Date.now())), gymName);
 }
 
 // SwiftUI's onMove semantics: the destination is an offset in the list before the move.
