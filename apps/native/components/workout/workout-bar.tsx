@@ -7,7 +7,7 @@ import { spacing, type, useColors } from "@/lib/theme";
 import { formatElapsed, workoutTitle } from "@/lib/workout/model";
 import { useElapsedSeconds } from "@/lib/workout/use-workout";
 
-export type WorkoutInProgress = { routineName: string | null; startedAt: number };
+type WorkoutInProgress = { routineName: string | null; startedAt: number };
 
 // Transparent, so it takes the iOS accessory's glass or the Android bar's surface.
 export function WorkoutBar({ workout }: { workout: WorkoutInProgress }) {

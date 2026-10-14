@@ -440,7 +440,7 @@ describe("finishWorkout", () => {
       { exercise: benchPress.id, sets: [[100, 5]] },
       { exercise: lateralRaise.id, sets: [[12, 14]] },
     ]);
-    expect(currentWorkout(db)?.id).toBeUndefined();
+    expect(currentWorkout(db)).toBeUndefined();
   });
 
   test("removes a Workout with nothing logged", async () => {
@@ -494,7 +494,7 @@ describe("discardWorkout", () => {
     confirmSet(db, setsOf(db, workoutId, workoutExerciseId)[0]!.id, { load: 100, reps: 5 });
     discardWorkout(db, workoutId);
     expect(getLedger(db, workoutId, "en")).toBeUndefined();
-    expect(currentWorkout(db)?.id).toBeUndefined();
+    expect(currentWorkout(db)).toBeUndefined();
   });
 
   test("removes the Stations it created but keeps earlier ones", async () => {
