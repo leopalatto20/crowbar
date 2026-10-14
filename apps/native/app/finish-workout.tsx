@@ -48,7 +48,7 @@ function FinishWorkout() {
         <Text style={{ color: p.secondary, ...type.subheadline }}>{message}</Text>
       </View>
       <Host matchContents style={{ alignSelf: "stretch" }}>
-        <Button variant="filled" label={t.finish.finish} onPress={finish} />
+        <Button variant="filled" label={t.finish.confirm} onPress={finish} />
       </Host>
     </View>
   );

@@ -125,7 +125,7 @@ export const en = {
   },
   finish: {
     title: "Finish Workout",
-    finish: "Finish",
+    confirm: "End Workout",
     unlogged: (count: number) =>
       `${count} unlogged ${count === 1 ? "set" : "sets"} will be discarded.`,
     allLogged: "Every set is logged.",

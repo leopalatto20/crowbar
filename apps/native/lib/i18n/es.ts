@@ -124,7 +124,7 @@ export const es: Messages = {
   },
   finish: {
     title: "Terminar entrenamiento",
-    finish: "Terminar",
+    confirm: "Finalizar entrenamiento",
     unlogged: (count) =>
       count === 1
         ? "Se descartará 1 serie sin registrar."
