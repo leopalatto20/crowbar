@@ -22,14 +22,20 @@ export function RoutineList(props: RoutineListProps) {
   return props.editing ? <ReorderRoutines {...props} /> : <RoutineMenuList {...props} />;
 }
 
-function RoutineMenuList({ routines, onCreate, onEdit, onDuplicate, onDelete }: RoutineListProps) {
+function RoutineMenuList({
+  routines,
+  onStartEmptyWorkout,
+  onCreate,
+  onEdit,
+  onDuplicate,
+  onDelete,
+}: RoutineListProps) {
   const p = useColors();
   const { t } = useI18n();
   return (
     <Host style={{ flex: 1 }}>
       <LazyColumn>
-        {/* Inert until Workout logging lands. */}
-        <ListItem>
+        <ListItem modifiers={[clickable(onStartEmptyWorkout)]}>
           <ListItem.HeadlineContent>
             <Text color={p.blue}>{t.workoutTab.startEmptyWorkout}</Text>
           </ListItem.HeadlineContent>

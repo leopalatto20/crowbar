@@ -26,6 +26,7 @@ import type { RoutineListProps } from "./routine-list.types";
 export function RoutineList({
   routines,
   editing,
+  onStartEmptyWorkout,
   onCreate,
   onEdit,
   onDuplicate,
@@ -40,8 +41,11 @@ export function RoutineList({
     <Host style={{ flex: 1 }}>
       <List modifiers={[environment("editMode", editing ? "active" : "inactive")]}>
         <Section>
-          {/* Inert until Workout logging lands. */}
-          <Button label={t.workoutTab.startEmptyWorkout} systemImage="plus.circle.fill" />
+          <Button
+            label={t.workoutTab.startEmptyWorkout}
+            systemImage="plus.circle.fill"
+            onPress={onStartEmptyWorkout}
+          />
         </Section>
         <Section title={t.workoutTab.routines}>
           {routines.length === 0 ? (

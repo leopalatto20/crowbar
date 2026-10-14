@@ -1,41 +1,42 @@
 import { SymbolView } from "expo-symbols";
+import { useState } from "react";
 import { TextInput, View } from "react-native";
 import Animated, { useReducedMotion } from "react-native-reanimated";
 
 import { PressableScale } from "@/components/pressable-scale";
+import { useDb } from "@/db/context";
+import {
+  type LedgerExercise,
+  type LedgerSet,
+  type SetChange,
+  addSet,
+  confirmSet,
+  reopenSet,
+  toggleSetKind,
+  updateSet,
+} from "@/db/workouts";
 import { haptics } from "@/lib/haptics";
-import { type I18n, useI18n } from "@/lib/i18n";
-import { parseDecimal } from "@/lib/i18n/locale";
+import { useI18n } from "@/lib/i18n";
 import { LEDGER_MAX_FONT_SCALE, motion, radii, type, useColors } from "@/lib/theme";
 import { useEffort } from "@/lib/workout/effort";
-import {
-  type Field,
-  type LoggedSet,
-  type WorkoutExercise,
-  formatPerformance,
-  formatTarget,
-  fromEffortDisplay,
-  toEffortDisplay,
-  workingIndex,
-} from "@/lib/workout/model";
-import type { Workout } from "@/lib/workout/use-workout";
+import { type Field, parseSetValue, toEffortDisplay, workingIndex } from "@/lib/workout/model";
 
 import { LedgerText } from "./ledger-text";
-import { StationChip } from "./station-chip";
 
-const COLUMNS = { set: 34, previous: 1.4, field: 1, check: 40 };
+const COLUMNS = { set: 34, field: 1, check: 40 };
+const FIELDS: Field[] = ["load", "reps", "rir"];
 
 export function ExerciseCard({
-  exercise,
-  workout,
+  entry,
+  onConfirmed,
 }: {
-  exercise: WorkoutExercise;
-  workout: Workout;
+  entry: LedgerExercise;
+  onConfirmed: (set: LedgerSet) => void;
 }) {
+  const db = useDb();
   const p = useColors();
   const effort = useEffort();
-  const i18n = useI18n();
-  const { t } = i18n;
+  const { t } = useI18n();
 
   return (
     <View
@@ -46,43 +47,29 @@ export function ExerciseCard({
         paddingVertical: 14,
       }}
     >
-      <View style={{ paddingHorizontal: 14, gap: 4, paddingBottom: 10 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <LedgerText style={{ color: p.label, ...type.headline }}>{exercise.name}</LedgerText>
-          {exercise.stationLabel ? <StationChip label={exercise.stationLabel} /> : null}
-        </View>
-        <LedgerText style={{ color: p.secondary, ...type.footnote, fontVariant: ["tabular-nums"] }}>
-          {formatTarget(exercise.target, exercise.restSeconds, effort, i18n)}
-        </LedgerText>
-        {exercise.notes ? (
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 5, paddingTop: 2 }}>
-            <SymbolView
-              name={{ ios: "pin.fill", android: "push_pin" }}
-              size={12}
-              tintColor={p.orange}
-            />
-            <LedgerText selectable style={{ color: p.label, ...type.footnote }}>
-              {exercise.notes}
-            </LedgerText>
-          </View>
-        ) : null}
+      <View style={{ paddingHorizontal: 14, paddingBottom: 10 }}>
+        <LedgerText style={{ color: p.label, ...type.headline }}>{entry.exercise.name}</LedgerText>
       </View>
 
       <View style={{ flexDirection: "row", paddingHorizontal: 10, paddingVertical: 4, gap: 6 }}>
         <HeaderCell width={COLUMNS.set}>{t.ledger.setColumn}</HeaderCell>
-        <HeaderCell flex={COLUMNS.previous}>{t.ledger.lastHereColumn}</HeaderCell>
-        <HeaderCell flex={COLUMNS.field}>{t.unit[exercise.unit]}</HeaderCell>
+        <HeaderCell flex={COLUMNS.field}>{t.unit[entry.unit]}</HeaderCell>
         <HeaderCell flex={COLUMNS.field}>{t.ledger.repsColumn}</HeaderCell>
         <HeaderCell flex={COLUMNS.field}>{t.effort[effort]}</HeaderCell>
         <View style={{ width: COLUMNS.check }} />
       </View>
 
-      {exercise.sets.map((set, index) => (
-        <SetRow key={set.id} exercise={exercise} set={set} index={index} workout={workout} />
+      {entry.sets.map((set, index) => (
+        <SetRow
+          key={set.id}
+          set={set}
+          workingNumber={workingIndex(entry.sets, index)}
+          onConfirmed={() => onConfirmed(set)}
+        />
       ))}
 
       <PressableScale
-        onPress={() => workout.addSet(exercise.id)}
+        onPress={() => addSet(db, entry.id)}
         style={{
           marginHorizontal: 14,
           marginTop: 8,
@@ -124,22 +111,73 @@ function HeaderCell({
   );
 }
 
+// Typed text stays a draft until it's committed (blur or confirm), so nothing is written per
+// keystroke. Confirming commits the drafts too, since tapping ✓ doesn't blur the field.
 function SetRow({
-  exercise,
   set,
-  index,
-  workout,
+  workingNumber,
+  onConfirmed,
 }: {
-  exercise: WorkoutExercise;
-  set: LoggedSet;
-  index: number;
-  workout: Workout;
+  set: LedgerSet;
+  workingNumber: number;
+  onConfirmed: () => void;
 }) {
+  const db = useDb();
   const p = useColors();
   const effort = useEffort();
   const i18n = useI18n();
   const { t } = i18n;
+  const [drafts, setDrafts] = useState<Partial<Record<Field, string>>>({});
   const warmup = set.kind === "warmup";
+
+  // Drafts that can't be stored are dropped, and a logged set can't lose its load or reps.
+  function draftChange() {
+    const change: SetChange = {};
+    for (const field of FIELDS) {
+      const text = drafts[field];
+      if (text === undefined) continue;
+      const value = parseSetValue(field, text, effort);
+      if (value === undefined || (value === null && set.done && field !== "rir")) continue;
+      change[field] = value;
+    }
+    return change;
+  }
+
+  function dropDraft(field: Field) {
+    setDrafts((current) => {
+      const next = { ...current };
+      delete next[field];
+      return next;
+    });
+  }
+
+  function commit(field: Field) {
+    const value = draftChange()[field];
+    if (value !== undefined) updateSet(db, set.id, { [field]: value });
+    dropDraft(field);
+  }
+
+  const pending = { ...set, ...draftChange() };
+  const canConfirm = pending.load !== null && pending.reps !== null;
+
+  function display(field: Field) {
+    const draft = drafts[field];
+    if (draft !== undefined) return draft;
+    const value = field === "rir" ? toEffortDisplay(set.rir, effort) : set[field];
+    return value === null ? "" : i18n.formatEditableDecimal(value);
+  }
+
+  function input(field: Field) {
+    return (
+      <ValueInput
+        text={display(field)}
+        decimal={field === "load"}
+        done={set.done}
+        onChangeText={(text) => setDrafts((current) => ({ ...current, [field]: text }))}
+        onCommit={() => commit(field)}
+      />
+    );
+  }
 
   return (
     <Animated.View
@@ -158,7 +196,9 @@ function SetRow({
       <PressableScale
         onPress={() => {
           haptics.selection();
-          workout.toggleKind(exercise.id, set.id);
+          toggleSetKind(db, set.id);
+          // A warm-up takes no effort, so a half-typed one mustn't be confirmed with it.
+          dropDraft("rir");
         }}
         accessibilityLabel={warmup ? t.ledger.makeWorking : t.ledger.makeWarmup}
         style={{
@@ -179,25 +219,12 @@ function SetRow({
             fontVariant: ["tabular-nums"],
           }}
         >
-          {warmup ? t.ledger.warmupMarker : workingIndex(exercise.sets, index)}
+          {warmup ? t.ledger.warmupMarker : workingNumber}
         </LedgerText>
       </PressableScale>
 
-      <LedgerText
-        numberOfLines={1}
-        style={{
-          flex: COLUMNS.previous,
-          textAlign: "center",
-          color: p.secondary,
-          ...type.cell,
-          fontVariant: ["tabular-nums"],
-        }}
-      >
-        {formatPerformance(set.previous, exercise.unit, effort, i18n)}
-      </LedgerText>
-
-      <ValueInput exercise={exercise} set={set} field="weight" workout={workout} i18n={i18n} />
-      <ValueInput exercise={exercise} set={set} field="reps" workout={workout} i18n={i18n} />
+      {input("load")}
+      {input("reps")}
       {warmup ? (
         <LedgerText
           style={{
@@ -210,18 +237,21 @@ function SetRow({
           –
         </LedgerText>
       ) : (
-        <ValueInput exercise={exercise} set={set} field="rir" workout={workout} i18n={i18n} />
+        input("rir")
       )}
 
       <CheckButton
         done={set.done}
+        disabled={!set.done && !canConfirm}
         onPress={() => {
           if (set.done) {
-            workout.reopenSet(exercise.id, set.id);
-          } else {
-            haptics.light();
-            workout.completeSet(exercise.id, set.id);
+            reopenSet(db, set.id);
+            return;
           }
+          confirmSet(db, set.id, draftChange());
+          haptics.light();
+          setDrafts({});
+          onConfirmed();
         }}
       />
     </Animated.View>
@@ -229,49 +259,35 @@ function SetRow({
 }
 
 function ValueInput({
-  exercise,
-  set,
-  field,
-  workout,
-  i18n,
+  text,
+  decimal,
+  done,
+  onChangeText,
+  onCommit,
 }: {
-  exercise: WorkoutExercise;
-  set: LoggedSet;
-  field: Field;
-  workout: Workout;
-  i18n: I18n;
+  text: string;
+  decimal: boolean;
+  done: boolean;
+  onChangeText: (text: string) => void;
+  onCommit: () => void;
 }) {
   const p = useColors();
-  const effort = useEffort();
-  const isEffort = field === "rir";
-  const toDisplay = (v: number | null) => (isEffort ? toEffortDisplay(v, effort) : v);
-  const value = toDisplay(set[field]);
-  const ghost = toDisplay(set.previous?.[field] ?? null);
-
   return (
     <TextInput
-      value={value === null ? "" : i18n.formatEditableDecimal(value)}
-      placeholder={ghost === null ? "–" : i18n.formatEditableDecimal(ghost)}
+      value={text}
+      placeholder="–"
       placeholderTextColor={p.tertiary}
-      keyboardType={field === "weight" ? "decimal-pad" : "number-pad"}
+      keyboardType={decimal ? "decimal-pad" : "number-pad"}
       selectTextOnFocus
       maxFontSizeMultiplier={LEDGER_MAX_FONT_SCALE}
-      onChangeText={(text) => {
-        const parsed = parseDecimal(text);
-        if (parsed !== null && Number.isNaN(parsed)) return;
-        workout.setValue(
-          exercise.id,
-          set.id,
-          field,
-          isEffort ? fromEffortDisplay(parsed, effort) : parsed,
-        );
-      }}
+      onChangeText={onChangeText}
+      onBlur={onCommit}
       style={{
         flex: COLUMNS.field,
         height: 30,
         borderRadius: radii.control,
         borderCurve: "continuous",
-        backgroundColor: set.done ? "transparent" : p.fill,
+        backgroundColor: done ? "transparent" : p.fill,
         textAlign: "center",
         color: p.label,
         ...type.callout,
@@ -283,13 +299,22 @@ function ValueInput({
   );
 }
 
-function CheckButton({ done, onPress }: { done: boolean; onPress: () => void }) {
+function CheckButton({
+  done,
+  disabled,
+  onPress,
+}: {
+  done: boolean;
+  disabled: boolean;
+  onPress: () => void;
+}) {
   const p = useColors();
   const { t } = useI18n();
   const reduced = useReducedMotion();
   return (
     <PressableScale
       onPress={onPress}
+      disabled={disabled}
       scaleTo={0.92}
       accessibilityLabel={done ? t.ledger.reopenSet : t.ledger.completeSet}
       style={{

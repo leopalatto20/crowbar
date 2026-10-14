@@ -88,11 +88,24 @@ export const es: Messages = {
   },
   stackLevel: (level) => `N${level}`,
   dragToReorder: "Arrastra para reordenar",
+  gymPrompt: {
+    title: "¿Dónde entrenas?",
+    message: "El progreso se registra por separado en cada gimnasio.",
+    placeholder: "Nombre del gimnasio",
+    cancel: "Cancelar",
+    start: "Empezar",
+  },
   ledger: {
+    title: "Entrenamiento",
     meta: (gym, startedAt) => `${gym} · inicio ${startedAt}`,
-    target: (volume, effort, rest) => `Objetivo ${volume} · ${effort} · descanso ${rest}`,
+    more: "Más",
+    finish: "Terminar",
+    discard: "Descartar entrenamiento",
+    discardTitle: "¿Descartar este entrenamiento?",
+    discardMessage: "Se borrarán sus series registradas.",
+    keepLogging: "Seguir registrando",
+    addExercise: "Añadir ejercicio",
     setColumn: "Serie",
-    lastHereColumn: "Última aquí",
     repsColumn: "Reps",
     warmupMarker: "C",
     makeWorking: "Serie de calentamiento, toca para hacerla efectiva",
@@ -100,6 +113,16 @@ export const es: Messages = {
     completeSet: "Completar serie",
     reopenSet: "Reabrir serie",
     addSet: "Añadir serie",
+  },
+  finish: {
+    title: "Terminar entrenamiento",
+    finish: "Terminar",
+    unlogged: (count) =>
+      count === 1
+        ? "Se descartará 1 serie sin registrar."
+        : `Se descartarán ${count} series sin registrar.`,
+    allLogged: "Todas las series están registradas.",
+    nothingLogged: "No hay nada registrado, así que este entrenamiento no se guardará.",
   },
   restCard: {
     title: (exercise) => `Descanso · ${exercise}`,
@@ -139,6 +162,7 @@ export const es: Messages = {
     create: (name) => `Crear «${name}»`,
     unhide: (name) => `Mostrar «${name}»`,
     inRoutine: "En la rutina",
+    inWorkout: "En el entrenamiento",
   },
   customExercise: {
     title: "Nuevo ejercicio",

@@ -1,9 +1,12 @@
 import { Stack, useRouter } from "expo-router";
 import { Suspense, useState } from "react";
 
+import { GymNamePrompt } from "@/components/gym-name-prompt";
 import { RoutineList } from "@/components/routine/routine-list";
 import { useDb } from "@/db/context";
+import { createGym, lastUsedGym } from "@/db/gyms";
 import { createRoutine, deleteRoutine, duplicateRoutine, reorderRoutines } from "@/db/routines";
+import { currentWorkoutId, startWorkout } from "@/db/workouts";
 import { useI18n } from "@/lib/i18n";
 import { useRoutines } from "@/lib/routine/use-routine";
 
@@ -29,6 +32,21 @@ function Routines() {
     name: routine.name || t.routine.untitled,
   }));
   const [editing, setEditing] = useState(false);
+  const [namingGym, setNamingGym] = useState(false);
+
+  function openLedger(gymId: string) {
+    // Until one Workout at a time is enforced with its own prompt, starting again resumes it.
+    if (!currentWorkoutId(db)) {
+      startWorkout(db, { gymId, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone });
+    }
+    router.push("/workout");
+  }
+
+  function startEmptyWorkout() {
+    const gym = lastUsedGym(db);
+    if (gym) openLedger(gym.id);
+    else setNamingGym(true);
+  }
 
   function edit(id: string) {
     router.push({ pathname: "/routine", params: { id } });
@@ -62,6 +80,7 @@ function Routines() {
       <RoutineList
         routines={routines}
         editing={editing}
+        onStartEmptyWorkout={startEmptyWorkout}
         onCreate={create}
         onEdit={edit}
         onDuplicate={(routine) =>
@@ -69,6 +88,14 @@ function Routines() {
         }
         onDelete={remove}
         onReorder={(ids) => reorderRoutines(db, ids)}
+      />
+      <GymNamePrompt
+        visible={namingGym}
+        onSave={(name) => {
+          setNamingGym(false);
+          openLedger(createGym(db, name));
+        }}
+        onDismiss={() => setNamingGym(false)}
       />
     </>
   );

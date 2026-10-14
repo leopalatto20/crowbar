@@ -89,12 +89,24 @@ export const en = {
   } satisfies Record<LoadType, string>,
   stackLevel: (level: string) => `L${level}`,
   dragToReorder: "Drag to reorder",
+  gymPrompt: {
+    title: "Where are you training?",
+    message: "Progress is tracked separately at each Gym.",
+    placeholder: "Gym name",
+    cancel: "Cancel",
+    start: "Start",
+  },
   ledger: {
+    title: "Workout",
     meta: (gym: string, startedAt: string) => `${gym} · started ${startedAt}`,
-    target: (volume: string, effort: string, rest: string) =>
-      `Target ${volume} · ${effort} · rest ${rest}`,
+    more: "More",
+    finish: "Finish",
+    discard: "Discard Workout",
+    discardTitle: "Discard this Workout?",
+    discardMessage: "Its logged sets will be deleted.",
+    keepLogging: "Keep logging",
+    addExercise: "Add Exercise",
     setColumn: "Set",
-    lastHereColumn: "Last here",
     repsColumn: "Reps",
     warmupMarker: "W",
     makeWorking: "Warm-up set, tap to make working",
@@ -102,6 +114,14 @@ export const en = {
     completeSet: "Complete set",
     reopenSet: "Reopen set",
     addSet: "Add set",
+  },
+  finish: {
+    title: "Finish Workout",
+    finish: "Finish",
+    unlogged: (count: number) =>
+      `${count} unlogged ${count === 1 ? "set" : "sets"} will be discarded.`,
+    allLogged: "Every set is logged.",
+    nothingLogged: "Nothing is logged, so this Workout won’t be saved.",
   },
   restCard: {
     title: (exercise: string) => `Rest · ${exercise}`,
@@ -141,6 +161,7 @@ export const en = {
     create: (name: string) => `Create “${name}”`,
     unhide: (name: string) => `Unhide “${name}”`,
     inRoutine: "In Routine",
+    inWorkout: "In Workout",
   },
   customExercise: {
     title: "New Exercise",
