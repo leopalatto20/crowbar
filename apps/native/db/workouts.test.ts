@@ -2083,6 +2083,15 @@ describe("logging a past Workout", () => {
     expect(historyIds(db)).toEqual([newer, id, older]);
   });
 
+  test("with no start chosen, is the hour that just ended", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+
+    const id = logPastWorkout(db, { gymId, timeZone: TIME_ZONE, now: NOW + 42_000 });
+
+    expect(ledger(db, id)).toMatchObject({ startedAt: NOW - HOUR, finishedAt: NOW });
+  });
+
   test("a start in the future is refused", async () => {
     const db = await libraryDatabase();
     const gymId = createGym(db, "Downtown Iron");

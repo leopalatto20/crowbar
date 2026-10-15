@@ -44,20 +44,21 @@ export function startWorkout(db: Database, { now = Date.now(), ...place }: Worko
   return db.transaction((tx) => insertWorkout(tx, place, now));
 }
 
-// Only a starting point: the lifter sets the real duration in the Ledger.
-const PAST_WORKOUT_MINUTES = 60;
+type PastWorkoutStart = WorkoutPlace & { startedAt?: number; now?: number };
+
+const PAST_WORKOUT_MS = 60 * 60_000;
 
 // A Workout forgotten at the time, backfilled. It's finished from the start, so it never stands in
 // for the one in progress, and its structural edits never reach the Routine. Prefill reads the
-// Workouts that started before it, as for any past Workout.
+// Workouts that started before it, as for any past Workout. With no start given it's the hour that
+// just ended, as a forgotten session is usually a recent one; the lifter corrects it in the Ledger.
 export function logPastWorkout(
   db: Database,
-  { startedAt, now = Date.now(), ...place }: WorkoutPlace & { startedAt: number; now?: number },
+  { startedAt, now = Date.now(), ...place }: PastWorkoutStart,
 ) {
-  if (startedAt > now) throw new Error("A past Workout can't start in the future");
-  return db.transaction((tx) =>
-    insertWorkout(tx, place, startedAt, startedAt + PAST_WORKOUT_MINUTES * 60_000),
-  );
+  const start = startedAt ?? now - (now % 60_000) - PAST_WORKOUT_MS;
+  if (start > now) throw new Error("A past Workout can't start in the future");
+  return db.transaction((tx) => insertWorkout(tx, place, start, start + PAST_WORKOUT_MS));
 }
 
 function insertWorkout(
