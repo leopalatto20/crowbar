@@ -110,12 +110,13 @@ export function useElapsedSeconds(startedAt: number) {
 // Not suspending, like useWorkoutInProgress: the Workout bar reads it under the tabs.
 export function useRest() {
   const db = useDb();
+  const { language } = useI18n();
   return (
     useQuery(
       dbQuery(db, {
-        tables: [rest, workoutSet],
-        key: ["rest"],
-        fn: getRest,
+        tables: [rest, workoutSet, workoutExercise, exercise],
+        key: ["rest", language],
+        fn: (db) => getRest(db, language),
       }),
     ).data ?? null
   );

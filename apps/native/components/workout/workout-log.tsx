@@ -1,6 +1,6 @@
 import { SymbolView } from "expo-symbols";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ScrollView, View } from "react-native";
 
 import { ExercisePickerSheet } from "@/components/exercise-picker-sheet";
@@ -26,7 +26,17 @@ import { WorkoutTimes } from "./workout-times";
 
 type Picking = { purpose: "add" } | { purpose: "swap"; workoutExerciseId: string };
 
-export function WorkoutLog({ ledger, mode }: { ledger: Ledger; mode: LedgerMode }) {
+export function WorkoutLog({
+  ledger,
+  mode,
+  scrollTo,
+  onScrolledTo,
+}: {
+  ledger: Ledger;
+  mode: LedgerMode;
+  scrollTo?: string;
+  onScrolledTo?: () => void;
+}) {
   const db = useDb();
   const router = useRouter();
   const p = useColors();
@@ -34,11 +44,25 @@ export function WorkoutLog({ ledger, mode }: { ledger: Ledger; mode: LedgerMode 
   const { t } = i18n;
   const [picking, setPicking] = useState<Picking | null>(null);
   const rest = useRest();
-  const resting = ledger.exercises.find((entry) => entry.id === rest?.workoutExerciseId);
+  const resting = ledger.exercises.some((entry) => entry.id === rest?.workoutExerciseId);
+  const scrollView = useRef<ScrollView>(null);
+  const cardTops = useRef(new Map<string, number>());
+
+  function scrollToCard() {
+    const top = scrollTo === undefined ? undefined : cardTops.current.get(scrollTo);
+    if (top === undefined) return;
+    scrollView.current?.scrollTo({ y: Math.max(0, top - spacing.xl), animated: true });
+    onScrolledTo?.();
+  }
+
+  // A Ledger opened cold by a notification has no card layout yet, so its card's onLayout
+  // scrolls instead.
+  useEffect(scrollToCard, [scrollTo]);
 
   return (
     <View style={{ flex: 1, backgroundColor: p.background }}>
       <ScrollView
+        ref={scrollView}
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
@@ -78,25 +102,32 @@ export function WorkoutLog({ ledger, mode }: { ledger: Ledger; mode: LedgerMode 
           />
         )}
         {ledger.exercises.map((entry, position) => (
-          <ExerciseCard
+          <View
             key={entry.id}
-            entry={entry}
-            position={position}
-            count={ledger.exercises.length}
-            mode={mode}
-            onSwap={() => setPicking({ purpose: "swap", workoutExerciseId: entry.id })}
-            onHistory={() =>
-              router.push({
-                pathname: "/exercise-history",
-                params: {
-                  exerciseId: entry.exercise.id,
-                  gymId: ledger.gymId,
-                  // An Exercise with nothing logged at the Gym yet has no Station of its own.
-                  ...(entry.station && { stationId: entry.station.id }),
-                },
-              })
-            }
-          />
+            onLayout={({ nativeEvent }) => {
+              cardTops.current.set(entry.id, nativeEvent.layout.y);
+              if (entry.id === scrollTo) scrollToCard();
+            }}
+          >
+            <ExerciseCard
+              entry={entry}
+              position={position}
+              count={ledger.exercises.length}
+              mode={mode}
+              onSwap={() => setPicking({ purpose: "swap", workoutExerciseId: entry.id })}
+              onHistory={() =>
+                router.push({
+                  pathname: "/exercise-history",
+                  params: {
+                    exerciseId: entry.exercise.id,
+                    gymId: ledger.gymId,
+                    // An Exercise with nothing logged at the Gym yet has no Station of its own.
+                    ...(entry.station && { stationId: entry.station.id }),
+                  },
+                })
+              }
+            />
+          </View>
         ))}
         {mode !== "read" && (
           <PressableScale
@@ -121,9 +152,7 @@ export function WorkoutLog({ ledger, mode }: { ledger: Ledger; mode: LedgerMode 
           </PressableScale>
         )}
       </ScrollView>
-      {mode === "live" && rest && resting && (
-        <RestBar rest={rest} exerciseName={resting.exercise.name} />
-      )}
+      {mode === "live" && rest && resting && <RestBar rest={rest} />}
       {mode !== "read" && (
         <ExercisePickerSheet
           visible={picking !== null}

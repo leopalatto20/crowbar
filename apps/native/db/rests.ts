@@ -1,24 +1,37 @@
 import { eq, lte } from "drizzle-orm";
 
+import type { Language } from "@/lib/i18n/locale";
+
 import type { Database } from "./database";
-import { REST_ID, rest, workout, workoutExercise, workoutSet } from "./schema";
+import { REST_ID, exercise, rest, workout, workoutExercise, workoutSet } from "./schema";
 import { getSettings } from "./settings";
 
-export type Rest = { setId: string; workoutExerciseId: string; startedAt: number; endsAt: number };
+export type Rest = {
+  setId: string;
+  workoutExerciseId: string;
+  exerciseName: string;
+  startedAt: number;
+  endsAt: number;
+};
 
-export function getRest(db: Database): Rest | null {
-  return (
-    db
-      .select({
-        setId: rest.setId,
-        workoutExerciseId: workoutSet.workoutExerciseId,
-        startedAt: rest.startedAt,
-        endsAt: rest.endsAt,
-      })
-      .from(rest)
-      .innerJoin(workoutSet, eq(workoutSet.id, rest.setId))
-      .get() ?? null
-  );
+export function getRest(db: Database, language: Language): Rest | null {
+  const found = db
+    .select({
+      setId: rest.setId,
+      workoutExerciseId: workoutSet.workoutExerciseId,
+      name: exercise.name,
+      nameEs: exercise.nameEs,
+      startedAt: rest.startedAt,
+      endsAt: rest.endsAt,
+    })
+    .from(rest)
+    .innerJoin(workoutSet, eq(workoutSet.id, rest.setId))
+    .innerJoin(workoutExercise, eq(workoutExercise.id, workoutSet.workoutExerciseId))
+    .innerJoin(exercise, eq(exercise.id, workoutExercise.exerciseId))
+    .get();
+  if (!found) return null;
+  const { name, nameEs, ...running } = found;
+  return { ...running, exerciseName: language === "es" ? (nameEs ?? name) : name };
 }
 
 export type RestClock =

@@ -80,6 +80,12 @@ export const en = {
     rest: "Rest",
     restTimer: "Rest timer",
     defaultRest: "Default rest",
+    notifications: "Notifications",
+    notificationStatus: {
+      granted: "On",
+      denied: "Off",
+      undetermined: "Not set",
+    },
   },
   gyms: {
     title: "Gyms",
@@ -308,6 +314,14 @@ export const en = {
     overTitle: (exercise: string) => `Rest over · ${exercise}`,
     overtime: (duration: string) => `+${duration}`,
     dismiss: "Dismiss",
+  },
+  restNotification: {
+    channel: "Rest timer",
+    exactAlarmTitle: "Alert right on time?",
+    exactAlarmMessage:
+      "Allow alarms & reminders so “Rest over” arrives the moment a Rest ends. Without it, Android may send it a little late.",
+    allow: "Allow",
+    notNow: "Not now",
   },
   routine: {
     untitled: "New Routine",

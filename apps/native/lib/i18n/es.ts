@@ -80,6 +80,12 @@ export const es: Messages = {
     rest: "Descanso",
     restTimer: "Temporizador de descanso",
     defaultRest: "Descanso predeterminado",
+    notifications: "Notificaciones",
+    notificationStatus: {
+      granted: "Activadas",
+      denied: "Desactivadas",
+      undetermined: "Sin configurar",
+    },
   },
   gyms: {
     title: "Gimnasios",
@@ -309,6 +315,14 @@ export const es: Messages = {
     overTitle: (exercise) => `Descanso terminado · ${exercise}`,
     overtime: (duration) => `+${duration}`,
     dismiss: "Cerrar",
+  },
+  restNotification: {
+    channel: "Temporizador de descanso",
+    exactAlarmTitle: "¿Avisar justo a tiempo?",
+    exactAlarmMessage:
+      "Permite alarmas y recordatorios para que “Descanso terminado” llegue en cuanto termine el descanso. Sin esto, Android puede avisar un poco tarde.",
+    allow: "Permitir",
+    notNow: "Ahora no",
   },
   routine: {
     untitled: "Nueva rutina",
