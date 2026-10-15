@@ -15,6 +15,11 @@ Starting a Workout opens the Ledger, the logging screen, as a modal over the tab
   - Assisted (Machine Assisted Pull-Up/Dip): header `−KG`/`−LVL`, assistance typed as a positive number; "Last here" `BW −30 × 8` / `BW −L3 × 8`.
   - Unilateral (Dumbbell Bulgarian Split Squat): reps header `REPS/SIDE`, "Last here" `L5 × 10/side`.
   - A quiet hint line under the name for barbell ("total incl. bar"), dumbbell ("per dumbbell") and kettlebell ("per kettlebell") Exercises only.
+- Exercise menu (#39): the Exercise name is a `PopUpButton` "<Exercise>. Opens its menu" with "Switch Station" (a submenu, only once the Exercise has a Station at this Gym, so after its first logged set or note) and "Add machine notes" / "Edit machine notes".
+  - Switch Station lists the Gym's labelled Stations for the Exercise (checkmark on the current one) and "New Station…". A lone Station is unnamed, so the first "New Station…" opens the "New Station" alert ("Name both so you can tell them apart.") with fields "The one you've used" and "The new one"; later ones show only "The new one". Adding moves the Exercise and its sets onto the new Station.
+  - Station chip: a pill with the label (`Station: <label>`) under the name, only while the Gym holds more than one Station for the Exercise.
+  - Switching moves the Exercise's sets and changes "Last here" to the other Station's last Workout; the next Workout at the Gym starts on the Station last used.
+  - Machine notes: a pin line under the name (`Button` labelled with the notes), tap to edit in place; Return or blur saves to the Station (`station.notes`), and blank clears. Notes follow the Station, so switching shows the other Station's notes.
 - Rest bar: `Rest · <exercise>` with "−15", "+15", "Skip".
 - Finish: toolbar "Finish" opens the "Finish Workout" sheet ("Every set is logged.", `<n> unlogged sets will be discarded.`, or "Nothing is logged, so this Workout won’t be saved.") and an "End Workout" button that returns to the Workout tab.
 - Discard: "More" menu, then "Discard Workout"; asks "Discard this Workout?" ("Its logged sets will be deleted.", "Discard Workout" / "Keep logging") only if a set is confirmed, otherwise discards at once.
@@ -71,6 +76,23 @@ cv save-db "select count(*) as workouts, count(finished_at) as finished from wor
 ```
 
 Proof: a `gym` row with the typed name, a `workout` row with `finished_at` null while logging, the Ledger reopening after `cv launch`, `finished_at` set after "End Workout", and neither the empty second Workout nor the discarded third leaving a row.
+
+Stations (#39), continuing from a Workout with Barbell Bench Press:
+
+```sh
+cv tap "Complete set" --element-type Button          # the first set creates the Station
+cv tap "Barbell Bench Press. Opens its menu"
+cv tap "Add machine notes" --element-type Button
+cv type "Seat 4, pin 7" && axe key 40 --udid <udid>  # Return saves
+cv tap "Barbell Bench Press. Opens its menu" && cv tap "Switch Station" --element-type Button
+cv tap "New Station…" --element-type Button && cv wait "New Station" 5
+cv type "Hammer"                                     # "The one you've used" has focus
+cv tap --value "The new one" --element-type TextField && cv type "Cybex"
+cv tap Add --element-type Button                     # chip "Station: Cybex"
+cv save-db "select label, notes from station order by label"   # Cybex | ; Hammer | Seat 4, pin 7
+```
+
+Then switch back to Hammer, finish, and start again: the new Ledger shows the Hammer chip, its notes, and "Last here" from it.
 
 ## Gotchas
 

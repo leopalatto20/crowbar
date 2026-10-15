@@ -15,15 +15,16 @@ import {
   updateRoutineExercise,
 } from "./routines";
 import type { Database } from "./database";
-import { eq } from "drizzle-orm";
 
-import { station, workoutExercise } from "./schema";
+import { station } from "./schema";
 import { seedSettings, updateSettings } from "./settings";
 import { createTestDatabase } from "./test-database";
 import { parseDecimal } from "@/lib/i18n/locale";
 
 import {
   addSet,
+  addStation,
+  switchStation,
   addWorkoutExercise,
   changeWorkoutGym,
   confirmSet,
@@ -33,6 +34,7 @@ import {
   finishWorkout,
   getLedger,
   reopenSet,
+  setMachineNotes,
   startWorkout,
   toggleSetKind,
   updateSet,
@@ -246,6 +248,8 @@ describe("addWorkoutExercise", () => {
           loadType: "external",
           unilateral: false,
         },
+        station: null,
+        stations: [],
         unit: "kg",
         target: null,
         sets: [
@@ -865,21 +869,16 @@ describe("starting from a Routine", () => {
     const first = startWorkout(db, { gymId, timeZone: TIME_ZONE, routineId, now: 1_000 });
     confirmSet(db, ledger(db, first).exercises[0]!.sets[2]!.id, { load: 100, reps: 5 });
     finishWorkout(db, first, 1_500);
-    // Another bench at the Gym, older by id, logged to after the first. There's no Station
-    // picker yet, so the setup moves the slot onto it directly.
-    const other = "00000000-0000-7000-8000-000000000000";
-    db.insert(station).values({ id: other, exerciseId: benchPress.id, gymId, unit: "lb" }).run();
+    updateSettings(db, { defaultWeightUnit: "lb" });
     const second = startWorkout(db, { gymId, timeZone: TIME_ZONE, routineId, now: 2_000 });
     const [bench] = ledger(db, second).exercises;
-    db.update(workoutExercise)
-      .set({ stationId: other })
-      .where(eq(workoutExercise.id, bench!.id))
-      .run();
+    addStation(db, bench!.id, { label: "Life Fitness", existingLabel: "Hammer Strength" });
     confirmSet(db, bench!.sets[2]!.id, { load: 225, reps: 5 });
     finishWorkout(db, second, 2_500);
 
     const third = startWorkout(db, { gymId, timeZone: TIME_ZONE, routineId, now: 3_000 });
     const [next] = ledger(db, third).exercises;
+    expect(next?.station?.label).toBe("Life Fitness");
     expect(next?.unit).toBe("lb");
     expect(next?.sets[2]?.lastHere).toEqual({ load: 225, reps: 5, rir: null });
   });
@@ -960,5 +959,147 @@ describe("changeWorkoutGym", () => {
     const next = startWorkout(db, { gymId: downtown, timeZone: TIME_ZONE, now: 4_000 });
     const entry = addWorkoutExercise(db, next, benchPress.id);
     expect(setsOf(db, next, entry)[0]!.lastHere).toEqual({ load: 100, reps: 5, rir: null });
+  });
+});
+
+describe("several Stations per Exercise", () => {
+  test("a second Station labels both, and the Exercise moves onto the new one", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    logBench(db, gymId, 1_000, [{ load: 100, reps: 5 }]);
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 2_000 });
+    const bench = addWorkoutExercise(db, workoutId, benchPress.id);
+
+    addStation(db, bench, { label: " Life Fitness ", existingLabel: "Hammer Strength" });
+
+    const [entry] = ledger(db, workoutId).exercises;
+    expect(entry?.station?.label).toBe("Life Fitness");
+    expect(entry?.stations.map((option) => option.label)).toEqual([
+      "Hammer Strength",
+      "Life Fitness",
+    ]);
+    expect(entry?.sets[0]?.lastHere).toBeNull();
+  });
+
+  test("switching Station moves the Exercise's sets, and prefill follows", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    const hammerWorkout = logBench(db, gymId, 1_000, [{ load: 100, reps: 5 }]);
+    const hammer = ledger(db, hammerWorkout).exercises[0]!.station!.id;
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 2_000 });
+    const bench = addWorkoutExercise(db, workoutId, benchPress.id);
+    addStation(db, bench, { label: "Life Fitness", existingLabel: "Hammer Strength" });
+    confirmSet(db, setsOf(db, workoutId, bench)[0]!.id, { load: 60, reps: 10 });
+
+    switchStation(db, bench, hammer);
+
+    const [entry] = ledger(db, workoutId).exercises;
+    expect(entry?.station?.label).toBe("Hammer Strength");
+    expect(
+      entry?.sets.map(({ load, reps, done, lastHere }) => ({ load, reps, done, lastHere })),
+    ).toEqual([{ load: 60, reps: 10, done: true, lastHere: { load: 100, reps: 5, rir: null } }]);
+  });
+
+  test("the next Workout at the Gym defaults to the Station switched to", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    const hammer = ledger(db, logBench(db, gymId, 1_000, [{ load: 100, reps: 5 }])).exercises[0]!
+      .station!.id;
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 2_000 });
+    const bench = addWorkoutExercise(db, workoutId, benchPress.id);
+    addStation(db, bench, { label: "Life Fitness", existingLabel: "Hammer Strength" });
+    switchStation(db, bench, hammer);
+    confirmSet(db, setsOf(db, workoutId, bench)[0]!.id, { load: 105, reps: 5 });
+    finishWorkout(db, workoutId, 2_500);
+
+    const next = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 3_000 });
+    const entry = addWorkoutExercise(db, next, benchPress.id);
+    expect(ledger(db, next).exercises[0]?.station?.label).toBe("Hammer Strength");
+    expect(setsOf(db, next, entry)[0]?.lastHere).toEqual({ load: 105, reps: 5, rir: null });
+  });
+
+  test("a third Station needs only its own label", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    logBench(db, gymId, 1_000, [{ load: 100, reps: 5 }]);
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 2_000 });
+    const bench = addWorkoutExercise(db, workoutId, benchPress.id);
+    expect(() => addStation(db, bench, { label: "Life Fitness" })).toThrow();
+    expect(() => addStation(db, bench, { label: " ", existingLabel: "Hammer Strength" })).toThrow();
+    addStation(db, bench, { label: "Life Fitness", existingLabel: "Hammer Strength" });
+
+    addStation(db, bench, { label: "Cybex" });
+
+    expect(ledger(db, workoutId).exercises[0]?.stations.map((option) => option.label)).toEqual([
+      "Cybex",
+      "Hammer Strength",
+      "Life Fitness",
+    ]);
+  });
+
+  test("a Station labelled but never logged to stays at the Gym", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    logBench(db, gymId, 1_000, [{ load: 100, reps: 5 }]);
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 2_000 });
+    addStation(db, addWorkoutExercise(db, workoutId, benchPress.id), {
+      label: "Life Fitness",
+      existingLabel: "Hammer Strength",
+    });
+
+    discardWorkout(db, workoutId);
+
+    const next = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 3_000 });
+    addWorkoutExercise(db, next, benchPress.id);
+    const [entry] = ledger(db, next).exercises;
+    expect(entry?.station?.label).toBe("Hammer Strength");
+    expect(entry?.stations.map((option) => option.label)).toEqual([
+      "Hammer Strength",
+      "Life Fitness",
+    ]);
+  });
+});
+
+describe("machine notes", () => {
+  test("belong to the Station, so each Station shows its own", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    const hammer = ledger(db, logBench(db, gymId, 1_000, [{ load: 100, reps: 5 }])).exercises[0]!
+      .station!.id;
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 2_000 });
+    const bench = addWorkoutExercise(db, workoutId, benchPress.id);
+    setMachineNotes(db, bench, " Seat 4, pin 7 ");
+    addStation(db, bench, { label: "Life Fitness", existingLabel: "Hammer Strength" });
+    setMachineNotes(db, bench, "Back pad 2");
+
+    expect(ledger(db, workoutId).exercises[0]?.station?.notes).toBe("Back pad 2");
+    switchStation(db, bench, hammer);
+    expect(ledger(db, workoutId).exercises[0]?.station?.notes).toBe("Seat 4, pin 7");
+  });
+
+  test("written before any set at the Gym are kept for the next Workout there", async () => {
+    const { db, gymId, workoutId } = await startedWorkout();
+    setMachineNotes(db, addWorkoutExercise(db, workoutId, benchPress.id), "Seat 4");
+    discardWorkout(db, workoutId);
+
+    const next = startWorkout(db, { gymId, timeZone: TIME_ZONE });
+    const bench = addWorkoutExercise(db, next, benchPress.id);
+    confirmSet(db, setsOf(db, next, bench)[0]!.id, { load: 100, reps: 5 });
+
+    const [entry] = ledger(db, next).exercises;
+    expect(entry?.station?.notes).toBe("Seat 4");
+    expect(entry?.stations).toHaveLength(1);
+  });
+
+  test("cleared notes leave a Station with nothing logged free to go", async () => {
+    const { db, workoutId } = await startedWorkout();
+    const bench = addWorkoutExercise(db, workoutId, benchPress.id);
+    setMachineNotes(db, bench, "Seat 4");
+    setMachineNotes(db, bench, "  ");
+    expect(ledger(db, workoutId).exercises[0]?.station?.notes).toBeNull();
+
+    discardWorkout(db, workoutId);
+
+    expect(db.select().from(station).all()).toEqual([]);
   });
 });
