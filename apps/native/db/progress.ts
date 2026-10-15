@@ -10,10 +10,12 @@ import { exercise, gym, station, workout, workoutExercise, workoutSet } from "./
 
 export type ProgressStation = {
   id: string;
+  gymId: string;
   gymName: string;
   // Null while it's the Gym's only Station for the Exercise.
   label: string | null;
   retired: boolean;
+  unit: Unit;
 };
 
 export type HistorySet = Performance & {
@@ -51,11 +53,14 @@ export type ProgressOpening = { stationId?: string; gymId?: string };
 
 export type ExerciseProgress = {
   name: string;
+  builtIn: boolean;
+  hidden: boolean;
   // Every Station of the Exercise, at every Gym, Retired ones included.
   stations: ProgressStation[];
   // Null until the Exercise has a Station anywhere.
   selected: {
     station: ProgressStation;
+    notes: string | null;
     format: LoadFormat;
     // Newest first; only Workouts with a Working set logged at the Station.
     workouts: StationWorkout[];
@@ -78,6 +83,8 @@ export function getExerciseProgress(
       nameEs: exercise.nameEs,
       loadType: exercise.loadType,
       unilateral: exercise.unilateral,
+      builtIn: exercise.builtIn,
+      hidden: exercise.hidden,
     })
     .from(exercise)
     .where(eq(exercise.id, exerciseId))
@@ -86,8 +93,15 @@ export function getExerciseProgress(
 
   const stations = db
     .select({
-      option: { id: station.id, gymName: gym.name, label: station.label, retired: station.retired },
-      unit: station.unit,
+      option: {
+        id: station.id,
+        gymId: station.gymId,
+        gymName: gym.name,
+        label: station.label,
+        retired: station.retired,
+        unit: station.unit,
+      },
+      notes: station.notes,
     })
     .from(station)
     .innerJoin(gym, eq(gym.id, station.gymId))
@@ -106,18 +120,21 @@ export function getExerciseProgress(
 
   return {
     name: language === "es" ? (movement.nameEs ?? movement.name) : movement.name,
+    builtIn: movement.builtIn,
+    hidden: movement.hidden,
     stations: stations.map(({ option }) => option),
     selected: chosen
       ? {
           station: chosen.option,
+          notes: chosen.notes,
           format: {
-            unit: chosen.unit,
+            unit: chosen.option.unit,
             loadType: movement.loadType,
             unilateral: movement.unilateral,
           },
           workouts,
           repRecords: repRecords(workouts, movement.loadType),
-          chart: chartSeries(workouts, chartMeasure(movement.loadType, chosen.unit)),
+          chart: chartSeries(workouts, chartMeasure(movement.loadType, chosen.option.unit)),
         }
       : null,
   };

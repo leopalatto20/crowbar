@@ -438,6 +438,8 @@ describe("choosing the Station", () => {
     const { db } = await libraryDatabase();
     expect(progress(db, benchPress.id)).toEqual({
       name: "Barbell Bench Press",
+      builtIn: true,
+      hidden: false,
       stations: [],
       selected: null,
     });
@@ -542,7 +544,8 @@ describe("choosing the Station", () => {
     db.update(station).set({ retired: true }).where(eq(station.id, hammer!.id)).run();
     expect(progress(db, chestPress.id).selected?.station.id).toBe(hammer!.id);
 
-    // Logged to more recently than the new Station, yet retired.
+    // Logged to more recently than the new Station, then retired.
+    db.update(station).set({ retired: false }).where(eq(station.id, hammer!.id)).run();
     const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 2_000 });
     const entryId = addWorkoutExercise(db, workoutId, chestPress.id);
     addStation(db, entryId, { label: "Life Fitness", existingLabel: "Hammer Strength" });
@@ -552,6 +555,7 @@ describe("choosing the Station", () => {
       reps: 8,
     });
     finishWorkout(db, workoutId, { now: 2_001 });
+    db.update(station).set({ retired: true }).where(eq(station.id, hammer!.id)).run();
 
     expect(progress(db, chestPress.id).selected?.station.label).toBe("Life Fitness");
   });

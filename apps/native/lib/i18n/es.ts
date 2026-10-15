@@ -249,6 +249,26 @@ export const es: Messages = {
     chartSets: (count) => `${count} ${count === 1 ? "serie" : "series"}`,
     chartSummary: (value, detail) => `Último: ${value}, ${detail}`,
   },
+  stationActions: {
+    more: "Más",
+    rename: "Renombrar estación",
+    renamePlaceholder: "Nombre",
+    save: "Guardar",
+    changeUnit: "Cambiar unidad",
+    retire: "Retirar estación",
+    returnToService: "Volver a usar",
+    mergeInto: "Fusionar con",
+    merge: "Fusionar",
+    mergeTitle: (target) => `¿Fusionar con «${target}»?`,
+    mergeMessage: (sets, target) =>
+      `Mueve ${sets} ${sets === 1 ? "serie" : "series"} a ${target} y elimina esta estación. Sus notas de la máquina se añaden a las de ${target}.`,
+    mergeUnit: (unit) => `Las cargas movidas se leerán en ${unit}.`,
+    delete: "Eliminar estación",
+    deleteTitle: (station) => `¿Eliminar «${station}»?`,
+    deleteMessage: ({ sets, workouts }) =>
+      `Se eliminarán ${sets} ${sets === 1 ? "serie" : "series"} de ${workouts} ${workouts === 1 ? "entrenamiento" : "entrenamientos"}.`,
+    cancel: "Cancelar",
+  },
   stationPrompt: {
     title: "Nueva estación",
     nameBoth: "Nombra las dos para distinguirlas.",
