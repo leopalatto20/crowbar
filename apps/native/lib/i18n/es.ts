@@ -225,6 +225,13 @@ export const es: Messages = {
         : `Se descartarán ${count} series sin registrar.`,
     allLogged: "Todas las series están registradas.",
     nothingLogged: "No hay nada registrado, así que este entrenamiento no se guardará.",
+    writeBack: (routine) => `Actualizar “${routine}” con los cambios de hoy`,
+    edit: (edit) =>
+      edit.kind === "swap"
+        ? `Cambiar ${edit.from} → ${edit.to}`
+        : `${{ add: "Añadir", move: "Mover", remove: "Quitar" }[edit.kind]} ${edit.exercise}`,
+    saveAsRoutine: "Guardar como rutina",
+    save: "Guardar",
   },
   restCard: {
     title: (exercise) => `Descanso · ${exercise}`,

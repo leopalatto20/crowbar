@@ -340,10 +340,10 @@ describe("last run", () => {
     const garage = createGym(db, "Garage");
     const upper = createRoutine(db, "Upper A");
     const lower = createRoutine(db, "Lower A");
-    finishWorkout(db, run(db, downtown, upper, 1_000), 1_500);
-    finishWorkout(db, run(db, garage, upper, 2_000), 2_500);
+    finishWorkout(db, run(db, downtown, upper, 1_000), { now: 1_500 });
+    finishWorkout(db, run(db, garage, upper, 2_000), { now: 2_500 });
     // An empty Workout and one still in progress don't count as runs of a Routine.
-    finishWorkout(db, run(db, downtown, undefined, 3_000), 3_500);
+    finishWorkout(db, run(db, downtown, undefined, 3_000), { now: 3_500 });
     run(db, downtown, upper, 4_000);
 
     expect(listRoutines(db)).toEqual([

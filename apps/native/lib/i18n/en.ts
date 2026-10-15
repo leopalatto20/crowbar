@@ -1,6 +1,7 @@
 import type { EquipmentType, LoadType, MuscleGroup } from "@/lib/exercise/model";
 import type { ExerciseHistoryCounts } from "@/db/exercises";
 import type { GymHistoryCounts } from "@/db/gyms";
+import type { WriteBackEdit } from "@/db/workouts";
 import type { Age } from "@/lib/routine/model";
 
 // The English catalog is the source of truth: its shape is the type every other catalog fills in.
@@ -221,6 +222,13 @@ export const en = {
       `${count} unlogged ${count === 1 ? "set" : "sets"} will be discarded.`,
     allLogged: "Every set is logged.",
     nothingLogged: "Nothing is logged, so this Workout won’t be saved.",
+    writeBack: (routine: string) => `Update “${routine}” with today’s changes`,
+    edit: (edit: WriteBackEdit) =>
+      edit.kind === "swap"
+        ? `Swap ${edit.from} → ${edit.to}`
+        : `${{ add: "Add", move: "Move", remove: "Remove" }[edit.kind]} ${edit.exercise}`,
+    saveAsRoutine: "Save as Routine",
+    save: "Save",
   },
   restCard: {
     title: (exercise: string) => `Rest · ${exercise}`,

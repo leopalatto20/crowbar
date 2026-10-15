@@ -39,6 +39,7 @@ import {
   workoutSetCount,
   listHistory,
   listWorkoutEdits,
+  listWriteBack,
   removeWorkoutExercise,
   moveWorkoutExercise,
   reopenSet,
@@ -313,7 +314,7 @@ function logBench(
     if (warmup) toggleSetKind(db, set.id);
     confirmSet(db, set.id, { load, reps, rir });
   });
-  finishWorkout(db, workoutId, now + 1);
+  finishWorkout(db, workoutId, { now: now + 1 });
   return workoutId;
 }
 
@@ -518,7 +519,7 @@ describe("finishWorkout", () => {
     confirmSet(db, raiseSet!.id, { load: 12, reps: 14 });
     updateSet(db, setsOf(db, workoutId, pull)[0]!.id, { load: 0, reps: 8 });
 
-    finishWorkout(db, workoutId, 5_000);
+    finishWorkout(db, workoutId, { now: 5_000 });
 
     const finished = ledger(db, workoutId);
     expect(finished.finishedAt).toBe(5_000);
@@ -853,7 +854,7 @@ describe("starting from a Routine", () => {
     updateSettings(db, { defaultWeightUnit: "lb" });
     const first = startWorkout(db, { gymId, timeZone: TIME_ZONE, routineId, now: 1_000 });
     confirmSet(db, ledger(db, first).exercises[0]!.sets[2]!.id, { load: 225, reps: 5 });
-    finishWorkout(db, first, 2_000);
+    finishWorkout(db, first, { now: 2_000 });
     // A Station added at the Gym later, with nothing logged to it yet.
     db.insert(station)
       .values({
@@ -878,13 +879,13 @@ describe("starting from a Routine", () => {
     const { db, gymId, routineId } = await upperA();
     const first = startWorkout(db, { gymId, timeZone: TIME_ZONE, routineId, now: 1_000 });
     confirmSet(db, ledger(db, first).exercises[0]!.sets[2]!.id, { load: 100, reps: 5 });
-    finishWorkout(db, first, 1_500);
+    finishWorkout(db, first, { now: 1_500 });
     updateSettings(db, { defaultWeightUnit: "lb" });
     const second = startWorkout(db, { gymId, timeZone: TIME_ZONE, routineId, now: 2_000 });
     const [bench] = ledger(db, second).exercises;
     addStation(db, bench!.id, { label: "Life Fitness", existingLabel: "Hammer Strength" });
     confirmSet(db, bench!.sets[2]!.id, { load: 225, reps: 5 });
-    finishWorkout(db, second, 2_500);
+    finishWorkout(db, second, { now: 2_500 });
 
     const third = startWorkout(db, { gymId, timeZone: TIME_ZONE, routineId, now: 3_000 });
     const [next] = ledger(db, third).exercises;
@@ -921,7 +922,7 @@ describe("changeWorkoutGym", () => {
     confirmSet(db, setsOf(db, workoutId, bench)[0]!.id, { load: 100, reps: 5 });
 
     changeWorkoutGym(db, workoutId, garage);
-    finishWorkout(db, workoutId, 2_000);
+    finishWorkout(db, workoutId, { now: 2_000 });
 
     const lastHereAt = (gymId: string, now: number) => {
       const next = startWorkout(db, { gymId, timeZone: TIME_ZONE, now });
@@ -964,7 +965,7 @@ describe("changeWorkoutGym", () => {
     confirmSet(db, setsOf(db, workoutId, bench)[0]!.id, { load: 105, reps: 5 });
 
     changeWorkoutGym(db, workoutId, garage);
-    finishWorkout(db, workoutId, 3_000);
+    finishWorkout(db, workoutId, { now: 3_000 });
 
     const next = startWorkout(db, { gymId: downtown, timeZone: TIME_ZONE, now: 4_000 });
     const entry = addWorkoutExercise(db, next, benchPress.id);
@@ -1020,7 +1021,7 @@ describe("several Stations per Exercise", () => {
     addStation(db, bench, { label: "Life Fitness", existingLabel: "Hammer Strength" });
     switchStation(db, bench, hammer);
     confirmSet(db, setsOf(db, workoutId, bench)[0]!.id, { load: 105, reps: 5 });
-    finishWorkout(db, workoutId, 2_500);
+    finishWorkout(db, workoutId, { now: 2_500 });
 
     const next = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 3_000 });
     const entry = addWorkoutExercise(db, next, benchPress.id);
@@ -1154,7 +1155,7 @@ describe("mid-Workout changes", () => {
         const earlier = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 1_000 });
         const assisted = addWorkoutExercise(db, earlier, assistedPullUp.id);
         confirmSet(db, setsOf(db, earlier, assisted)[0]!.id, { load: 20, reps: 8 });
-        finishWorkout(db, earlier, 2_000);
+        finishWorkout(db, earlier, { now: 2_000 });
       });
       updateSet(db, setsOf(db, workoutId, entries.bench)[0]!.id, { load: 100 });
 
@@ -1351,6 +1352,224 @@ describe("mid-Workout changes", () => {
       expect(listWorkoutEdits(db, workoutId)).toEqual([]);
     });
   });
+
+  describe("Routine write-back", () => {
+    function logFirstSet(db: Database, workoutId: string, workoutExerciseId: string) {
+      confirmSet(db, setsOf(db, workoutId, workoutExerciseId)[0]!.id, { load: 10, reps: 10 });
+    }
+
+    function slotsOf(db: Database, routineId: string) {
+      return getRoutine(db, routineId, "en")!.exercises;
+    }
+
+    test("a Swap puts the new Exercise in the slot, keeping its Targets", async () => {
+      const { db, routineId, workoutId, entries } = await upperAWorkout();
+      const before = slotsOf(db, routineId);
+      swapWorkoutExercise(db, entries.bench, assistedPullUp.id);
+      logFirstSet(db, workoutId, entries.bench);
+
+      finishWorkout(db, workoutId, { writeBack: true });
+
+      const [bench, ...rest] = slotsOf(db, routineId);
+      expect(bench).toEqual({
+        ...before[0]!,
+        exercise: { id: assistedPullUp.id, name: "Assisted Pull-Up" },
+      });
+      expect(rest).toEqual(before.slice(1));
+    });
+
+    test("an Exercise left unlogged reaches the Routine neither as an edit nor as a removal", async () => {
+      const { db, routineId, workoutId, entries } = await upperAWorkout();
+      const before = slotsOf(db, routineId);
+      swapWorkoutExercise(db, entries.bench, assistedPullUp.id);
+      moveWorkoutExercise(db, entries.raise, 0);
+      addWorkoutExercise(db, workoutId, benchPress.id);
+      logFirstSet(db, workoutId, entries.pull);
+
+      finishWorkout(db, workoutId, { writeBack: true });
+
+      expect(slotsOf(db, routineId)).toEqual(before);
+    });
+
+    test("an added Exercise plans its logged Working sets, other Targets blank, where it was logged", async () => {
+      const { db, routineId, workoutId, entries } = await upperAWorkout();
+      const added = addWorkoutExercise(db, workoutId, benchPress.id);
+      addSet(db, added);
+      addSet(db, added);
+      moveWorkoutExercise(db, added, 1);
+      const [warmup] = setsOf(db, workoutId, added);
+      toggleSetKind(db, warmup!.id);
+      for (const set of setsOf(db, workoutId, added)) {
+        confirmSet(db, set.id, { load: 60, reps: 8 });
+      }
+      for (const entry of [entries.bench, entries.pull]) logFirstSet(db, workoutId, entry);
+
+      finishWorkout(db, workoutId, { writeBack: true });
+
+      const [bench, addedSlot, pull, raise] = slotsOf(db, routineId);
+      expect([bench, pull, raise].map((slot) => slot?.exercise.id)).toEqual([
+        benchPress.id,
+        pullUp.id,
+        lateralRaise.id,
+      ]);
+      expect(addedSlot).toEqual({
+        id: expect.any(String),
+        exercise: { id: benchPress.id, name: "Barbell Bench Press" },
+        warmups: 0,
+        sets: 2,
+        repMin: null,
+        repMax: null,
+        rirMin: null,
+        rirMax: null,
+        restSeconds: null,
+      });
+    });
+
+    test("replays onto the Routine as it is now, slots the Workout never showed staying put", async () => {
+      const { db, routineId, workoutId, entries } = await upperAWorkout();
+      moveWorkoutExercise(db, entries.raise, 0);
+      removeWorkoutExercise(db, entries.pull);
+      const added = addWorkoutExercise(db, workoutId, benchPress.id);
+      // Edited mid-Workout, so the Workout never showed it.
+      addRoutineExercise(db, routineId, assistedPullUp.id);
+      for (const entry of [entries.raise, entries.bench, added]) logFirstSet(db, workoutId, entry);
+
+      finishWorkout(db, workoutId, { writeBack: true });
+
+      expect(routineOf(db, routineId)).toEqual([
+        lateralRaise.id,
+        benchPress.id,
+        benchPress.id,
+        assistedPullUp.id,
+      ]);
+    });
+
+    test("an Exercise left unlogged still holds its place for what was moved or added below it", async () => {
+      const { db, routineId, workoutId, entries } = await upperAWorkout();
+      moveWorkoutExercise(db, entries.raise, 1);
+      const added = addWorkoutExercise(db, workoutId, assistedPullUp.id);
+      moveWorkoutExercise(db, added, 1);
+      for (const entry of [entries.raise, added, entries.pull]) logFirstSet(db, workoutId, entry);
+
+      finishWorkout(db, workoutId, { writeBack: true });
+
+      expect(routineOf(db, routineId)).toEqual([
+        benchPress.id,
+        assistedPullUp.id,
+        lateralRaise.id,
+        pullUp.id,
+      ]);
+    });
+
+    test("offers nothing when nothing is logged, since the Workout isn't kept", async () => {
+      const { db, routineId, workoutId, entries } = await upperAWorkout();
+      const before = slotsOf(db, routineId);
+      removeWorkoutExercise(db, entries.pull);
+
+      expect(listWriteBack(db, workoutId, "en")).toBeNull();
+      finishWorkout(db, workoutId, { writeBack: true });
+      expect(slotsOf(db, routineId)).toEqual(before);
+    });
+
+    test("skips edits whose slot is gone from the Routine", async () => {
+      const { db, routineId, workoutId, slots, entries } = await upperAWorkout();
+      swapWorkoutExercise(db, entries.bench, assistedPullUp.id);
+      removeWorkoutExercise(db, entries.pull);
+      const added = addWorkoutExercise(db, workoutId, benchPress.id);
+      removeRoutineExercise(db, slots.bench);
+      removeRoutineExercise(db, slots.pull);
+      for (const entry of [entries.bench, entries.raise, added]) logFirstSet(db, workoutId, entry);
+
+      finishWorkout(db, workoutId, { writeBack: true });
+
+      expect(routineOf(db, routineId)).toEqual([lateralRaise.id, benchPress.id]);
+    });
+
+    test("never changes a slot's set count", async () => {
+      const { db, routineId, workoutId, entries } = await upperAWorkout();
+      addSet(db, entries.bench);
+      for (const set of setsOf(db, workoutId, entries.bench)) {
+        confirmSet(db, set.id, { load: 100, reps: 5 });
+      }
+      moveWorkoutExercise(db, entries.raise, 0);
+      logFirstSet(db, workoutId, entries.raise);
+
+      finishWorkout(db, workoutId, { writeBack: true });
+
+      expect(slotsOf(db, routineId).map((slot) => [slot.exercise.id, slot.sets])).toEqual([
+        [lateralRaise.id, 3],
+        [benchPress.id, 3],
+        [pullUp.id, 3],
+      ]);
+    });
+
+    test("lists exactly the edits it would apply, in the order made, by name", async () => {
+      const { db, routineId, workoutId, entries } = await upperAWorkout();
+      swapWorkoutExercise(db, entries.bench, pullUp.id);
+      swapWorkoutExercise(db, entries.bench, assistedPullUp.id);
+      const added = addWorkoutExercise(db, workoutId, benchPress.id);
+      addWorkoutExercise(db, workoutId, benchPress.id);
+      moveWorkoutExercise(db, entries.raise, 0);
+      removeWorkoutExercise(db, entries.pull);
+      renameRoutine(db, routineId, "Upper A (heavy)");
+      for (const entry of [entries.bench, added, entries.raise]) logFirstSet(db, workoutId, entry);
+
+      expect(listWriteBack(db, workoutId, "es")).toEqual({
+        routineName: "Upper A (heavy)",
+        edits: [
+          { kind: "swap", from: "Press de banca con barra", to: "Dominada asistida" },
+          { kind: "add", exercise: "Press de banca con barra" },
+          { kind: "move", exercise: "Elevación lateral con mancuernas" },
+          { kind: "remove", exercise: "Dominada" },
+        ],
+      });
+    });
+
+    test("lists nothing when no edit would change the Routine", async () => {
+      const { db, workoutId, slots, entries } = await upperAWorkout();
+      // Swapped and moved straight back, so the Routine already reads as logged.
+      swapWorkoutExercise(db, entries.bench, assistedPullUp.id);
+      swapWorkoutExercise(db, entries.bench, benchPress.id);
+      moveWorkoutExercise(db, entries.raise, 0);
+      moveWorkoutExercise(db, entries.raise, 2);
+      removeWorkoutExercise(db, entries.pull);
+      removeRoutineExercise(db, slots.pull);
+      addWorkoutExercise(db, workoutId, benchPress.id);
+      for (const entry of [entries.bench, entries.raise]) logFirstSet(db, workoutId, entry);
+
+      expect(listWriteBack(db, workoutId, "en")).toBeNull();
+    });
+
+    test("of two Moves that reach the same order, lists the one made first", async () => {
+      const { db, workoutId, entries } = await upperAWorkout();
+      moveWorkoutExercise(db, entries.pull, 0);
+      moveWorkoutExercise(db, entries.bench, 1);
+      for (const entry of Object.values(entries)) logFirstSet(db, workoutId, entry);
+
+      expect(listWriteBack(db, workoutId, "en")?.edits).toEqual([
+        { kind: "move", exercise: "Pull-Up" },
+      ]);
+    });
+
+    test("a Workout started empty has no Routine to write back to", async () => {
+      const { db, workoutId } = await startedWorkout();
+      const bench = addWorkoutExercise(db, workoutId, benchPress.id);
+      logFirstSet(db, workoutId, bench);
+
+      expect(listWriteBack(db, workoutId, "en")).toBeNull();
+    });
+
+    test("is off unless asked for", async () => {
+      const { db, routineId, workoutId, entries } = await upperAWorkout();
+      const before = slotsOf(db, routineId);
+      swapWorkoutExercise(db, entries.bench, assistedPullUp.id);
+      logFirstSet(db, workoutId, entries.bench);
+
+      finishWorkout(db, workoutId);
+
+      expect(slotsOf(db, routineId)).toEqual(before);
+    });
+  });
 });
 
 // One finished Workout at the Gym, with one confirmed set per Exercise, a Routine's included.
@@ -1375,7 +1594,7 @@ function logWorkout(
   for (const entry of ledger(db, workoutId).exercises) {
     confirmSet(db, entry.sets[0]!.id, { load: 20, reps: 10 });
   }
-  finishWorkout(db, workoutId, startedAt + 3_600_000);
+  finishWorkout(db, workoutId, { now: startedAt + 3_600_000 });
   return workoutId;
 }
 
@@ -1548,5 +1767,33 @@ describe("saveWorkoutAsRoutine", () => {
     });
     // It joins the Workout tab after the Routines already there.
     expect(listRoutines(db).map((routine) => routine.name)).toEqual(["Lower", "Improvised push"]);
+  });
+
+  test("at finish, saves only what the finished Workout keeps", async () => {
+    const { db, workoutId } = await startedWorkout();
+    const bench = addWorkoutExercise(db, workoutId, benchPress.id);
+    addWorkoutExercise(db, workoutId, pullUp.id);
+    confirmSet(db, setsOf(db, workoutId, bench)[0]!.id, { load: 100, reps: 5 });
+
+    const routineId = finishWorkout(db, workoutId, { saveAsRoutine: "Bench day" })!;
+
+    expect(currentWorkout(db)).toBeUndefined();
+    expect(getRoutine(db, routineId, "en")).toEqual({
+      id: routineId,
+      name: "Bench day",
+      exercises: [
+        {
+          id: expect.any(String),
+          exercise: { id: benchPress.id, name: "Barbell Bench Press" },
+          warmups: 0,
+          sets: 1,
+          repMin: null,
+          repMax: null,
+          rirMin: null,
+          rirMax: null,
+          restSeconds: null,
+        },
+      ],
+    });
   });
 });
