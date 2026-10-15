@@ -625,11 +625,45 @@ export function changeWorkoutGym(db: Database, workoutId: string, gymId: string)
   });
 }
 
+export type Relabel = { exerciseName: string; from: Unit; to: Unit };
+
+// Moving to another Gym keeps every logged number as it is, so where the Station it lands on reads
+// another unit, the number changes meaning. Each logged Exercise lands where changeWorkoutGym puts
+// it: its default Station at the Gym, or a new one in the default unit.
+export function listGymChangeRelabels(
+  db: Database,
+  workoutId: string,
+  gymId: string,
+  language: Language,
+): Relabel[] {
+  return db
+    .select({
+      id: workoutExercise.id,
+      exerciseId: exercise.id,
+      name: exercise.name,
+      nameEs: exercise.nameEs,
+      loadType: exercise.loadType,
+      unit: station.unit,
+    })
+    .from(workoutExercise)
+    .innerJoin(exercise, eq(exercise.id, workoutExercise.exerciseId))
+    .innerJoin(station, eq(station.id, workoutExercise.stationId))
+    .where(eq(workoutExercise.workoutId, workoutId))
+    .orderBy(asc(workoutExercise.position))
+    .all()
+    .flatMap(({ id, exerciseId, name, nameEs, loadType, unit }) => {
+      if (!hasConfirmedSet(db, id)) return [];
+      const to = defaultStation(db, exerciseId, gymId)?.unit ?? defaultUnitOf(db, loadType);
+      if (to === unit) return [];
+      return [{ exerciseName: language === "es" ? (nameEs ?? name) : name, from: unit, to }];
+    });
+}
+
 // The Station last used for the Exercise at the Gym. One never logged to, kept for its label or
 // notes, comes after every Station in use: SQLite sorts the null start time last when descending.
 function defaultStation(db: Database, exerciseId: string, gymId: string) {
   return db
-    .select({ id: station.id })
+    .select({ id: station.id, unit: station.unit })
     .from(station)
     .leftJoin(workoutExercise, eq(workoutExercise.stationId, station.id))
     .leftJoin(workout, eq(workout.id, workoutExercise.workoutId))
@@ -1223,11 +1257,15 @@ function insertStation(
       id,
       exerciseId: entry.exerciseId,
       gymId: entry.gymId,
-      unit: newStationUnit(getSettings(db).defaultWeightUnit, entry.loadType),
+      unit: defaultUnitOf(db, entry.loadType),
       label,
     })
     .run();
   return id;
+}
+
+function defaultUnitOf(db: Database, loadType: LoadType) {
+  return newStationUnit(getSettings(db).defaultWeightUnit, loadType);
 }
 
 function ensureStation(db: Database, workoutExerciseId: string) {

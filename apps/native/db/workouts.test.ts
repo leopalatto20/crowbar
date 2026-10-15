@@ -39,6 +39,7 @@ import {
   saveWorkoutAsRoutine,
   deleteWorkout,
   workoutSetCount,
+  listGymChangeRelabels,
   listHistory,
   listWorkoutEdits,
   listWriteBack,
@@ -1858,6 +1859,109 @@ describe("editing a past Workout", () => {
     addWorkoutExercise(db, workoutId, lateralRaise.id);
 
     expect(listWorkoutEdits(db, workoutId)).toEqual([]);
+  });
+});
+
+describe("changing a past Workout's Gym", () => {
+  test("lists the logged Exercises whose numbers would read in another unit", async () => {
+    const db = await libraryDatabase();
+    const downtown = createGym(db, "Downtown Iron");
+    const garage = createGym(db, "Garage");
+    logBench(db, garage, 1_000, [{ load: 100, reps: 5 }]);
+    const workoutId = startWorkout(db, { gymId: downtown, timeZone: TIME_ZONE, now: 2_000 });
+    const bench = addWorkoutExercise(db, workoutId, benchPress.id);
+    const pull = addWorkoutExercise(db, workoutId, pullUp.id);
+    confirmSet(db, setsOf(db, workoutId, bench)[0]!.id, { load: 100, reps: 5 });
+    confirmSet(db, setsOf(db, workoutId, pull)[0]!.id, { load: 10, reps: 8 });
+    finishWorkout(db, workoutId, { now: 3_000 });
+    updateSettings(db, { defaultWeightUnit: "lb" });
+    // Never logged, so it has no numbers to relabel.
+    addWorkoutExercise(db, workoutId, lateralRaise.id);
+
+    expect(listGymChangeRelabels(db, workoutId, garage, "en")).toEqual([
+      { exerciseName: "Pull-Up", from: "kg", to: "lb" },
+    ]);
+  });
+
+  test("lists nothing when every logged Exercise keeps its unit", async () => {
+    const db = await libraryDatabase();
+    const workoutId = logBench(db, createGym(db, "Downtown Iron"), 1_000, [{ load: 100, reps: 5 }]);
+
+    expect(listGymChangeRelabels(db, workoutId, createGym(db, "Garage"), "en")).toEqual([]);
+  });
+
+  test("each Exercise moves to the Station last used for it there, its numbers as logged", async () => {
+    const db = await libraryDatabase();
+    const downtown = createGym(db, "Downtown Iron");
+    const garage = createGym(db, "Garage");
+    const benchStation = ledger(db, logBench(db, garage, 1_000, [{ load: 80, reps: 8 }]))
+      .exercises[0]!.station!.id;
+    const rackWorkout = startWorkout(db, { gymId: garage, timeZone: TIME_ZONE, now: 2_000 });
+    const rackBench = addWorkoutExercise(db, rackWorkout, benchPress.id);
+    addStation(db, rackBench, { label: "Rack", existingLabel: "Flat bench" });
+    confirmSet(db, setsOf(db, rackWorkout, rackBench)[0]!.id, { load: 90, reps: 6 });
+    finishWorkout(db, rackWorkout, { now: 2_500 });
+    // The older Station is the one used last.
+    const benchWorkout = logBench(db, garage, 3_000, [{ load: 80, reps: 8 }]);
+    switchStation(db, ledger(db, benchWorkout).exercises[0]!.id, benchStation);
+    const workoutId = logBench(db, downtown, 4_000, [{ load: 100, reps: 5, rir: 1 }]);
+
+    changeWorkoutGym(db, workoutId, garage);
+
+    const [entry] = ledger(db, workoutId).exercises;
+    expect(entry?.station?.label).toBe("Flat bench");
+    expect(entry?.sets.map(({ load, reps, rir, done }) => ({ load, reps, rir, done }))).toEqual([
+      { load: 100, reps: 5, rir: 1, done: true },
+    ]);
+  });
+
+  test("an Exercise the new Gym has no Station for gets one in the default unit", async () => {
+    const db = await libraryDatabase();
+    const downtown = createGym(db, "Downtown Iron");
+    const garage = createGym(db, "Garage");
+    const workoutId = logBench(db, downtown, 1_000, [{ load: 100, reps: 5 }]);
+    updateSettings(db, { defaultWeightUnit: "lb" });
+
+    changeWorkoutGym(db, workoutId, garage);
+
+    const [entry] = ledger(db, workoutId).exercises;
+    expect(entry?.unit).toBe("lb");
+    expect(
+      db
+        .select()
+        .from(station)
+        .all()
+        .map(({ gymId, unit }) => ({ gymId, unit })),
+    ).toEqual([{ gymId: garage, unit: "lb" }]);
+  });
+
+  test("an old Station left empty goes, unless it has a label or notes", async () => {
+    const db = await libraryDatabase();
+    const downtown = createGym(db, "Downtown Iron");
+    const garage = createGym(db, "Garage");
+    const workoutId = startWorkout(db, { gymId: downtown, timeZone: TIME_ZONE, now: 1_000 });
+    const bench = addWorkoutExercise(db, workoutId, benchPress.id);
+    const pull = addWorkoutExercise(db, workoutId, pullUp.id);
+    confirmSet(db, setsOf(db, workoutId, bench)[0]!.id, { load: 100, reps: 5 });
+    const raise = addWorkoutExercise(db, workoutId, lateralRaise.id);
+    confirmSet(db, setsOf(db, workoutId, bench)[0]!.id, { load: 100, reps: 5 });
+    confirmSet(db, setsOf(db, workoutId, pull)[0]!.id, { load: 0, reps: 10 });
+    setMachineNotes(db, pull, "Wide grip");
+    addStation(db, raise, { label: "Rack" });
+    confirmSet(db, setsOf(db, workoutId, raise)[0]!.id, { load: 10, reps: 12 });
+    finishWorkout(db, workoutId, { now: 2_000 });
+
+    changeWorkoutGym(db, workoutId, garage);
+
+    const left = db
+      .select()
+      .from(station)
+      .all()
+      .filter((found) => found.gymId === downtown);
+    expect(left.map(({ exerciseId, label, notes }) => ({ exerciseId, label, notes }))).toEqual([
+      { exerciseId: pullUp.id, label: null, notes: "Wide grip" },
+      { exerciseId: lateralRaise.id, label: "Rack", notes: null },
+    ]);
   });
 });
 

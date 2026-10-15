@@ -71,7 +71,6 @@ export const en = {
     logging: "Logging",
     effortScale: "Effort scale",
     defaultWeightUnit: "Default weight unit",
-    stackLevel: "Stack level",
     training: "Training",
     gyms: "Gyms",
   },
@@ -99,6 +98,12 @@ export const en = {
     kg: "kg",
     lb: "lb",
     level: "lvl",
+  },
+  // Spelled out, where a unit is read on its own rather than after a number.
+  unitName: {
+    kg: "kg",
+    lb: "lb",
+    level: "Stack level",
   },
   muscleGroup: {
     chest: "Chest",
@@ -164,6 +169,14 @@ export const en = {
     title: "Gym",
     newGym: "New Gym…",
     current: "Current Gym",
+    moveTitle: (gym: string) => `Move this Workout to ${gym}?`,
+    relabelMessage: (relabels: { exerciseName: string; from: string; to: string }[]) =>
+      [
+        "Logged numbers stay as they are, so these will read in another unit:",
+        ...relabels.map(({ exerciseName, from, to }) => `${exerciseName}: ${from} → ${to}`),
+      ].join("\n"),
+    move: "Move",
+    cancel: "Cancel",
   },
   workoutInProgress: {
     title: "A Workout is in progress",
