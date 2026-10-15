@@ -66,3 +66,22 @@ export function formatMonth(year: number, month: number, languageTag: string) {
     timeZone: "UTC",
   }).format(Date.UTC(year, month - 1, 1));
 }
+
+export type Age = { unit: "day" | "week" | "month" | "year"; count: number };
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function startOfDay(epochMs: number) {
+  const date = new Date(epochMs);
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+}
+
+// Calendar days in the device's zone, so last night's Workout reads "yesterday" this morning.
+// Rounding absorbs the 23- and 25-hour days around a daylight saving change.
+export function ageOf(epochMs: number, now: number): Age {
+  const days = Math.max(0, Math.round((startOfDay(now) - startOfDay(epochMs)) / DAY_MS));
+  if (days < 7) return { unit: "day", count: days };
+  if (days < 30) return { unit: "week", count: Math.floor(days / 7) };
+  if (days < 365) return { unit: "month", count: Math.floor(days / 30) };
+  return { unit: "year", count: Math.floor(days / 365) };
+}

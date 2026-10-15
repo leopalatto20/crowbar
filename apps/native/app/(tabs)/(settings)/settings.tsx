@@ -1,11 +1,25 @@
-import { FieldGroup, Host, Icon, ListItem, Picker, Row, Spacer, Switch, Text } from "@expo/ui";
+import {
+  Button,
+  FieldGroup,
+  Host,
+  Icon,
+  ListItem,
+  Picker,
+  Row,
+  Spacer,
+  Switch,
+  Text,
+} from "@expo/ui";
 import { Stack, useRouter } from "expo-router";
+import { useState } from "react";
 import { Linking, Platform } from "react-native";
 
 import { restOptions } from "@/components/routine/rest-options";
 import { useDb } from "@/db/context";
 import { updateSettings } from "@/db/settings";
+import { exportBackup } from "@/lib/backup/export-backup";
 import { useI18n } from "@/lib/i18n";
+import { ageOf } from "@/lib/i18n/locale";
 import { useSettings } from "@/lib/settings";
 import { useColors } from "@/lib/theme";
 import { useNotificationStatus } from "@/lib/workout/rest-notification";
@@ -16,10 +30,21 @@ export default function SettingsTab() {
   const router = useRouter();
   const p = useColors();
   const { t } = useI18n();
-  const { effortScale, defaultWeightUnit, restTimerEnabled, defaultRestSeconds } = useSettings();
+  const { effortScale, defaultWeightUnit, restTimerEnabled, defaultRestSeconds, lastExportedAt } =
+    useSettings();
   const notificationStatus = useNotificationStatus();
   // Once asked, only system settings can turn notifications back on; Crowbar never asks again.
   const denied = notificationStatus === "denied";
+  const [exporting, setExporting] = useState(false);
+
+  async function exportData() {
+    setExporting(true);
+    try {
+      await exportBackup(db);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   return (
     <>
@@ -100,6 +125,19 @@ export default function SettingsTab() {
             >
               <Text>{t.settings.gyms}</Text>
             </ListItem>
+          </FieldGroup.Section>
+          <FieldGroup.Section title={t.settings.data}>
+            <Button
+              variant="text"
+              label={t.settings.exportBackup}
+              disabled={exporting}
+              onPress={() => void exportData()}
+            />
+            {lastExportedAt !== null && (
+              <FieldGroup.SectionFooter>
+                <Text>{t.settings.lastExported(t.ago(ageOf(lastExportedAt, Date.now())))}</Text>
+              </FieldGroup.SectionFooter>
+            )}
           </FieldGroup.Section>
         </FieldGroup>
       </Host>

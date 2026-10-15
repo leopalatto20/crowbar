@@ -55,6 +55,9 @@ function snapshotBeside(databasePath: string): Snapshot {
 export function DatabaseProvider({ children }: { children: ReactNode }) {
   return (
     <OpenFailureBoundary>
+      {/* expo-sqlite's default directory is what puts the lifter's data in the OS backup:
+          Documents/SQLite on iOS (iCloud and Finder) and filesDir/SQLite on Android (Auto Backup,
+          on through Expo's default allowBackup). Moving the database out of it drops that. */}
       <SQLiteProvider
         databaseName="crowbar.db"
         options={OPEN_OPTIONS}

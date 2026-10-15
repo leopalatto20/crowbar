@@ -3,7 +3,7 @@ import type { ExerciseHistoryCounts } from "@/db/exercises";
 import type { GymHistoryCounts } from "@/db/gyms";
 import type { StationHistoryCounts } from "@/db/stations";
 import type { WriteBackEdit } from "@/db/workouts";
-import type { Age } from "@/lib/routine/model";
+import type { Age } from "@/lib/i18n/locale";
 
 // The English catalog is the source of truth: its shape is the type every other catalog fills in.
 export const en = {
@@ -17,6 +17,11 @@ export const en = {
     history: "No Workouts yet.",
     exercises: "No Exercises yet.",
   },
+  ago: ({ unit, count }: Age) => {
+    if (unit === "day" && count === 0) return "today";
+    if (unit === "day" && count === 1) return "yesterday";
+    return `${count} ${unit}${count === 1 ? "" : "s"} ago`;
+  },
   workoutTab: {
     startEmptyWorkout: "Start empty Workout",
     routines: "Routines",
@@ -28,11 +33,6 @@ export const en = {
     delete: "Delete",
     copyName: (name: string) => `${name} copy`,
     lastRun: (ago: string, gym: string) => `Last: ${ago} · ${gym}`,
-    ago: ({ unit, count }: Age) => {
-      if (unit === "day" && count === 0) return "today";
-      if (unit === "day" && count === 1) return "yesterday";
-      return `${count} ${unit}${count === 1 ? "" : "s"} ago`;
-    },
   },
   exercises: {
     search: "Search",
@@ -86,6 +86,9 @@ export const en = {
       denied: "Off",
       undetermined: "Not set",
     },
+    data: "Data",
+    exportBackup: "Export backup",
+    lastExported: (ago: string) => `Last exported ${ago}`,
   },
   gyms: {
     title: "Gyms",
