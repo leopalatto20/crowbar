@@ -2,7 +2,7 @@ import { and, asc, desc, eq, isNull, max, sql } from "drizzle-orm";
 
 import type { Language } from "@/lib/i18n/locale";
 import type { LoadType } from "@/lib/exercise/model";
-import { type LoadFormat, type Performance, readLoad } from "@/lib/workout/model";
+import { type LoadFormat, type Performance, type Unit, readLoad } from "@/lib/workout/model";
 
 import type { Database } from "./database";
 import { lastUsedGym } from "./gyms";
@@ -37,6 +37,15 @@ export type RepRecords = {
   heaviestByReps: { reps: number; load: number }[];
 };
 
+// Volume needs a real weight, and a Bodyweight or Assisted load leaves the lifter's own weight out.
+export type ChartMeasure = "volume" | "levelReps" | "reps";
+
+export type ProgressChart = {
+  measure: ChartMeasure;
+  // Oldest first, one per Workout listed in the set history.
+  points: { workoutId: string; startedAt: number; timeZone: string; value: number; sets: number }[];
+};
+
 // Where Exercise detail opens: the Station asked for, else the one last used at the Gym.
 export type ProgressOpening = { stationId?: string; gymId?: string };
 
@@ -51,6 +60,7 @@ export type ExerciseProgress = {
     // Newest first; only Workouts with a Working set logged at the Station.
     workouts: StationWorkout[];
     repRecords: RepRecords;
+    chart: ProgressChart;
   } | null;
 };
 
@@ -107,6 +117,7 @@ export function getExerciseProgress(
           },
           workouts,
           repRecords: repRecords(workouts, movement.loadType),
+          chart: progressChart(workouts, chartMeasure(movement.loadType, chosen.unit)),
         }
       : null,
   };
@@ -217,5 +228,27 @@ function repRecords(workouts: StationWorkout[], loadType: LoadType): RepRecords 
     heaviestByReps: [...heaviest]
       .map(([reps, load]) => ({ reps, load }))
       .sort((a, b) => a.reps - b.reps),
+  };
+}
+
+function chartMeasure(loadType: LoadType, unit: Unit): ChartMeasure {
+  if (loadType !== "external") return "reps";
+  return unit === "level" ? "levelReps" : "volume";
+}
+
+// Unilateral reps count per side and aren't doubled, so Volume compares only within the Station.
+function progressChart(workouts: StationWorkout[], measure: ChartMeasure): ProgressChart {
+  return {
+    measure,
+    points: [...workouts].reverse().map(({ id, startedAt, timeZone, sets }) => ({
+      workoutId: id,
+      startedAt,
+      timeZone,
+      value: sets.reduce(
+        (sum, { load, reps }) => sum + (measure === "reps" ? reps : load * reps),
+        0,
+      ),
+      sets: sets.length,
+    })),
   };
 }

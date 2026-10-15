@@ -11,6 +11,7 @@ import { radii, spacing, type, useColors } from "@/lib/theme";
 import { useEffort } from "@/lib/workout/effort";
 import { type LoadFormat, formatLoad, formatPerformance } from "@/lib/workout/model";
 
+import { ProgressChart } from "./progress-chart";
 import { StationSwitcher } from "./station-switcher";
 
 // Opens on `stationId` when given, else on the Station last used at `gymId`, or at the current or
@@ -60,6 +61,9 @@ export function ExerciseDetail({
             </Text>
           ) : (
             <>
+              <Card>
+                <ProgressChart chart={selected.chart} format={selected.format} />
+              </Card>
               <RepRecordsCard records={selected.repRecords} format={selected.format} />
               {selected.workouts.map((stationWorkout) => (
                 <WorkoutSets

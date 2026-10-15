@@ -547,3 +547,122 @@ describe("choosing the Station", () => {
     expect(progress(db, chestPress.id).selected?.station.label).toBe("Life Fitness");
   });
 });
+
+describe("progress chart", () => {
+  test("External: one Volume point per Workout, oldest first, over Working sets with their count", async () => {
+    const { db, gymId } = await libraryDatabase();
+    const first = logWorkout(db, {
+      gymId,
+      exerciseId: benchPress.id,
+      at: 1_000,
+      sets: [
+        { kind: "warmup", load: 60, reps: 10 },
+        { load: 100, reps: 5 },
+        { load: 90, reps: 8 },
+      ],
+    });
+    const second = logWorkout(db, {
+      gymId,
+      exerciseId: benchPress.id,
+      at: 2_000,
+      sets: [{ load: 102.5, reps: 4 }],
+    });
+
+    expect(progress(db, benchPress.id).selected?.chart).toEqual({
+      measure: "volume",
+      points: [
+        {
+          workoutId: first,
+          startedAt: 1_000,
+          timeZone: TIME_ZONE,
+          value: 1_220,
+          sets: 2,
+        },
+        {
+          workoutId: second,
+          startedAt: 2_000,
+          timeZone: TIME_ZONE,
+          value: 410,
+          sets: 1,
+        },
+      ],
+    });
+  });
+
+  test("two slots on the same Station in one Workout sum into one point", async () => {
+    const { db, gymId } = await libraryDatabase();
+    const workoutId = startWorkout(db, {
+      gymId,
+      timeZone: TIME_ZONE,
+      now: 1_000,
+    });
+    addWorkoutExercise(db, workoutId, benchPress.id);
+    addWorkoutExercise(db, workoutId, benchPress.id);
+    const [early, late] = getLedger(db, workoutId, "en")!.exercises;
+    confirmSet(db, early!.sets[0]!.id, { load: 100, reps: 5 });
+    confirmSet(db, late!.sets[0]!.id, { load: 80, reps: 10 });
+    finishWorkout(db, workoutId, { now: 2_000 });
+
+    expect(
+      progress(db, benchPress.id).selected?.chart.points.map(({ value, sets }) => ({
+        value,
+        sets,
+      })),
+    ).toEqual([{ value: 1_300, sets: 2 }]);
+  });
+
+  test("Stack level: level × reps, not a Volume", async () => {
+    const { db, gymId } = await libraryDatabase();
+    updateSettings(db, { defaultWeightUnit: "level" });
+    logWorkout(db, {
+      gymId,
+      exerciseId: chestPress.id,
+      at: 1_000,
+      sets: [
+        { load: 7, reps: 10 },
+        { load: 8, reps: 8 },
+      ],
+    });
+
+    const { chart } = progress(db, chestPress.id).selected!;
+    expect(chart.measure).toBe("levelReps");
+    expect(chart.points.map(({ value }) => value)).toEqual([134]);
+  });
+
+  test("Bodyweight: total Working-set reps, whatever the added load", async () => {
+    const { db, gymId } = await libraryDatabase();
+    logWorkout(db, {
+      gymId,
+      exerciseId: pullUp.id,
+      at: 1_000,
+      sets: [
+        { kind: "warmup", load: 0, reps: 5 },
+        { load: 0, reps: 12 },
+        { load: 10, reps: 8 },
+      ],
+    });
+
+    const { chart } = progress(db, pullUp.id).selected!;
+    expect(chart.measure).toBe("reps");
+    expect(chart.points.map(({ value, sets }) => ({ value, sets }))).toEqual([
+      { value: 20, sets: 2 },
+    ]);
+  });
+
+  test("Assisted: total Working-set reps, whatever the assistance", async () => {
+    const { db, gymId } = await libraryDatabase();
+    logWorkout(db, {
+      gymId,
+      exerciseId: assistedPullUp.id,
+      at: 1_000,
+      sets: [
+        { load: 30, reps: 10 },
+        { load: 20, reps: 7 },
+      ],
+    });
+
+    const { chart } = progress(db, assistedPullUp.id).selected!;
+    expect(chart.measure).toBe("reps");
+    expect(chart.points.map(({ value }) => value)).toEqual([17]);
+  });
+});
