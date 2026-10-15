@@ -245,9 +245,9 @@ export const es: Messages = {
       levelReps: "Nivel × reps",
       reps: "Reps en series efectivas",
     },
-    chartReps: (reps) => `${reps} reps`,
+    chartReps: (reps, perSide) => `${reps} reps${perSide ? "/lado" : ""}`,
     chartSets: (count) => `${count} ${count === 1 ? "serie" : "series"}`,
-    chartSummary: (value, date, sets) => `Último: ${value} el ${date}, ${sets}`,
+    chartSummary: (value, detail) => `Último: ${value}, ${detail}`,
   },
   stationPrompt: {
     title: "Nueva estación",

@@ -6,10 +6,10 @@ One Exercise's progress at one Station: the Station switcher, the progress chart
 
 - Station switcher: the Gym (and label) of the shown Station, opening a list of every Station of the Exercise at every Gym; "Loads in <unit>" under it.
 - Progress chart (#48): one point per Workout at the Station, oldest on the left, the Working-set count under each point.
-  - Title and value by Load type and unit: External in kg/lb "Volume (kg)" with `1,515 kg`; Stack level "Level × reps" with a bare number and no y-axis labels; Bodyweight and Assisted "Working-set reps" with `23 reps`.
+  - Title and value by Load type and unit: External in kg/lb "Volume (kg)" with `1,515 kg`; Stack level "Level × reps" with a bare number and no y-axis labels; Bodyweight and Assisted "Working-set reps" with `23 reps` (`23 reps/side` when Unilateral).
   - Readout above the plot: the latest point's value, then `<date> · <n> sets`. Press and hold on the plot to scrub: the readout follows the nearest point, with a vertical line and a dot on it.
   - Two slots on the same Station in one Workout sum into one point.
-  - The chart's container is one accessibility element labelled `Latest: <value> on <date>, <n> sets`.
+  - The chart's container is one accessibility element labelled `Latest: <value>, <date> · <n> sets`.
 - Rep records: collapsed card, "Most reps by load" and "Heaviest load by reps".
 - Set history: one card per Workout, Working sets numbered as the Ledger numbers them, a green arrow ("Beat last time") on sets ahead of the same-numbered set last time.
 
@@ -24,7 +24,7 @@ Log Workouts through History's "Log a past Workout" first (see [history.md](hist
 ```sh
 cv tap Exercises --element-type RadioButton
 cv tap "Barbell Bench Press"
-cv tree | grep Latest                      # GenericElement "Latest: 1,515 kg on Thu 8 Oct, 3 sets"
+cv tree | grep Latest                      # GenericElement "Latest: 1,515 kg, Thu 8 Oct · 3 sets"
 cv shot 1-chart
 axe touch -x 216 -y 380 --down --udid <udid>   # hold on a point (frame from the Latest element)
 cv shot 2-scrub                            # readout shows that point

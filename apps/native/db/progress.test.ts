@@ -62,6 +62,15 @@ const chestPress: BuiltInExercise = {
   muscleGroup: "chest",
 };
 
+const splitSquat: BuiltInExercise = {
+  id: "dumbbell-bulgarian-split-squat",
+  name: { en: "Dumbbell Bulgarian Split Squat", es: "Sentadilla búlgara con mancuernas" },
+  equipmentType: "dumbbell",
+  loadType: "external",
+  unilateral: true,
+  muscleGroup: "quads",
+};
+
 const TIME_ZONE = "America/Mexico_City";
 
 type LoggedSet = { kind?: SetKind; load: number; reps: number; rir?: number };
@@ -69,7 +78,7 @@ type LoggedSet = { kind?: SetKind; load: number; reps: number; rir?: number };
 async function libraryDatabase() {
   const db = await createTestDatabase();
   seedSettings(db, "MX");
-  seedBuiltInExercises(db, [benchPress, pullUp, assistedPullUp, chestPress]);
+  seedBuiltInExercises(db, [benchPress, pullUp, assistedPullUp, chestPress, splitSquat]);
   return { db, gymId: createGym(db, "Downtown Iron") };
 }
 
@@ -551,7 +560,7 @@ describe("choosing the Station", () => {
 describe("progress chart", () => {
   test("External: one Volume point per Workout, oldest first, over Working sets with their count", async () => {
     const { db, gymId } = await libraryDatabase();
-    const first = logWorkout(db, {
+    logWorkout(db, {
       gymId,
       exerciseId: benchPress.id,
       at: 1_000,
@@ -561,7 +570,7 @@ describe("progress chart", () => {
         { load: 90, reps: 8 },
       ],
     });
-    const second = logWorkout(db, {
+    logWorkout(db, {
       gymId,
       exerciseId: benchPress.id,
       at: 2_000,
@@ -571,31 +580,15 @@ describe("progress chart", () => {
     expect(progress(db, benchPress.id).selected?.chart).toEqual({
       measure: "volume",
       points: [
-        {
-          workoutId: first,
-          startedAt: 1_000,
-          timeZone: TIME_ZONE,
-          value: 1_220,
-          sets: 2,
-        },
-        {
-          workoutId: second,
-          startedAt: 2_000,
-          timeZone: TIME_ZONE,
-          value: 410,
-          sets: 1,
-        },
+        { startedAt: 1_000, timeZone: TIME_ZONE, value: 1_220, sets: 2 },
+        { startedAt: 2_000, timeZone: TIME_ZONE, value: 410, sets: 1 },
       ],
     });
   });
 
   test("two slots on the same Station in one Workout sum into one point", async () => {
     const { db, gymId } = await libraryDatabase();
-    const workoutId = startWorkout(db, {
-      gymId,
-      timeZone: TIME_ZONE,
-      now: 1_000,
-    });
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 1_000 });
     addWorkoutExercise(db, workoutId, benchPress.id);
     addWorkoutExercise(db, workoutId, benchPress.id);
     const [early, late] = getLedger(db, workoutId, "en")!.exercises;
@@ -609,6 +602,38 @@ describe("progress chart", () => {
         sets,
       })),
     ).toEqual([{ value: 1_300, sets: 2 }]);
+  });
+
+  test("mid-Workout, only the confirmed Working sets count", async () => {
+    const { db, gymId } = await libraryDatabase();
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 1_000 });
+    const entryId = addWorkoutExercise(db, workoutId, benchPress.id);
+    addSet(db, entryId);
+    confirmSet(db, getLedger(db, workoutId, "en")!.exercises[0]!.sets[0]!.id, {
+      load: 100,
+      reps: 5,
+    });
+
+    expect(
+      progress(db, benchPress.id).selected?.chart.points.map(({ value, sets }) => ({
+        value,
+        sets,
+      })),
+    ).toEqual([{ value: 500, sets: 1 }]);
+  });
+
+  test("Unilateral: Volume over reps per side, not doubled", async () => {
+    const { db, gymId } = await libraryDatabase();
+    logWorkout(db, {
+      gymId,
+      exerciseId: splitSquat.id,
+      at: 1_000,
+      sets: [{ load: 20, reps: 10 }],
+    });
+
+    expect(progress(db, splitSquat.id).selected?.chart.points.map(({ value }) => value)).toEqual([
+      200,
+    ]);
   });
 
   test("Stack level: level × reps, not a Volume", async () => {

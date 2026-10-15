@@ -245,10 +245,9 @@ export const en = {
       levelReps: "Level × reps",
       reps: "Working-set reps",
     },
-    chartReps: (reps: string) => `${reps} reps`,
+    chartReps: (reps: string, perSide: boolean) => `${reps} reps${perSide ? "/side" : ""}`,
     chartSets: (count: number) => `${count} ${count === 1 ? "set" : "sets"}`,
-    chartSummary: (value: string, date: string, sets: string) =>
-      `Latest: ${value} on ${date}, ${sets}`,
+    chartSummary: (value: string, detail: string) => `Latest: ${value}, ${detail}`,
   },
   stationPrompt: {
     title: "New Station",

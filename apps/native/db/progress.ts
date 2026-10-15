@@ -40,10 +40,10 @@ export type RepRecords = {
 // Volume needs a real weight, and a Bodyweight or Assisted load leaves the lifter's own weight out.
 export type ChartMeasure = "volume" | "levelReps" | "reps";
 
-export type ProgressChart = {
+export type ChartSeries = {
   measure: ChartMeasure;
   // Oldest first, one per Workout listed in the set history.
-  points: { workoutId: string; startedAt: number; timeZone: string; value: number; sets: number }[];
+  points: { startedAt: number; timeZone: string; value: number; sets: number }[];
 };
 
 // Where Exercise detail opens: the Station asked for, else the one last used at the Gym.
@@ -60,7 +60,7 @@ export type ExerciseProgress = {
     // Newest first; only Workouts with a Working set logged at the Station.
     workouts: StationWorkout[];
     repRecords: RepRecords;
-    chart: ProgressChart;
+    chart: ChartSeries;
   } | null;
 };
 
@@ -117,7 +117,7 @@ export function getExerciseProgress(
           },
           workouts,
           repRecords: repRecords(workouts, movement.loadType),
-          chart: progressChart(workouts, chartMeasure(movement.loadType, chosen.unit)),
+          chart: chartSeries(workouts, chartMeasure(movement.loadType, chosen.unit)),
         }
       : null,
   };
@@ -237,11 +237,10 @@ function chartMeasure(loadType: LoadType, unit: Unit): ChartMeasure {
 }
 
 // Unilateral reps count per side and aren't doubled, so Volume compares only within the Station.
-function progressChart(workouts: StationWorkout[], measure: ChartMeasure): ProgressChart {
+function chartSeries(workouts: StationWorkout[], measure: ChartMeasure): ChartSeries {
   return {
     measure,
-    points: [...workouts].reverse().map(({ id, startedAt, timeZone, sets }) => ({
-      workoutId: id,
+    points: [...workouts].reverse().map(({ startedAt, timeZone, sets }) => ({
       startedAt,
       timeZone,
       value: sets.reduce(
