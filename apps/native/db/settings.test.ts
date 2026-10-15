@@ -41,6 +41,13 @@ describe("updateSettings", () => {
     expect(getSettings(db)).toMatchObject({ effortScale: "RPE", defaultWeightUnit: "level" });
   });
 
+  test("changes the Rest timer and default rest", async () => {
+    const db = await createTestDatabase();
+    seedSettings(db, "US");
+    updateSettings(db, { restTimerEnabled: false, defaultRestSeconds: 180 });
+    expect(getSettings(db)).toMatchObject({ restTimerEnabled: false, defaultRestSeconds: 180 });
+  });
+
   test("keeps changes when a later launch seeds again", async () => {
     const db = await createTestDatabase();
     seedSettings(db, "US");

@@ -77,6 +77,9 @@ export const en = {
     defaultWeightUnit: "Default weight unit",
     training: "Training",
     gyms: "Gyms",
+    rest: "Rest",
+    restTimer: "Rest timer",
+    defaultRest: "Default rest",
   },
   gyms: {
     title: "Gyms",
@@ -280,6 +283,7 @@ export const en = {
   },
   workoutBar: {
     open: "Opens the Workout",
+    resting: (remaining: string) => `Resting, ${remaining} left`,
   },
   finish: {
     title: "Finish Workout",
@@ -301,6 +305,9 @@ export const en = {
     subtract: "−15",
     add: "+15",
     skip: "Skip",
+    overTitle: (exercise: string) => `Rest over · ${exercise}`,
+    overtime: (duration: string) => `+${duration}`,
+    dismiss: "Dismiss",
   },
   routine: {
     untitled: "New Routine",

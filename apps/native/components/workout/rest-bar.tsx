@@ -4,29 +4,24 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { PressableScale } from "@/components/pressable-scale";
 import { ProgressBar } from "@/components/progress-bar";
+import { useDb } from "@/db/context";
+import { type Rest, adjustRest, endRest } from "@/db/rests";
 import { useI18n } from "@/lib/i18n";
 import { motion, radii, spacing, type, useColors } from "@/lib/theme";
-import { formatClock } from "@/lib/workout/model";
-import { type Rest, useRestRemaining } from "@/lib/workout/use-workout";
+import { formatClock, formatElapsed } from "@/lib/workout/model";
+import { useRestClock } from "@/lib/workout/use-workout";
 
 import { LedgerText } from "./ledger-text";
 
-export function RestBar({
-  rest,
-  exerciseName,
-  onAdjust,
-  onEnd,
-}: {
-  rest: Rest | null;
-  exerciseName: string;
-  onAdjust: (seconds: number) => void;
-  onEnd: () => void;
-}) {
+// Once the countdown is over it stays as "Rest over", counting overtime, until the next confirm or
+// Dismiss.
+export function RestBar({ rest, exerciseName }: { rest: Rest; exerciseName: string }) {
+  const db = useDb();
   const p = useColors();
   const { t } = useI18n();
   const insets = useSafeAreaInsets();
-  const remaining = useRestRemaining(rest, onEnd);
-  if (!rest || !remaining) return null;
+  const clock = useRestClock(rest);
+  if (!clock) return null;
 
   return (
     <Animated.View
@@ -48,17 +43,35 @@ export function RestBar({
       <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.lg }}>
         <View style={{ flex: 1 }}>
           <LedgerText style={{ color: p.secondary, ...type.caption, fontWeight: "600" }}>
-            {t.restCard.title(exerciseName)}
+            {clock.over ? t.restCard.overTitle(exerciseName) : t.restCard.title(exerciseName)}
           </LedgerText>
-          <LedgerText style={{ color: p.label, ...type.title, fontVariant: ["tabular-nums"] }}>
-            {formatClock(remaining.remaining)}
+          <LedgerText
+            style={{
+              color: clock.over ? p.orange : p.label,
+              ...type.title,
+              fontVariant: ["tabular-nums"],
+            }}
+          >
+            {clock.over
+              ? t.restCard.overtime(formatElapsed(clock.overtime))
+              : formatClock(clock.remaining)}
           </LedgerText>
         </View>
-        <RestButton label={t.restCard.subtract} onPress={() => onAdjust(-15)} />
-        <RestButton label={t.restCard.add} onPress={() => onAdjust(15)} />
-        <RestButton label={t.restCard.skip} onPress={onEnd} accent />
+        {clock.over ? (
+          <RestButton label={t.restCard.dismiss} onPress={() => endRest(db)} accent />
+        ) : (
+          <>
+            <RestButton label={t.restCard.subtract} onPress={() => adjustRest(db, -15)} />
+            <RestButton label={t.restCard.add} onPress={() => adjustRest(db, 15)} />
+            <RestButton label={t.restCard.skip} onPress={() => endRest(db)} accent />
+          </>
+        )}
       </View>
-      <ProgressBar progress={remaining.progress} color={p.blue} track={p.fill} />
+      <ProgressBar
+        progress={clock.over ? 1 : clock.progress}
+        color={clock.over ? p.orange : p.blue}
+        track={p.fill}
+      />
     </Animated.View>
   );
 }

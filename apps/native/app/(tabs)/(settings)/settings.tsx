@@ -1,20 +1,21 @@
-import { FieldGroup, Host, Icon, ListItem, Picker, Row, Spacer, Text } from "@expo/ui";
+import { FieldGroup, Host, Icon, ListItem, Picker, Row, Spacer, Switch, Text } from "@expo/ui";
 import { Stack, useRouter } from "expo-router";
 import { Platform } from "react-native";
 
+import { restOptions } from "@/components/routine/rest-options";
 import { useDb } from "@/db/context";
 import { updateSettings } from "@/db/settings";
 import { useI18n } from "@/lib/i18n";
 import { useSettings } from "@/lib/settings";
 import { useColors } from "@/lib/theme";
-import { EFFORTS, UNITS } from "@/lib/workout/model";
+import { EFFORTS, UNITS, formatClock } from "@/lib/workout/model";
 
 export default function SettingsTab() {
   const db = useDb();
   const router = useRouter();
   const p = useColors();
   const { t } = useI18n();
-  const { effortScale, defaultWeightUnit } = useSettings();
+  const { effortScale, defaultWeightUnit, restTimerEnabled, defaultRestSeconds } = useSettings();
 
   return (
     <>
@@ -43,6 +44,25 @@ export default function SettingsTab() {
               >
                 {UNITS.map((unit) => (
                   <Picker.Item key={unit} label={t.unitName[unit]} value={unit} />
+                ))}
+              </Picker>
+            </Row>
+          </FieldGroup.Section>
+          <FieldGroup.Section title={t.settings.rest}>
+            <Switch
+              label={t.settings.restTimer}
+              value={restTimerEnabled}
+              onValueChange={(value) => updateSettings(db, { restTimerEnabled: value })}
+            />
+            <Row alignment="center">
+              <Text>{t.settings.defaultRest}</Text>
+              <Spacer flexible />
+              <Picker
+                selectedValue={defaultRestSeconds}
+                onValueChange={(value) => updateSettings(db, { defaultRestSeconds: value })}
+              >
+                {restOptions(defaultRestSeconds).map((seconds) => (
+                  <Picker.Item key={seconds} label={formatClock(seconds)} value={seconds} />
                 ))}
               </Picker>
             </Row>

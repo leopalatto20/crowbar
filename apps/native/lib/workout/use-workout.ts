@@ -1,11 +1,13 @@
 import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { AppState } from "react-native";
 
 import { useDb } from "@/db/context";
 import { dbQuery } from "@/db/query";
 import {
   exercise,
   gym,
+  rest,
   routine,
   routineExercise,
   settings,
@@ -15,6 +17,7 @@ import {
   workoutExercise,
   workoutSet,
 } from "@/db/schema";
+import { type Rest, getRest, restClock } from "@/db/rests";
 import { currentWorkout, getLedger, listHistory, listWriteBack } from "@/db/workouts";
 import { haptics } from "@/lib/haptics";
 import { useI18n } from "@/lib/i18n";
@@ -104,31 +107,54 @@ export function useElapsedSeconds(startedAt: number) {
   return (now - startedAt) / 1000;
 }
 
-export type Rest = { endsAt: number; duration: number; workoutExerciseId: string };
+// Not suspending, like useWorkoutInProgress: the Workout bar reads it under the tabs.
+export function useRest() {
+  const db = useDb();
+  return (
+    useQuery(
+      dbQuery(db, {
+        tables: [rest, workoutSet],
+        key: ["rest"],
+        fn: getRest,
+      }),
+    ).data ?? null
+  );
+}
 
-export function useRestRemaining(rest: Rest | null, onElapsed: () => void) {
+// Ticks while a Rest is shown. Coming back to the foreground reads the clock at once rather than
+// on the next tick, so a Rest that ended in the background never shows a stale countdown.
+export function useRestClock(running: Rest | null) {
   const [now, setNow] = useState(Date.now);
-  const onElapsedRef = useRef(onElapsed);
   useEffect(() => {
-    onElapsedRef.current = onElapsed;
-  });
-
-  useEffect(() => {
-    if (!rest) return;
+    if (!running) return;
     setNow(Date.now());
-    const interval = setInterval(() => {
-      const t = Date.now();
-      setNow(t);
-      if (t >= rest.endsAt) {
-        clearInterval(interval);
-        haptics.restOver();
-        onElapsedRef.current();
-      }
-    }, 250);
-    return () => clearInterval(interval);
-  }, [rest]);
+    const interval = setInterval(() => setNow(Date.now()), 250);
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") setNow(Date.now());
+    });
+    return () => {
+      clearInterval(interval);
+      subscription.remove();
+    };
+  }, [running]);
+  return running && restClock(running, now);
+}
 
-  if (!rest) return null;
-  const remaining = Math.max(0, (rest.endsAt - now) / 1000);
-  return { remaining, progress: rest.duration > 0 ? 1 - remaining / rest.duration : 1 };
+// The haptic answers the countdown reaching zero in front of the lifter. A timer held back while
+// the app was in the background fires late on return, by which time the Rest ended unseen.
+const REST_OVER_HAPTIC_WINDOW_MS = 1000;
+
+export function useRestOverHaptic() {
+  const endsAt = useRest()?.endsAt;
+  useEffect(() => {
+    if (endsAt === undefined) return;
+    // A Rest shortened to now reaches zero at once; one found over at launch fails the window.
+    const timeout = setTimeout(
+      () => {
+        if (Date.now() - endsAt < REST_OVER_HAPTIC_WINDOW_MS) haptics.restOver();
+      },
+      Math.max(0, endsAt - Date.now()),
+    );
+    return () => clearTimeout(timeout);
+  }, [endsAt]);
 }

@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 
 import type { Database } from "./database";
-import { SETTINGS_ID, settings } from "./schema";
+import { SETTINGS_ID, rest, settings } from "./schema";
 
 export type Settings = typeof settings.$inferSelect;
 
@@ -18,8 +18,14 @@ export function getSettings(db: Database): Settings {
   return row;
 }
 
-type SettingsChange = Partial<Pick<Settings, "effortScale" | "defaultWeightUnit">>;
+type SettingsChange = Partial<
+  Pick<Settings, "effortScale" | "defaultWeightUnit" | "restTimerEnabled" | "defaultRestSeconds">
+>;
 
+// Turning the Rest timer off ends the Rest running, so no card is left counting.
 export function updateSettings(db: Database, change: SettingsChange) {
-  db.update(settings).set(change).where(eq(settings.id, SETTINGS_ID)).run();
+  db.transaction((tx) => {
+    tx.update(settings).set(change).where(eq(settings.id, SETTINGS_ID)).run();
+    if (change.restTimerEnabled === false) tx.delete(rest).run();
+  });
 }

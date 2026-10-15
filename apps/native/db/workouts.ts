@@ -20,6 +20,7 @@ import { type WallClock, epochOf, wallClockOf } from "@/lib/workout/time";
 
 import type { Database } from "./database";
 import { newId } from "./id";
+import { cancelRestOf, endRest, startRest } from "./rests";
 import { createRoutine } from "./routines";
 import {
   exercise,
@@ -798,6 +799,7 @@ export function toggleSetKind(db: Database, id: string) {
       .set(set.kind === "working" ? { kind: "warmup", rir: null } : { kind: "working" })
       .where(eq(workoutSet.id, id))
       .run();
+    if (set.kind === "working") cancelRestOf(tx, id);
   });
 }
 
@@ -834,7 +836,7 @@ export function addSet(db: Database, workoutExerciseId: string) {
 // Confirming also commits whatever the lifter typed but hadn't committed yet, and the ghost
 // values of every field left empty, so an unchanged set is one tap. The first logged set of an
 // Exercise at a Gym is what creates its Station (ADR 0001), never the Workout start.
-export function confirmSet(db: Database, id: string, change: SetChange = {}) {
+export function confirmSet(db: Database, id: string, change: SetChange = {}, now = Date.now()) {
   db.transaction((tx) => {
     const found = findSet(tx, id);
     const logged = withGhosts({ ...found, ...change }, lastHereOfSet(tx, found));
@@ -850,6 +852,7 @@ export function confirmSet(db: Database, id: string, change: SetChange = {}) {
       .where(eq(workoutSet.id, id))
       .run();
     ensureStation(tx, found.workoutExerciseId);
+    startRest(tx, id, now);
   });
 }
 
@@ -866,7 +869,10 @@ export function deleteSet(db: Database, id: string) {
 }
 
 export function reopenSet(db: Database, id: string) {
-  db.update(workoutSet).set({ done: false }).where(eq(workoutSet.id, id)).run();
+  db.transaction((tx) => {
+    tx.update(workoutSet).set({ done: false }).where(eq(workoutSet.id, id)).run();
+    cancelRestOf(tx, id);
+  });
 }
 
 // The start reads in the Workout's own time zone, which never changes. The duration is kept, and
@@ -926,6 +932,7 @@ export function finishWorkout(
   { now = Date.now(), writeBack = false, saveAsRoutine }: FinishOptions = {},
 ) {
   return db.transaction((tx) => {
+    endRest(tx);
     if (writeBack) writeBackToRoutine(tx, id);
     const stationIds = stationsOf(tx, id);
     dropUnconfirmed(tx, id);

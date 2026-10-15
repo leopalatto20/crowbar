@@ -7,13 +7,16 @@ import { WorkoutBar } from "@/components/workout/workout-bar";
 import { useDb } from "@/db/context";
 import { currentWorkout } from "@/db/workouts";
 import { useI18n } from "@/lib/i18n";
-import { useWorkoutInProgress } from "@/lib/workout/use-workout";
+import { useRestOverHaptic, useWorkoutInProgress } from "@/lib/workout/use-workout";
 
 export default function TabsLayout() {
   const { t } = useI18n();
   const db = useDb();
   const router = useRouter();
   const workout = useWorkoutInProgress();
+  // Here rather than on the Rest card: the tabs stay mounted under the Ledger, so the haptic fires
+  // once whether the Ledger is open or minimized.
+  useRestOverHaptic();
 
   // The tabs mount once per launch, once the root Stack can navigate, so a Workout left in
   // progress by a killed app reopens in the Ledger over them.
