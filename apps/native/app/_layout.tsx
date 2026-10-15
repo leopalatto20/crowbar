@@ -36,6 +36,8 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             {/* Dismissing only minimizes it to the Workout bar; the Workout keeps running. */}
             <Stack.Screen name="workout" options={{ presentation: "modal" }} />
+            {/* Full screen, so it closes only by Done or Cancel, never by a stray swipe. */}
+            <Stack.Screen name="log-workout" options={{ presentation: "fullScreenModal" }} />
             <Stack.Screen
               name="finish-workout"
               options={{

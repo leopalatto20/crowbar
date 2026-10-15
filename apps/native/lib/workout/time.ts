@@ -52,3 +52,8 @@ export function wallClockOfPickerDate(date: Date): WallClock {
     minute: date.getMinutes(),
   };
 }
+
+// A new Workout is stored in the zone the device is in, so its times read as they did there.
+export function currentTimeZone() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}

@@ -1,15 +1,16 @@
 import { Stack, useRouter } from "expo-router";
 import { Suspense, useState } from "react";
 
-import { NamePrompt } from "@/components/name-prompt";
 import { RoutineList } from "@/components/routine/routine-list";
 import { WorkoutInProgressAlert } from "@/components/workout-in-progress-alert";
 import { useDb } from "@/db/context";
-import { createGym, lastUsedGym } from "@/db/gyms";
+import { lastUsedGym } from "@/db/gyms";
 import { createRoutine, deleteRoutine, duplicateRoutine, reorderRoutines } from "@/db/routines";
 import { currentWorkout, discardAndStartWorkout, startWorkout } from "@/db/workouts";
+import { useLastGym } from "@/lib/gym/use-last-gym";
 import { useI18n } from "@/lib/i18n";
 import { useRoutines } from "@/lib/routine/use-routine";
+import { currentTimeZone } from "@/lib/workout/time";
 
 export default function WorkoutTab() {
   const { t } = useI18n();
@@ -33,7 +34,6 @@ function Routines() {
     name: routine.name || t.routine.untitled,
   }));
   const [editing, setEditing] = useState(false);
-  const [namingGymFor, setNamingGymFor] = useState<PendingStart | null>(null);
   const [replacingWith, setReplacingWith] = useState<PendingStart | null>(null);
 
   function openLedger(gymId: string, { routineId }: PendingStart) {
@@ -41,15 +41,14 @@ function Routines() {
     router.push("/workout");
   }
 
-  function startAtLastGym(start: PendingStart) {
-    const gym = lastUsedGym(db);
-    if (gym) openLedger(gym.id, start);
-    else setNamingGymFor(start);
-  }
+  const { atLastGym, prompt: gymPrompt } = useLastGym(openLedger, {
+    title: t.gymPrompt.title,
+    confirmLabel: t.gymPrompt.start,
+  });
 
   function requestStart(start: PendingStart) {
     if (currentWorkout(db)) setReplacingWith(start);
-    else startAtLastGym(start);
+    else atLastGym(start);
   }
 
   // A Workout in progress always has a Gym, so the new one starts at that Gym, read before the
@@ -105,18 +104,7 @@ function Routines() {
         onDelete={remove}
         onReorder={(ids) => reorderRoutines(db, ids)}
       />
-      <NamePrompt
-        visible={namingGymFor !== null}
-        title={t.gymPrompt.title}
-        placeholder={t.gymPrompt.placeholder}
-        message={t.gymPrompt.message}
-        confirmLabel={t.gymPrompt.start}
-        onSave={(name) => {
-          setNamingGymFor(null);
-          if (namingGymFor) openLedger(createGym(db, name), namingGymFor);
-        }}
-        onDismiss={() => setNamingGymFor(null)}
-      />
+      {gymPrompt}
       <WorkoutInProgressAlert
         visible={replacingWith !== null}
         onResume={() => {
@@ -133,7 +121,3 @@ function Routines() {
 // A start held up by the Gym prompt or the in-progress alert: a Routine's, or an empty
 // Workout's when routineId is absent.
 type PendingStart = { routineId?: string };
-
-function currentTimeZone() {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone;
-}

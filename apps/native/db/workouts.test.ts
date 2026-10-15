@@ -33,6 +33,7 @@ import {
   currentWorkout,
   deleteSet,
   finishEditing,
+  finishLogging,
   discardAndStartWorkout,
   finishWorkout,
   getLedger,
@@ -43,6 +44,7 @@ import {
   listHistory,
   listWorkoutEdits,
   listWriteBack,
+  logPastWorkout,
   removeWorkoutExercise,
   moveWorkoutExercise,
   reopenSet,
@@ -2045,6 +2047,157 @@ describe("editing a past Workout's times", () => {
     expect(() => setWorkoutDuration(db, workoutId, 0)).toThrow();
     setWorkoutDuration(db, workoutId, 95);
     expect(ledger(db, workoutId).finishedAt).toBe(start + 95 * MINUTE);
+  });
+});
+
+describe("logging a past Workout", () => {
+  const NOW = Date.UTC(2026, 9, 15, 18, 0);
+  const HOUR = 3_600_000;
+
+  function historyIds(db: Database) {
+    return listHistory(db).flatMap((month) => month.workouts.map((found) => found.id));
+  }
+
+  test("is finished from the start, at the chosen Gym and time, and takes its place in History", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    const older = logBench(db, gymId, Date.UTC(2026, 9, 5, 14), [{ load: 100, reps: 5 }]);
+    const newer = logBench(db, gymId, Date.UTC(2026, 9, 12, 14), [{ load: 100, reps: 5 }]);
+
+    const id = logPastWorkout(db, {
+      gymId,
+      timeZone: TIME_ZONE,
+      startedAt: Date.UTC(2026, 9, 9, 14),
+      now: NOW,
+    });
+
+    expect(ledger(db, id)).toMatchObject({
+      gymId,
+      routineName: null,
+      startedAt: Date.UTC(2026, 9, 9, 14),
+      finishedAt: Date.UTC(2026, 9, 9, 14) + HOUR,
+      timeZone: TIME_ZONE,
+      exercises: [],
+    });
+    expect(currentWorkout(db)).toBeUndefined();
+    expect(historyIds(db)).toEqual([newer, id, older]);
+  });
+
+  test("with no start chosen, is the hour that just ended", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+
+    const id = logPastWorkout(db, { gymId, timeZone: TIME_ZONE, now: NOW + 42_000 });
+
+    expect(ledger(db, id)).toMatchObject({ startedAt: NOW - HOUR, finishedAt: NOW });
+  });
+
+  test("a start in the future is refused", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+
+    expect(() =>
+      logPastWorkout(db, { gymId, timeZone: TIME_ZONE, startedAt: NOW + 60_000, now: NOW }),
+    ).toThrow();
+    expect(historyIds(db)).toEqual([]);
+    const id = logPastWorkout(db, { gymId, timeZone: TIME_ZONE, startedAt: NOW, now: NOW });
+    expect(historyIds(db)).toEqual([id]);
+  });
+
+  test("can be logged while another Workout is in progress", async () => {
+    const { db, gymId, workoutId } = await startedWorkout();
+
+    const id = logPastWorkout(db, { gymId, timeZone: TIME_ZONE, startedAt: 1_000, now: NOW });
+
+    expect(currentWorkout(db)?.id).toBe(workoutId);
+    expect(ledger(db, id).finishedAt).not.toBeNull();
+  });
+
+  test("from a Routine, prefills from the last Workout at each Station before the chosen date", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    const routineId = createRoutine(db, "Upper A");
+    updateRoutineExercise(db, addRoutineExercise(db, routineId, benchPress.id), { sets: 2 });
+    logBench(db, gymId, Date.UTC(2026, 9, 2, 14), [
+      { load: 90, reps: 5 },
+      { load: 90, reps: 4 },
+    ]);
+    // Logged before the backfill, but done after the forgotten session.
+    logBench(db, gymId, Date.UTC(2026, 9, 14, 14), [
+      { load: 110, reps: 5 },
+      { load: 110, reps: 4 },
+    ]);
+
+    const id = logPastWorkout(db, {
+      gymId,
+      timeZone: TIME_ZONE,
+      routineId,
+      startedAt: Date.UTC(2026, 9, 9, 14),
+      now: NOW,
+    });
+
+    const [entry] = ledger(db, id).exercises;
+    expect(entry!.sets.map((set) => set.lastHere)).toEqual([
+      { load: 90, reps: 5, rir: null },
+      { load: 90, reps: 4, rir: null },
+    ]);
+    confirmSet(db, entry!.sets[0]!.id);
+    expect(setsOf(db, id, entry!.id)[0]).toMatchObject({ load: 90, reps: 5, done: true });
+
+    // Before every logged Workout, there's no last time to read.
+    setWorkoutStart(db, id, { year: 2026, month: 10, day: 1, hour: 8, minute: 0 }, NOW);
+    expect(setsOf(db, id, entry!.id)[1]!.lastHere).toBeNull();
+  });
+
+  test("never writes its structural edits back to the Routine", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    const routineId = createRoutine(db, "Upper A");
+    addRoutineExercise(db, routineId, benchPress.id);
+    const id = logPastWorkout(db, { gymId, timeZone: TIME_ZONE, routineId, startedAt: 1_000 });
+
+    const pull = addWorkoutExercise(db, id, pullUp.id);
+    confirmSet(db, setsOf(db, id, pull)[0]!.id, { reps: 8 });
+
+    expect(listWorkoutEdits(db, id)).toEqual([]);
+    expect(getRoutine(db, routineId, "en")!.exercises.map((slot) => slot.exercise.id)).toEqual([
+      benchPress.id,
+    ]);
+  });
+
+  test("done logging, keeps only what was confirmed", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    const id = logPastWorkout(db, { gymId, timeZone: TIME_ZONE, startedAt: 1_000 });
+    const bench = addWorkoutExercise(db, id, benchPress.id);
+    addSet(db, bench);
+    addWorkoutExercise(db, id, pullUp.id);
+    confirmSet(db, setsOf(db, id, bench)[0]!.id, { load: 100, reps: 5 });
+
+    finishLogging(db, id);
+
+    expect(
+      ledger(db, id).exercises.map((entry) => ({
+        exercise: entry.exercise.id,
+        sets: entry.sets.map(({ load, reps, done }) => ({ load, reps, done })),
+      })),
+    ).toEqual([{ exercise: benchPress.id, sets: [{ load: 100, reps: 5, done: true }] }]);
+    expect(ledger(db, id).finishedAt).toBe(1_000 + HOUR);
+  });
+
+  test("done logging with nothing confirmed, leaves no Workout behind", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    const routineId = createRoutine(db, "Upper A");
+    addRoutineExercise(db, routineId, benchPress.id);
+    const id = logPastWorkout(db, { gymId, timeZone: TIME_ZONE, routineId, startedAt: 1_000 });
+    setMachineNotes(db, ledger(db, id).exercises[0]!.id, "");
+
+    finishLogging(db, id);
+
+    expect(getLedger(db, id, "en")).toBeUndefined();
+    expect(historyIds(db)).toEqual([]);
+    expect(db.select().from(station).all()).toEqual([]);
   });
 });
 

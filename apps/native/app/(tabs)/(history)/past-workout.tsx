@@ -1,6 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Suspense, useEffect, useState } from "react";
-import { Keyboard } from "react-native";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { NamePrompt } from "@/components/name-prompt";
@@ -15,6 +14,7 @@ import {
   workoutSetCount,
 } from "@/db/workouts";
 import { useI18n } from "@/lib/i18n";
+import { afterKeyboardHides } from "@/lib/keyboard";
 import { useColors } from "@/lib/theme";
 import { workoutTitle } from "@/lib/workout/model";
 import { useWorkout } from "@/lib/workout/use-workout";
@@ -67,19 +67,7 @@ function PastWorkoutLedger({ ledger }: { ledger: Ledger }) {
         {editing ? (
           <Stack.Toolbar.Button
             variant="done"
-            onPress={() => {
-              // Leaving edit mode unmounts the fields, so a value typed but not yet committed is
-              // saved by blurring its field first, once the keyboard is gone.
-              if (!Keyboard.isVisible()) {
-                setEditing(false);
-                return;
-              }
-              const hidden = Keyboard.addListener("keyboardDidHide", () => {
-                hidden.remove();
-                setEditing(false);
-              });
-              Keyboard.dismiss();
-            }}
+            onPress={() => afterKeyboardHides(() => setEditing(false))}
           >
             {t.history.done}
           </Stack.Toolbar.Button>

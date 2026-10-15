@@ -34,22 +34,43 @@ import {
 } from "./schema";
 import { getSettings } from "./settings";
 
-type WorkoutStart = { gymId: string; timeZone: string; routineId?: string; now?: number };
+// Where a new Workout happens, and the Routine it starts from, if any.
+type WorkoutPlace = { gymId: string; timeZone: string; routineId?: string };
+type WorkoutStart = WorkoutPlace & { now?: number };
 
 // The database rejects a second unfinished Workout, so one in progress must be finished or
 // discarded first.
-export function startWorkout(db: Database, start: WorkoutStart) {
-  return db.transaction((tx) => insertWorkout(tx, start));
+export function startWorkout(db: Database, { now = Date.now(), ...place }: WorkoutStart) {
+  return db.transaction((tx) => insertWorkout(tx, place, now));
+}
+
+type PastWorkoutStart = WorkoutPlace & { startedAt?: number; now?: number };
+
+const PAST_WORKOUT_MS = 60 * 60_000;
+
+// A Workout forgotten at the time, backfilled. It's finished from the start, so it never stands in
+// for the one in progress, and its structural edits never reach the Routine. Prefill reads the
+// Workouts that started before it, as for any past Workout. With no start given it's the hour that
+// just ended, as a forgotten session is usually a recent one; the lifter corrects it in the Ledger.
+export function logPastWorkout(
+  db: Database,
+  { startedAt, now = Date.now(), ...place }: PastWorkoutStart,
+) {
+  const start = startedAt ?? now - (now % 60_000) - PAST_WORKOUT_MS;
+  if (start > now) throw new Error("A past Workout can't start in the future");
+  return db.transaction((tx) => insertWorkout(tx, place, start, start + PAST_WORKOUT_MS));
 }
 
 function insertWorkout(
   db: Database,
-  { gymId, timeZone, routineId, now = Date.now() }: WorkoutStart,
+  { gymId, timeZone, routineId }: WorkoutPlace,
+  startedAt: number,
+  finishedAt: number | null = null,
 ) {
   const id = newId(db);
   const source = routineId ? findRoutine(db, routineId) : undefined;
   db.insert(workout)
-    .values({ id, gymId, routineId, routineName: source?.name, startedAt: now, timeZone })
+    .values({ id, gymId, routineId, routineName: source?.name, startedAt, finishedAt, timeZone })
     .run();
   if (source) snapshotRoutine(db, id, gymId, source.id);
   return id;
@@ -120,10 +141,14 @@ function snapshotRoutine(db: Database, workoutId: string, gymId: string, routine
 }
 
 // One transaction, so a failed start never leaves the lifter with the old Workout gone.
-export function discardAndStartWorkout(db: Database, discardedId: string, start: WorkoutStart) {
+export function discardAndStartWorkout(
+  db: Database,
+  discardedId: string,
+  { now = Date.now(), ...place }: WorkoutStart,
+) {
   return db.transaction((tx) => {
     removeWorkout(tx, discardedId);
-    return insertWorkout(tx, start);
+    return insertWorkout(tx, place, now);
   });
 }
 
@@ -904,6 +929,18 @@ export function finishEditing(db: Database, id: string) {
   db.transaction((tx) => {
     const stationIds = stationsOf(tx, id);
     dropUnconfirmed(tx, id);
+    deleteEmptyStations(tx, stationIds);
+  });
+}
+
+// Done with a Workout from logPastWorkout: unlike an edit, it's kept only if something was logged,
+// as at finish, since a backfill with nothing in it records no session.
+export function finishLogging(db: Database, id: string) {
+  db.transaction((tx) => {
+    const stationIds = stationsOf(tx, id);
+    dropUnconfirmed(tx, id);
+    const kept = tx.select().from(workoutExercise).where(eq(workoutExercise.workoutId, id)).get();
+    if (!kept) tx.delete(workout).where(eq(workout.id, id)).run();
     deleteEmptyStations(tx, stationIds);
   });
 }
