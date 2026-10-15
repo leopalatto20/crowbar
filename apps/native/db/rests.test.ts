@@ -97,6 +97,17 @@ describe("starting a Rest", () => {
     expect(getRest(db)).toBeNull();
   });
 
+  test("confirming a warm-up leaves a running Rest alone but ends one that's over", async () => {
+    const { db, bench, pull } = await upperA();
+    confirmSet(db, pull.set, { reps: 8 }, 10_000);
+    confirmSet(db, bench.warmup, BENCH_SET, 20_000);
+    expect(getRest(db)).toMatchObject({ setId: pull.set });
+
+    reopenSet(db, bench.warmup);
+    confirmSet(db, bench.warmup, BENCH_SET, 200_000);
+    expect(getRest(db)).toBeNull();
+  });
+
   test("a slot with no rest Target rests for the default rest", async () => {
     const { db, pull } = await upperA();
     updateSettings(db, { defaultRestSeconds: 90 });

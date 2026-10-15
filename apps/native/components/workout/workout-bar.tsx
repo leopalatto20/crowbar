@@ -16,10 +16,10 @@ export function WorkoutBar({ workout }: { workout: WorkoutInProgress }) {
   const i18n = useI18n();
   const title = workoutTitle(workout.routineName, i18n);
   const elapsed = formatElapsed(useElapsedSeconds(workout.startedAt));
-  const rest = useRestClock(useRest());
+  const restClock = useRestClock(useRest());
   // While a Rest counts down the bar shows that instead: it's what the lifter waits on.
-  const resting = rest && !rest.over;
-  const clock = resting ? formatClock(rest.remaining) : elapsed;
+  const resting = restClock && !restClock.over;
+  const shownTime = resting ? formatClock(restClock.remaining) : elapsed;
 
   return (
     <Pressable
@@ -27,7 +27,7 @@ export function WorkoutBar({ workout }: { workout: WorkoutInProgress }) {
       onPress={() => router.navigate("/workout")}
       accessibilityRole="button"
       accessibilityLabel={title}
-      accessibilityValue={{ text: resting ? i18n.t.workoutBar.resting(clock) : clock }}
+      accessibilityValue={{ text: resting ? i18n.t.workoutBar.resting(shownTime) : shownTime }}
       accessibilityHint={i18n.t.workoutBar.open}
       style={{
         flex: 1,
@@ -55,7 +55,7 @@ export function WorkoutBar({ workout }: { workout: WorkoutInProgress }) {
           fontVariant: ["tabular-nums"],
         }}
       >
-        {clock}
+        {shownTime}
       </Text>
     </Pressable>
   );

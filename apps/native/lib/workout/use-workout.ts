@@ -147,10 +147,14 @@ const REST_OVER_HAPTIC_WINDOW_MS = 1000;
 export function useRestOverHaptic() {
   const endsAt = useRest()?.endsAt;
   useEffect(() => {
-    if (endsAt === undefined || endsAt <= Date.now()) return;
-    const timeout = setTimeout(() => {
-      if (Date.now() - endsAt < REST_OVER_HAPTIC_WINDOW_MS) haptics.restOver();
-    }, endsAt - Date.now());
+    if (endsAt === undefined) return;
+    // A Rest shortened to now reaches zero at once; one found over at launch fails the window.
+    const timeout = setTimeout(
+      () => {
+        if (Date.now() - endsAt < REST_OVER_HAPTIC_WINDOW_MS) haptics.restOver();
+      },
+      Math.max(0, endsAt - Date.now()),
+    );
     return () => clearTimeout(timeout);
   }, [endsAt]);
 }

@@ -13,8 +13,8 @@ import { useRestClock } from "@/lib/workout/use-workout";
 
 import { LedgerText } from "./ledger-text";
 
-// Lives off the Rest row, so it reads right after a kill or a stretch in the background. Once the
-// countdown is over it stays as "Rest over", counting overtime, until the next confirm or Dismiss.
+// Once the countdown is over it stays as "Rest over", counting overtime, until the next confirm or
+// Dismiss.
 export function RestBar({ rest, exerciseName }: { rest: Rest; exerciseName: string }) {
   const db = useDb();
   const p = useColors();

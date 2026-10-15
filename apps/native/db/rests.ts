@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, lte } from "drizzle-orm";
 
 import type { Database } from "./database";
 import { REST_ID, rest, workout, workoutExercise, workoutSet } from "./schema";
@@ -41,7 +41,8 @@ export function restClock(
 
 // For a set just confirmed. Only a Working set in the Workout in progress rests: warm-ups flow
 // straight into the next set, and a correction to a finished Workout is never trained. Replaces
-// any Rest already running, as only one runs at a time.
+// any Rest already running, as only one runs at a time. A warm-up still counts as the next confirm
+// that overtime waits for, so it ends a Rest that's over.
 export function startRest(db: Database, setId: string, now: number) {
   const { restTimerEnabled, defaultRestSeconds } = getSettings(db);
   const confirmed = db
@@ -56,14 +57,19 @@ export function startRest(db: Database, setId: string, now: number) {
     .where(eq(workoutSet.id, setId))
     .get();
   if (!confirmed) throw new Error(`Set ${setId} doesn't exist`);
-  if (!restTimerEnabled || confirmed.kind === "warmup" || confirmed.finishedAt !== null) return;
+  if (confirmed.finishedAt !== null) return;
+  if (confirmed.kind === "warmup") {
+    db.delete(rest).where(lte(rest.endsAt, now)).run();
+    return;
+  }
+  if (!restTimerEnabled) return;
   const seconds = confirmed.restSeconds ?? defaultRestSeconds;
   const values = { id: REST_ID, setId, startedAt: now, endsAt: now + seconds * 1000 };
   db.insert(rest).values(values).onConflictDoUpdate({ target: rest.id, set: values }).run();
 }
 
 // -15 / +15 on the card: one-off, never written back to the rest Target. Shortening a Rest past
-// now ends it now rather than in the past, so it never jumps straight into overtime.
+// now ends it now rather than in the past, so it reaches zero instead of skipping into overtime.
 export function adjustRest(db: Database, seconds: number, now = Date.now()) {
   db.transaction((tx) => {
     const running = tx.select({ endsAt: rest.endsAt }).from(rest).get();

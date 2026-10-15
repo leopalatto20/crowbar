@@ -268,8 +268,8 @@ export const workoutEdit = sqliteTable(
 
 export const REST_ID = 1;
 
-// The one Rest running, if any. Only `endsAt` is needed to reconcile it after a kill; it's never
-// part of history, so it hangs off the set that started it and goes when that set does.
+// The one Rest running, if any, kept as times rather than a countdown so it reconciles after a
+// kill. It's never part of history, so it hangs off the set that started it and goes with it.
 export const rest = sqliteTable(
   "rest",
   {
