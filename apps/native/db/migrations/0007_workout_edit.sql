@@ -12,7 +12,7 @@ CREATE TABLE `workout_edit` (
 	FOREIGN KEY (`workout_exercise_id`) REFERENCES `workout_exercise`(`id`) ON UPDATE no action ON DELETE cascade,
 	CONSTRAINT "workout_edit_kind" CHECK("workout_edit"."kind" in ('swap', 'add', 'remove', 'move')),
 	CONSTRAINT "workout_edit_swap" CHECK(("workout_edit"."kind" = 'swap') = ("workout_edit"."exercise_id" is not null)),
-	CONSTRAINT "workout_edit_add" CHECK(("workout_edit"."kind" = 'add') = ("workout_edit"."workout_exercise_id" is not null))
+	CONSTRAINT "workout_edit_remove" CHECK(("workout_edit"."kind" = 'remove') = ("workout_edit"."workout_exercise_id" is null))
 );
 --> statement-breakpoint
 CREATE INDEX `workout_edit_workout_id` ON `workout_edit` (`workout_id`);--> statement-breakpoint

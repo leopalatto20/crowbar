@@ -434,6 +434,7 @@ export function swapWorkoutExercise(db: Database, workoutExerciseId: string, exe
       recordEdit(tx, entry.workoutId, {
         kind: "swap",
         routineExerciseId: entry.routineExerciseId,
+        workoutExerciseId,
         exerciseId,
       });
     }
@@ -475,39 +476,41 @@ export function moveWorkoutExercise(db: Database, workoutExerciseId: string, pos
       tx.update(workoutExercise).set({ position: index }).where(eq(workoutExercise.id, id)).run();
     });
     // Write-back takes the order from the Ledger at finish, so a slot needs only one Move.
-    if (routineExerciseId && !hasMove(tx, workoutId, routineExerciseId)) {
-      recordEdit(tx, workoutId, { kind: "move", routineExerciseId });
+    if (routineExerciseId && !hasMove(tx, workoutExerciseId)) {
+      recordEdit(tx, workoutId, { kind: "move", routineExerciseId, workoutExerciseId });
     }
   });
 }
 
-function hasMove(db: Database, workoutId: string, routineExerciseId: string) {
+function hasMove(db: Database, workoutExerciseId: string) {
   const move = db
     .select({ id: workoutEdit.id })
     .from(workoutEdit)
-    .where(
-      and(
-        eq(workoutEdit.workoutId, workoutId),
-        eq(workoutEdit.kind, "move"),
-        eq(workoutEdit.routineExerciseId, routineExerciseId),
-      ),
-    )
+    .where(and(eq(workoutEdit.kind, "move"), eq(workoutEdit.workoutExerciseId, workoutExerciseId)))
     .get();
   return move !== undefined;
 }
 
-// What Swap, Remove and Move edit is a Routine slot, null once it's gone from the Routine. An Add
-// names the Exercise it put in the Workout: swaps and moves of that Exercise are part of the Add,
-// which the final Ledger order places.
+// Swap, Move and Remove edit a Routine slot (`routineExerciseId`), null once the slot is gone from
+// the Routine. Swaps and moves of an added Exercise are part of its Add. `workoutExerciseId` is the
+// Exercise in the Workout, whose place in the Ledger at finish places the edit.
 export type WorkoutEdit =
-  | { kind: "swap"; routineExerciseId: string | null; exerciseId: string }
+  | {
+      kind: "swap";
+      routineExerciseId: string | null;
+      workoutExerciseId: string;
+      exerciseId: string;
+    }
   | { kind: "add"; workoutExerciseId: string; exerciseId: string }
-  | { kind: "remove" | "move"; routineExerciseId: string | null };
+  | { kind: "move"; routineExerciseId: string | null; workoutExerciseId: string }
+  | { kind: "remove"; routineExerciseId: string | null };
 
+// An Add's Exercise isn't stored: it's whatever the added Exercise is now, swaps included.
 type RecordedEdit =
-  | { kind: "swap"; routineExerciseId: string; exerciseId: string }
+  | { kind: "swap"; routineExerciseId: string; workoutExerciseId: string; exerciseId: string }
   | { kind: "add"; workoutExerciseId: string }
-  | { kind: "remove" | "move"; routineExerciseId: string };
+  | { kind: "move"; routineExerciseId: string; workoutExerciseId: string }
+  | { kind: "remove"; routineExerciseId: string };
 
 function recordEdit(db: Database, workoutId: string, edit: RecordedEdit) {
   const [last] = db
@@ -527,19 +530,26 @@ export function listWorkoutEdits(db: Database, workoutId: string): WorkoutEdit[]
       routineExerciseId: workoutEdit.routineExerciseId,
       swappedTo: workoutEdit.exerciseId,
       workoutExerciseId: workoutEdit.workoutExerciseId,
-      added: workoutExercise.exerciseId,
+      current: workoutExercise.exerciseId,
     })
     .from(workoutEdit)
     .leftJoin(workoutExercise, eq(workoutExercise.id, workoutEdit.workoutExerciseId))
     .where(eq(workoutEdit.workoutId, workoutId))
     .orderBy(asc(workoutEdit.position))
     .all()
-    .map(({ kind, routineExerciseId, swappedTo, workoutExerciseId, added }): WorkoutEdit => {
-      // The workout_edit_swap and workout_edit_add checks guarantee what each kind carries.
-      if (kind === "swap") return { kind, routineExerciseId, exerciseId: swappedTo! };
+    .map(({ kind, routineExerciseId, swappedTo, workoutExerciseId, current }): WorkoutEdit => {
+      // The workout_edit_swap and workout_edit_remove checks guarantee what each kind carries.
+      if (kind === "remove") return { kind, routineExerciseId };
       if (kind === "add")
-        return { kind, workoutExerciseId: workoutExerciseId!, exerciseId: added! };
-      return { kind, routineExerciseId };
+        return { kind, workoutExerciseId: workoutExerciseId!, exerciseId: current! };
+      if (kind === "move")
+        return { kind, routineExerciseId, workoutExerciseId: workoutExerciseId! };
+      return {
+        kind,
+        routineExerciseId,
+        workoutExerciseId: workoutExerciseId!,
+        exerciseId: swappedTo!,
+      };
     });
 }
 

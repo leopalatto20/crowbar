@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "8d7d67e8-9346-459e-b1ba-3829617d4e00",
+  "id": "ec89bc04-e28c-4808-8ce4-31210cc6f684",
   "prevId": "ff50a26c-1cab-431e-8b96-7cade7d678c0",
   "tables": {
     "exercise": {
@@ -753,9 +753,9 @@
           "name": "workout_edit_swap",
           "value": "(\"workout_edit\".\"kind\" = 'swap') = (\"workout_edit\".\"exercise_id\" is not null)"
         },
-        "workout_edit_add": {
-          "name": "workout_edit_add",
-          "value": "(\"workout_edit\".\"kind\" = 'add') = (\"workout_edit\".\"workout_exercise_id\" is not null)"
+        "workout_edit_remove": {
+          "name": "workout_edit_remove",
+          "value": "(\"workout_edit\".\"kind\" = 'remove') = (\"workout_edit\".\"workout_exercise_id\" is null)"
         }
       }
     },

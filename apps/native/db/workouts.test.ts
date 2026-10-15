@@ -1256,9 +1256,14 @@ describe("mid-Workout changes", () => {
       removeWorkoutExercise(db, entries.pull);
 
       expect(listWorkoutEdits(db, workoutId)).toEqual([
-        { kind: "swap", routineExerciseId: slots.bench, exerciseId: assistedPullUp.id },
+        {
+          kind: "swap",
+          routineExerciseId: slots.bench,
+          workoutExerciseId: entries.bench,
+          exerciseId: assistedPullUp.id,
+        },
         { kind: "add", workoutExerciseId: extra, exerciseId: benchPress.id },
-        { kind: "move", routineExerciseId: slots.raise },
+        { kind: "move", routineExerciseId: slots.raise, workoutExerciseId: entries.raise },
         { kind: "remove", routineExerciseId: slots.pull },
       ]);
     });
@@ -1272,6 +1277,23 @@ describe("mid-Workout changes", () => {
 
       expect(exercisesOf(db, workoutId)).toEqual([benchPress.id]);
       expect(listWorkoutEdits(db, workoutId)).toEqual([]);
+    });
+
+    test("a swapped or moved slot left unlogged records nothing", async () => {
+      const { db, workoutId, slots, entries } = await upperAWorkout();
+      swapWorkoutExercise(db, entries.bench, assistedPullUp.id);
+      moveWorkoutExercise(db, entries.raise, 0);
+      removeWorkoutExercise(db, entries.pull);
+      confirmSet(db, setsOf(db, workoutId, entries.raise)[0]!.id, { load: 12, reps: 12 });
+      moveWorkoutExercise(db, entries.bench, 0);
+
+      finishWorkout(db, workoutId);
+
+      // The Remove was explicit, so it stays; the Swap and Move went with the unlogged slot.
+      expect(listWorkoutEdits(db, workoutId)).toEqual([
+        { kind: "move", routineExerciseId: slots.raise, workoutExerciseId: entries.raise },
+        { kind: "remove", routineExerciseId: slots.pull },
+      ]);
     });
 
     test("swapping or moving an added Exercise is part of its Add, and removing it undoes it", async () => {
@@ -1294,7 +1316,7 @@ describe("mid-Workout changes", () => {
       moveWorkoutExercise(db, entries.raise, 1);
 
       expect(listWorkoutEdits(db, workoutId)).toEqual([
-        { kind: "move", routineExerciseId: slots.raise },
+        { kind: "move", routineExerciseId: slots.raise, workoutExerciseId: entries.raise },
       ]);
     });
 
@@ -1305,7 +1327,12 @@ describe("mid-Workout changes", () => {
       removeRoutineExercise(db, slots.bench);
 
       expect(listWorkoutEdits(db, workoutId)).toEqual([
-        { kind: "swap", routineExerciseId: null, exerciseId: assistedPullUp.id },
+        {
+          kind: "swap",
+          routineExerciseId: null,
+          workoutExerciseId: entries.bench,
+          exerciseId: assistedPullUp.id,
+        },
       ]);
     });
 

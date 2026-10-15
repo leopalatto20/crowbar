@@ -11,7 +11,7 @@ import {
 
 // Relative imports: drizzle-kit loads this file without the app's path aliases.
 import { EQUIPMENT_TYPES, LOAD_TYPES, MUSCLE_GROUPS } from "../lib/exercise/model";
-import { EFFORTS, SET_KINDS, STRUCTURAL_EDITS, UNITS } from "../lib/workout/model";
+import { EFFORTS, SET_KINDS, UNITS, WORKOUT_EDIT_KINDS } from "../lib/workout/model";
 
 export const SETTINGS_ID = 1;
 
@@ -237,7 +237,7 @@ export const workoutEdit = sqliteTable(
       .notNull()
       .references(() => workout.id, { onDelete: "cascade" }),
     position: integer("position").notNull(),
-    kind: text("kind", { enum: STRUCTURAL_EDITS }).notNull(),
+    kind: text("kind", { enum: WORKOUT_EDIT_KINDS }).notNull(),
     // The Routine slot a Swap, Remove or Move edits. Null once the slot is gone from the Routine,
     // which write-back skips.
     routineExerciseId: text("routine_exercise_id").references(() => routineExercise.id, {
@@ -245,8 +245,9 @@ export const workoutEdit = sqliteTable(
     }),
     // The Exercise a Swap puts in the slot.
     exerciseId: text("exercise_id").references(() => exercise.id, { onDelete: "cascade" }),
-    // The Exercise an Add put in the Workout. Removing it, or finishing with nothing logged on it,
-    // takes the Add with it.
+    // The Exercise a Swap, Add or Move edited in the Workout. Removing it, or finishing with
+    // nothing logged on it, takes its edits with it: an unlogged Exercise records nothing. Write-back
+    // places these by where the Exercise sits in the Ledger at finish.
     workoutExerciseId: text("workout_exercise_id").references(() => workoutExercise.id, {
       onDelete: "cascade",
     }),
@@ -256,8 +257,9 @@ export const workoutEdit = sqliteTable(
     index("workout_edit_routine_exercise_id").on(t.routineExerciseId),
     index("workout_edit_exercise_id").on(t.exerciseId),
     index("workout_edit_workout_exercise_id").on(t.workoutExerciseId),
-    check("workout_edit_kind", oneOf(t.kind, STRUCTURAL_EDITS)),
+    check("workout_edit_kind", oneOf(t.kind, WORKOUT_EDIT_KINDS)),
     check("workout_edit_swap", sql`(${t.kind} = 'swap') = (${t.exerciseId} is not null)`),
-    check("workout_edit_add", sql`(${t.kind} = 'add') = (${t.workoutExerciseId} is not null)`),
+    // A Remove has no Exercise left in the Workout to point at.
+    check("workout_edit_remove", sql`(${t.kind} = 'remove') = (${t.workoutExerciseId} is null)`),
   ],
 );
