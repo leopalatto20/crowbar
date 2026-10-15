@@ -2,8 +2,10 @@ import type { ExerciseListing } from "@/db/exercises";
 
 export type ExerciseSection = { key: string; title: string; listings: ExerciseListing[] };
 
-// Every Exercise offers Hide or Unhide; only a Custom Exercise can also be edited or deleted.
+// A tap opens Exercise detail. Every Exercise offers Hide or Unhide; only a Custom Exercise can
+// also be edited or deleted.
 export type ExerciseActions = {
+  onOpen: (listing: ExerciseListing) => void;
   onEdit: (listing: ExerciseListing) => void;
   onToggleHidden: (listing: ExerciseListing) => void;
   onDelete: (listing: ExerciseListing) => void;

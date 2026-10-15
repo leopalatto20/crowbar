@@ -9,6 +9,7 @@ import m0004 from './0004_workout_in_progress.sql';
 import m0005 from './0005_workout_from_routine.sql';
 import m0006 from './0006_station_label_notes.sql';
 import m0007 from './0007_workout_edit.sql';
+import m0008 from './0008_station_retired.sql';
 
   export default {
     journal,
@@ -20,7 +21,8 @@ m0003,
 m0004,
 m0005,
 m0006,
-m0007
+m0007,
+m0008
     }
   }
   

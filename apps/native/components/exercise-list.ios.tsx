@@ -54,6 +54,7 @@ export function ExerciseList({ sections, onOpenHidden, ...actions }: ExerciseLis
 
 function ExerciseRow({
   listing,
+  onOpen,
   onEdit,
   onToggleHidden,
   onDelete,
@@ -66,7 +67,9 @@ function ExerciseRow({
     <SwipeActions modifiers={[deleteDisabled()]}>
       <ContextMenu>
         <ContextMenu.Trigger>
-          <HStack modifiers={[contentShape(shapes.rectangle())]}>
+          <HStack
+            modifiers={[contentShape(shapes.rectangle()), onTapGesture(() => onOpen(listing))]}
+          >
             <Text>{listing.name}</Text>
             <Spacer />
           </HStack>

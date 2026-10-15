@@ -16,6 +16,7 @@ export function ExerciseMenu({
   canSwap,
   canMoveUp,
   canMoveDown,
+  onHistory,
   onSwitchStation,
   onNewStation,
   onEditNotes,
@@ -73,6 +74,7 @@ export function ExerciseMenu({
                 item(t.ledger.newStation, onNewStation),
               ]
             : [
+                item(t.ledger.history, onHistory),
                 ...(currentStationId
                   ? [
                       <DropdownMenuItem key="switch" onClick={() => setShown("stations")}>

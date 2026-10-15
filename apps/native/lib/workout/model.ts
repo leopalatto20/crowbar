@@ -68,7 +68,7 @@ export function readLoad(load: number, loadType: LoadType) {
 // How a Station's loads read: the Exercise's Load type and unilateral flag, in the Station's unit.
 export type LoadFormat = { unit: Unit; loadType: LoadType; unilateral: boolean };
 
-function formatLoad(
+export function formatLoad(
   load: number,
   { unit, loadType }: LoadFormat,
   i18n: Pick<I18n, "t" | "formatDecimal">,
