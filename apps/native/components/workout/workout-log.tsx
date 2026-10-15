@@ -6,20 +6,28 @@ import { ScrollView, View } from "react-native";
 import { ExercisePickerSheet } from "@/components/exercise-picker-sheet";
 import { PressableScale } from "@/components/pressable-scale";
 import { useDb } from "@/db/context";
-import { type Ledger, addWorkoutExercise, swapWorkoutExercise } from "@/db/workouts";
+import {
+  type Ledger,
+  addWorkoutExercise,
+  setWorkoutDuration,
+  setWorkoutStart,
+  swapWorkoutExercise,
+} from "@/db/workouts";
 import { useI18n } from "@/lib/i18n";
 import { useSettings } from "@/lib/settings";
 import { radii, spacing, type, useColors } from "@/lib/theme";
+import { epochOf } from "@/lib/workout/time";
 import type { Rest } from "@/lib/workout/use-workout";
 
-import { ExerciseCard } from "./exercise-card";
+import { ExerciseCard, type LedgerMode } from "./exercise-card";
 import { LedgerText } from "./ledger-text";
 import { RestBar } from "./rest-bar";
 import { WorkoutMeta } from "./workout-meta";
+import { WorkoutTimes } from "./workout-times";
 
 type Picking = { purpose: "add" } | { purpose: "swap"; workoutExerciseId: string };
 
-export function WorkoutLog({ ledger, readOnly = false }: { ledger: Ledger; readOnly?: boolean }) {
+export function WorkoutLog({ ledger, mode }: { ledger: Ledger; mode: LedgerMode }) {
   const db = useDb();
   const router = useRouter();
   const p = useColors();
@@ -42,26 +50,42 @@ export function WorkoutLog({ ledger, readOnly = false }: { ledger: Ledger; readO
         <WorkoutMeta
           gym={ledger.gymName}
           started={
-            readOnly
-              ? t.history.started(
-                  i18n.formatDate(ledger.startedAt, ledger.timeZone),
-                  i18n.formatTime(ledger.startedAt, ledger.timeZone),
-                )
-              : t.ledger.started(i18n.formatTime(ledger.startedAt))
+            mode === "live"
+              ? t.ledger.started(i18n.formatTime(ledger.startedAt))
+              : mode === "read"
+                ? t.history.started(
+                    i18n.formatDate(ledger.startedAt, ledger.timeZone),
+                    i18n.formatTime(ledger.startedAt, ledger.timeZone),
+                  )
+                : undefined
           }
-          onChangeGym={readOnly ? undefined : () => router.push("/gym-picker")}
+          onChangeGym={mode === "live" ? () => router.push("/gym-picker") : undefined}
         />
+        {mode === "edit" && ledger.finishedAt !== null && (
+          <WorkoutTimes
+            startedAt={ledger.startedAt}
+            finishedAt={ledger.finishedAt}
+            timeZone={ledger.timeZone}
+            onChangeStart={(start) => {
+              // A start later than now is refused, so the picker snaps back to the stored one.
+              if (epochOf(start, ledger.timeZone) <= Date.now()) {
+                setWorkoutStart(db, ledger.id, start);
+              }
+            }}
+            onChangeDuration={(minutes) => setWorkoutDuration(db, ledger.id, minutes)}
+          />
+        )}
         {ledger.exercises.map((entry, position) => (
           <ExerciseCard
             key={entry.id}
             entry={entry}
             position={position}
             count={ledger.exercises.length}
-            readOnly={readOnly}
+            mode={mode}
             onSwap={() => setPicking({ purpose: "swap", workoutExerciseId: entry.id })}
             onConfirmed={(set) => {
-              // Warm-ups flow straight into the next set.
-              if (set.kind === "warmup") return;
+              // Warm-ups flow straight into the next set, and a correction to history never rests.
+              if (set.kind === "warmup" || mode !== "live") return;
               const duration = entry.target?.restSeconds ?? defaultRestSeconds;
               setRest({
                 endsAt: Date.now() + duration * 1000,
@@ -71,7 +95,7 @@ export function WorkoutLog({ ledger, readOnly = false }: { ledger: Ledger; readO
             }}
           />
         ))}
-        {!readOnly && (
+        {mode !== "read" && (
           <PressableScale
             onPress={() => setPicking({ purpose: "add" })}
             style={{
@@ -94,38 +118,38 @@ export function WorkoutLog({ ledger, readOnly = false }: { ledger: Ledger; readO
           </PressableScale>
         )}
       </ScrollView>
-      {!readOnly && (
-        <>
-          <RestBar
-            rest={rest}
-            exerciseName={resting?.exercise.name ?? ""}
-            onAdjust={(seconds) =>
-              setRest(
-                (current) =>
-                  current && {
-                    ...current,
-                    endsAt: current.endsAt + seconds * 1000,
-                    duration: current.duration + seconds,
-                  },
-              )
-            }
-            onEnd={() => setRest(null)}
-          />
-          <ExercisePickerSheet
-            visible={picking !== null}
-            title={picking?.purpose === "swap" ? t.ledger.swap : t.exercisePicker.title}
-            marked={{
-              ids: ledger.exercises.map((entry) => entry.exercise.id),
-              label: t.exercisePicker.inWorkout,
-            }}
-            onClose={() => setPicking(null)}
-            onPick={(exercise) =>
-              picking?.purpose === "swap"
-                ? swapWorkoutExercise(db, picking.workoutExerciseId, exercise.id)
-                : addWorkoutExercise(db, ledger.id, exercise.id)
-            }
-          />
-        </>
+      {mode === "live" && (
+        <RestBar
+          rest={rest}
+          exerciseName={resting?.exercise.name ?? ""}
+          onAdjust={(seconds) =>
+            setRest(
+              (current) =>
+                current && {
+                  ...current,
+                  endsAt: current.endsAt + seconds * 1000,
+                  duration: current.duration + seconds,
+                },
+            )
+          }
+          onEnd={() => setRest(null)}
+        />
+      )}
+      {mode !== "read" && (
+        <ExercisePickerSheet
+          visible={picking !== null}
+          title={picking?.purpose === "swap" ? t.ledger.swap : t.exercisePicker.title}
+          marked={{
+            ids: ledger.exercises.map((entry) => entry.exercise.id),
+            label: t.exercisePicker.inWorkout,
+          }}
+          onClose={() => setPicking(null)}
+          onPick={(exercise) =>
+            picking?.purpose === "swap"
+              ? swapWorkoutExercise(db, picking.workoutExerciseId, exercise.id)
+              : addWorkoutExercise(db, ledger.id, exercise.id)
+          }
+        />
       )}
     </View>
   );

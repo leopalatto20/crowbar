@@ -13,7 +13,8 @@ export function WorkoutMeta({
   onChangeGym,
 }: {
   gym: string;
-  started: string;
+  // Left out where the start is edited instead.
+  started?: string;
   onChangeGym?: () => void;
 }) {
   const p = useColors();
@@ -58,9 +59,11 @@ export function WorkoutMeta({
       ) : (
         <View style={chipStyle}>{gymLabel}</View>
       )}
-      <LedgerText style={{ color: p.secondary, ...type.footnote, fontWeight: "500" }}>
-        {started}
-      </LedgerText>
+      {started && (
+        <LedgerText style={{ color: p.secondary, ...type.footnote, fontWeight: "500" }}>
+          {started}
+        </LedgerText>
+      )}
     </View>
   );
 }

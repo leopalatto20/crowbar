@@ -62,6 +62,11 @@ export const es: Messages = {
     deleteMessage: (sets) =>
       `Se borrarán ${sets} ${sets === 1 ? "serie" : "series"}. No se puede deshacer.`,
     cancel: "Cancelar",
+    edit: "Editar",
+    done: "Listo",
+    start: "Inicio",
+    duration: "Duración",
+    deleteSet: "Borrar serie",
   },
   settings: {
     logging: "Registro",

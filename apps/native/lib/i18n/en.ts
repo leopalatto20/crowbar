@@ -61,6 +61,11 @@ export const en = {
     deleteMessage: (sets: number) =>
       `Deletes ${sets} ${sets === 1 ? "set" : "sets"}. This can’t be undone.`,
     cancel: "Cancel",
+    edit: "Edit",
+    done: "Done",
+    start: "Start",
+    duration: "Duration",
+    deleteSet: "Delete set",
   },
   settings: {
     logging: "Logging",

@@ -16,6 +16,7 @@ import {
 import type { EquipmentType, LoadType } from "@/lib/exercise/model";
 import type { Language } from "@/lib/i18n/locale";
 import type { Performance, SetKind, Target, Unit } from "@/lib/workout/model";
+import { type WallClock, epochOf, wallClockOf } from "@/lib/workout/time";
 
 import type { Database } from "./database";
 import { newId } from "./id";
@@ -166,7 +167,7 @@ export function listHistory(db: Database): HistoryMonth[] {
     .all();
   const months = new Map<string, HistoryMonth>();
   for (const found of workouts) {
-    const { year, month } = monthOf(found.startedAt, found.timeZone);
+    const { year, month } = wallClockOf(found.startedAt, found.timeZone);
     const key = `${year}-${month}`;
     const group = months.get(key) ?? { year, month, workouts: [] };
     group.workouts.push(found);
@@ -174,16 +175,6 @@ export function listHistory(db: Database): HistoryMonth[] {
   }
   // Time zones can interleave months in start order, so the months sort on their own.
   return [...months.values()].sort((a, b) => b.year - a.year || b.month - a.month);
-}
-
-function monthOf(epochMs: number, timeZone: string) {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone,
-    year: "numeric",
-    month: "numeric",
-  }).formatToParts(epochMs);
-  const part = (type: "year" | "month") => Number(parts.find((p) => p.type === type)!.value);
-  return { year: part("year"), month: part("month") };
 }
 
 export type LedgerSet = {
@@ -568,7 +559,9 @@ type RecordedEdit =
   | { kind: "move"; routineExerciseId: string; workoutExerciseId: string }
   | { kind: "remove"; routineExerciseId: string };
 
+// Write-back only happens at finish, so a finished Workout's edits would never be read.
 function recordEdit(db: Database, workoutId: string, edit: RecordedEdit) {
+  if (findWorkout(db, workoutId).finishedAt !== null) return;
   const [last] = db
     .select({ position: max(workoutEdit.position) })
     .from(workoutEdit)
@@ -734,8 +727,11 @@ export function toggleSetKind(db: Database, id: string) {
 
 // A set added mid-Workout has its own ghost values when last time reached its number. Otherwise
 // it copies what the set above shows, ghost values included, so an extra set is still one tap.
+// A set added to a finished Workout always copies the set above: it records what was done that
+// day, which last time doesn't speak for.
 export function addSet(db: Database, workoutExerciseId: string) {
   db.transaction((tx) => {
+    const { finishedAt } = findWorkoutExercise(tx, workoutExerciseId);
     const above = tx
       .select()
       .from(workoutSet)
@@ -750,7 +746,7 @@ export function addSet(db: Database, workoutExerciseId: string) {
       kind: above?.kind,
     };
     tx.insert(workoutSet).values(added).run();
-    if (above && !lastHereOfSet(tx, added)) {
+    if (above && (finishedAt !== null || !lastHereOfSet(tx, added))) {
       tx.update(workoutSet)
         .set(withGhosts(above, lastHereOfSet(tx, above)))
         .where(eq(workoutSet.id, added.id))
@@ -781,8 +777,61 @@ export function confirmSet(db: Database, id: string, change: SetChange = {}) {
   });
 }
 
+// An Exercise left with no sets drops out, and a Station left with no history goes with it.
+export function deleteSet(db: Database, id: string) {
+  db.transaction((tx) => {
+    const { workoutExerciseId } = findSet(tx, id);
+    tx.delete(workoutSet).where(eq(workoutSet.id, id)).run();
+    if (hasSet(tx, workoutExerciseId)) return;
+    const { stationId } = findWorkoutExercise(tx, workoutExerciseId);
+    tx.delete(workoutExercise).where(eq(workoutExercise.id, workoutExerciseId)).run();
+    if (stationId) deleteEmptyStations(tx, [stationId]);
+  });
+}
+
 export function reopenSet(db: Database, id: string) {
   db.update(workoutSet).set({ done: false }).where(eq(workoutSet.id, id)).run();
+}
+
+// The start reads in the Workout's own time zone, which never changes. The duration is kept, and
+// overlapping another Workout is fine: only a start that hasn't happened yet is refused.
+export function setWorkoutStart(db: Database, id: string, start: WallClock, now = Date.now()) {
+  db.transaction((tx) => {
+    const found = findWorkout(tx, id);
+    const startedAt = epochOf(start, found.timeZone);
+    if (startedAt > now) throw new Error(`Workout ${id} can't start in the future`);
+    const finishedAt =
+      found.finishedAt === null ? null : startedAt + (found.finishedAt - found.startedAt);
+    tx.update(workout).set({ startedAt, finishedAt }).where(eq(workout.id, id)).run();
+  });
+}
+
+export function setWorkoutDuration(db: Database, id: string, minutes: number) {
+  if (!Number.isInteger(minutes) || minutes <= 0) {
+    throw new Error(`A duration of ${minutes} minutes isn't one a Workout can last`);
+  }
+  db.transaction((tx) => {
+    const found = findWorkout(tx, id);
+    if (found.finishedAt === null) throw new Error(`Workout ${id} is still in progress`);
+    tx.update(workout)
+      .set({ finishedAt: found.startedAt + minutes * 60_000 })
+      .where(eq(workout.id, id))
+      .run();
+  });
+}
+
+function findWorkout(db: Database, id: string) {
+  const found = db
+    .select({
+      startedAt: workout.startedAt,
+      finishedAt: workout.finishedAt,
+      timeZone: workout.timeZone,
+    })
+    .from(workout)
+    .where(eq(workout.id, id))
+    .get();
+  if (!found) throw new Error(`Workout ${id} doesn't exist`);
+  return found;
 }
 
 export type FinishOptions = {
@@ -803,26 +852,7 @@ export function finishWorkout(
   return db.transaction((tx) => {
     if (writeBack) writeBackToRoutine(tx, id);
     const stationIds = stationsOf(tx, id);
-    const entries = tx
-      .select({ id: workoutExercise.id })
-      .from(workoutExercise)
-      .where(eq(workoutExercise.workoutId, id));
-    tx.delete(workoutSet)
-      .where(and(inArray(workoutSet.workoutExerciseId, entries), eq(workoutSet.done, false)))
-      .run();
-    tx.delete(workoutExercise)
-      .where(
-        and(
-          eq(workoutExercise.workoutId, id),
-          notExists(
-            tx
-              .select()
-              .from(workoutSet)
-              .where(eq(workoutSet.workoutExerciseId, workoutExercise.id)),
-          ),
-        ),
-      )
-      .run();
+    dropUnconfirmed(tx, id);
     const kept = tx.select().from(workoutExercise).where(eq(workoutExercise.workoutId, id)).get();
     if (kept) {
       tx.update(workout).set({ finishedAt: now }).where(eq(workout.id, id)).run();
@@ -832,6 +862,36 @@ export function finishWorkout(
     deleteEmptyStations(tx, stationIds);
     if (kept && saveAsRoutine !== undefined) return copyToRoutine(tx, id, saveAsRoutine);
   });
+}
+
+// Done in edit mode: sets added but never confirmed weren't part of the Workout, as at finish. A
+// Workout left with nothing stays, unlike at finish: deleting it is the lifter's call.
+export function finishEditing(db: Database, id: string) {
+  db.transaction((tx) => {
+    const stationIds = stationsOf(tx, id);
+    dropUnconfirmed(tx, id);
+    deleteEmptyStations(tx, stationIds);
+  });
+}
+
+function dropUnconfirmed(db: Database, workoutId: string) {
+  const entries = db
+    .select({ id: workoutExercise.id })
+    .from(workoutExercise)
+    .where(eq(workoutExercise.workoutId, workoutId));
+  db.delete(workoutSet)
+    .where(and(inArray(workoutSet.workoutExerciseId, entries), eq(workoutSet.done, false)))
+    .run();
+  db.delete(workoutExercise)
+    .where(
+      and(
+        eq(workoutExercise.workoutId, workoutId),
+        notExists(
+          db.select().from(workoutSet).where(eq(workoutSet.workoutExerciseId, workoutExercise.id)),
+        ),
+      ),
+    )
+    .run();
 }
 
 type PlannedEdit =
@@ -1134,6 +1194,7 @@ function findWorkoutExercise(db: Database, workoutExerciseId: string) {
       exerciseId: workoutExercise.exerciseId,
       loadType: exercise.loadType,
       gymId: workout.gymId,
+      finishedAt: workout.finishedAt,
     })
     .from(workoutExercise)
     .innerJoin(workout, eq(workout.id, workoutExercise.workoutId))
@@ -1196,6 +1257,15 @@ function hasConfirmedSet(db: Database, workoutExerciseId: string) {
     .where(and(eq(workoutSet.workoutExerciseId, workoutExerciseId), eq(workoutSet.done, true)))
     .get();
   return confirmed !== undefined;
+}
+
+function hasSet(db: Database, workoutExerciseId: string) {
+  const found = db
+    .select({ id: workoutSet.id })
+    .from(workoutSet)
+    .where(eq(workoutSet.workoutExerciseId, workoutExerciseId))
+    .get();
+  return found !== undefined;
 }
 
 function findSet(db: Database, id: string) {

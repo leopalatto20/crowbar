@@ -94,7 +94,7 @@ function LedgerScreen({ ledger }: { ledger: Ledger }) {
           {t.ledger.finish}
         </Stack.Toolbar.Button>
       </Stack.Toolbar>
-      <WorkoutLog ledger={ledger} />
+      <WorkoutLog ledger={ledger} mode="live" />
       <ConfirmDialog
         visible={confirmingDiscard}
         title={t.ledger.discardTitle}

@@ -31,6 +31,8 @@ import {
   changeWorkoutGym,
   confirmSet,
   currentWorkout,
+  deleteSet,
+  finishEditing,
   discardAndStartWorkout,
   finishWorkout,
   getLedger,
@@ -44,6 +46,8 @@ import {
   moveWorkoutExercise,
   reopenSet,
   setMachineNotes,
+  setWorkoutDuration,
+  setWorkoutStart,
   startWorkout,
   swapWorkoutExercise,
   toggleSetKind,
@@ -1711,6 +1715,232 @@ describe("deleting a finished Workout", () => {
     const next = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 3_000 });
     const entry = addWorkoutExercise(db, next, benchPress.id);
     expect(setsOf(db, next, entry)[0]!.lastHere).toEqual({ load: 100, reps: 5, rir: null });
+  });
+});
+
+describe("editing a past Workout", () => {
+  test("deleting a set keeps the others as logged", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    const workoutId = logBench(db, gymId, 1_000, [
+      { load: 100, reps: 5 },
+      { load: 100, reps: 4 },
+    ]);
+    const [entry] = ledger(db, workoutId).exercises;
+
+    deleteSet(db, entry!.sets[0]!.id);
+
+    expect(
+      setsOf(db, workoutId, entry!.id).map(({ load, reps, done }) => ({ load, reps, done })),
+    ).toEqual([{ load: 100, reps: 4, done: true }]);
+  });
+
+  test("an Exercise whose last set is deleted drops out, and its empty Station goes", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 1_000 });
+    const bench = addWorkoutExercise(db, workoutId, benchPress.id);
+    const pull = addWorkoutExercise(db, workoutId, pullUp.id);
+    confirmSet(db, setsOf(db, workoutId, bench)[0]!.id, { load: 100, reps: 5 });
+    confirmSet(db, setsOf(db, workoutId, pull)[0]!.id, { load: 0, reps: 10 });
+    finishWorkout(db, workoutId, { now: 2_000 });
+
+    deleteSet(db, setsOf(db, workoutId, bench)[0]!.id);
+
+    expect(ledger(db, workoutId).exercises.map((entry) => entry.id)).toEqual([pull]);
+    expect(
+      db
+        .select()
+        .from(station)
+        .all()
+        .map((found) => found.exerciseId),
+    ).toEqual([pullUp.id]);
+  });
+
+  test("a Station with a label or notes stays when its last set goes", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    const workoutId = logBench(db, gymId, 1_000, [{ load: 100, reps: 5 }]);
+    const [entry] = ledger(db, workoutId).exercises;
+    setMachineNotes(db, entry!.id, "Seat 4");
+
+    deleteSet(db, entry!.sets[0]!.id);
+
+    expect(ledger(db, workoutId).exercises).toEqual([]);
+    expect(
+      db
+        .select()
+        .from(station)
+        .all()
+        .map((found) => found.notes),
+    ).toEqual(["Seat 4"]);
+  });
+  test("a set added copies the one above, even where an earlier Workout reached its number", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    logBench(db, gymId, 1_000, [
+      { load: 80, reps: 8 },
+      { load: 80, reps: 8 },
+    ]);
+    const workoutId = logBench(db, gymId, 2_000, [{ load: 100, reps: 5, rir: 2 }]);
+    const [entry] = ledger(db, workoutId).exercises;
+
+    addSet(db, entry!.id);
+
+    expect(setsOf(db, workoutId, entry!.id)[1]).toMatchObject({
+      load: 100,
+      reps: 5,
+      rir: 2,
+      done: false,
+    });
+  });
+
+  test("Done drops the sets never confirmed, and an Exercise added with none", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    const workoutId = logBench(db, gymId, 1_000, [{ load: 100, reps: 5 }]);
+    const [bench] = ledger(db, workoutId).exercises;
+    addSet(db, bench!.id);
+    addSet(db, bench!.id);
+    confirmSet(db, setsOf(db, workoutId, bench!.id)[1]!.id);
+    addWorkoutExercise(db, workoutId, pullUp.id);
+
+    finishEditing(db, workoutId);
+
+    const found = ledger(db, workoutId);
+    expect(found.exercises.map((entry) => entry.id)).toEqual([bench!.id]);
+    expect(found.exercises[0]!.sets.map(({ load, reps, done }) => ({ load, reps, done }))).toEqual([
+      { load: 100, reps: 5, done: true },
+      { load: 100, reps: 5, done: true },
+    ]);
+  });
+  test("switching Station moves all of the Exercise's sets, and later prefill follows", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    const hammerWorkout = logBench(db, gymId, 1_000, [{ load: 100, reps: 5 }]);
+    const hammer = ledger(db, hammerWorkout).exercises[0]!.station!.id;
+    const mistaken = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 2_000 });
+    const bench = addWorkoutExercise(db, mistaken, benchPress.id);
+    addStation(db, bench, { label: "Life Fitness", existingLabel: "Hammer Strength" });
+    addSet(db, bench);
+    setsOf(db, mistaken, bench).forEach((set) => confirmSet(db, set.id, { load: 110, reps: 5 }));
+    finishWorkout(db, mistaken, { now: 2_500 });
+
+    switchStation(db, bench, hammer);
+
+    const [entry] = ledger(db, mistaken).exercises;
+    expect(entry?.station?.label).toBe("Hammer Strength");
+    expect(entry?.sets.map(({ load, done }) => ({ load, done }))).toEqual([
+      { load: 110, done: true },
+      { load: 110, done: true },
+    ]);
+    const next = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 3_000 });
+    const nextBench = addWorkoutExercise(db, next, benchPress.id);
+    expect(ledger(db, next).exercises[0]?.station?.id).toBe(hammer);
+    expect(setsOf(db, next, nextBench)[0]?.lastHere).toEqual({ load: 110, reps: 5, rir: null });
+  });
+
+  test("Exercise changes record nothing for write-back, which happened at finish", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    const routineId = createRoutine(db, "Upper A");
+    addRoutineExercise(db, routineId, benchPress.id);
+    addRoutineExercise(db, routineId, pullUp.id);
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, routineId, now: 1_000 });
+    for (const entry of ledger(db, workoutId).exercises) {
+      confirmSet(db, entry.sets[0]!.id, { load: 0, reps: 5 });
+    }
+    finishWorkout(db, workoutId, { now: 2_000 });
+    const [bench, pull] = ledger(db, workoutId).exercises.map((entry) => entry.id);
+
+    moveWorkoutExercise(db, pull!, 0);
+    removeWorkoutExercise(db, bench!);
+    addWorkoutExercise(db, workoutId, lateralRaise.id);
+
+    expect(listWorkoutEdits(db, workoutId)).toEqual([]);
+  });
+});
+
+describe("editing a past Workout's times", () => {
+  const NOW = Date.UTC(2026, 9, 15, 18, 0);
+  const MINUTE = 60_000;
+
+  function historyIds(db: Database) {
+    return listHistory(db).flatMap((month) => month.workouts.map((found) => found.id));
+  }
+
+  test("a new start re-sorts History and keeps the duration", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    const earlier = logBench(db, gymId, Date.UTC(2026, 9, 10, 14, 0), [{ load: 100, reps: 5 }]);
+    const later = logBench(db, gymId, Date.UTC(2026, 9, 12, 14, 0), [{ load: 100, reps: 5 }]);
+    setWorkoutDuration(db, later, 70);
+
+    // 8:30 in Mexico City, which keeps UTC-6 all year.
+    setWorkoutStart(db, later, { year: 2026, month: 10, day: 9, hour: 8, minute: 30 }, NOW);
+
+    const moved = ledger(db, later);
+    expect(moved.startedAt).toBe(Date.UTC(2026, 9, 9, 14, 30));
+    expect(moved.finishedAt).toBe(Date.UTC(2026, 9, 9, 14, 30) + 70 * MINUTE);
+    expect(historyIds(db)).toEqual([earlier, later]);
+  });
+
+  test("the start is read in the Workout's own time zone, not the device's", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    const workoutId = startWorkout(db, {
+      gymId,
+      timeZone: "America/New_York",
+      now: Date.UTC(2026, 6, 1, 12, 0),
+    });
+    confirmSet(db, setsOf(db, workoutId, addWorkoutExercise(db, workoutId, benchPress.id))[0]!.id, {
+      load: 100,
+      reps: 5,
+    });
+    finishWorkout(db, workoutId, { now: Date.UTC(2026, 6, 1, 13, 0) });
+
+    // New York is on daylight time, UTC-4, in July but standard time, UTC-5, in January.
+    setWorkoutStart(db, workoutId, { year: 2026, month: 7, day: 2, hour: 9, minute: 0 }, NOW);
+    expect(ledger(db, workoutId).startedAt).toBe(Date.UTC(2026, 6, 2, 13, 0));
+    setWorkoutStart(db, workoutId, { year: 2026, month: 1, day: 2, hour: 9, minute: 0 }, NOW);
+    expect(ledger(db, workoutId).startedAt).toBe(Date.UTC(2026, 0, 2, 14, 0));
+  });
+
+  test("a start in the future is refused", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    const workoutId = logBench(db, gymId, Date.UTC(2026, 9, 10, 14, 0), [{ load: 100, reps: 5 }]);
+
+    // NOW reads 12:00 in Mexico City.
+    expect(() =>
+      setWorkoutStart(db, workoutId, { year: 2026, month: 10, day: 15, hour: 12, minute: 1 }, NOW),
+    ).toThrow();
+    expect(ledger(db, workoutId).startedAt).toBe(Date.UTC(2026, 9, 10, 14, 0));
+    setWorkoutStart(db, workoutId, { year: 2026, month: 10, day: 15, hour: 12, minute: 0 }, NOW);
+    expect(ledger(db, workoutId).startedAt).toBe(NOW);
+  });
+
+  test("overlapping another Workout is allowed", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    const first = logBench(db, gymId, Date.UTC(2026, 9, 10, 14, 0), [{ load: 100, reps: 5 }]);
+    const second = logBench(db, gymId, Date.UTC(2026, 9, 11, 14, 0), [{ load: 100, reps: 5 }]);
+
+    setWorkoutStart(db, second, { year: 2026, month: 10, day: 10, hour: 8, minute: 0 }, NOW);
+
+    expect(ledger(db, second).startedAt).toBe(ledger(db, first).startedAt);
+    expect(historyIds(db)).toHaveLength(2);
+  });
+
+  test("a duration must be a positive number of minutes", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    const start = Date.UTC(2026, 9, 10, 14, 0);
+    const workoutId = logBench(db, gymId, start, [{ load: 100, reps: 5 }]);
+
+    expect(() => setWorkoutDuration(db, workoutId, 0)).toThrow();
+    setWorkoutDuration(db, workoutId, 95);
+    expect(ledger(db, workoutId).finishedAt).toBe(start + 95 * MINUTE);
   });
 });
 
