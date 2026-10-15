@@ -1,18 +1,18 @@
 import { and, count, countDistinct, eq, inArray, isNotNull, isNull, notExists } from "drizzle-orm";
 
-import type { Unit } from "@/lib/workout/model";
+import { type Unit, stationUnits } from "@/lib/workout/model";
 
 import type { Database } from "./database";
 import { exercise, station, workout, workoutExercise, workoutSet } from "./schema";
 import { defaultStation, deleteWorkoutsLeftEmpty } from "./workouts";
 
 // Relabels rather than converts: a wrong unit is a labelling mistake, and the numbers logged are
-// what the equipment showed. A Bodyweight load is weight added to the body, never a Stack level.
+// what the equipment showed.
 export function setStationUnit(db: Database, id: string, unit: Unit) {
   db.transaction((tx) => {
     const found = findStation(tx, id);
-    if (found.loadType === "bodyweight" && unit === "level") {
-      throw new Error(`Station ${id} is for a Bodyweight Exercise, which can't use Stack levels`);
+    if (!stationUnits(found.loadType).includes(unit)) {
+      throw new Error(`Station ${id} is for a ${found.loadType} Exercise, which can't use ${unit}`);
     }
     tx.update(station).set({ unit }).where(eq(station.id, id)).run();
   });
@@ -24,6 +24,7 @@ function findStation(db: Database, id: string) {
       exerciseId: station.exerciseId,
       gymId: station.gymId,
       notes: station.notes,
+      retired: station.retired,
       loadType: exercise.loadType,
     })
     .from(station)
@@ -41,7 +42,7 @@ export function retireStation(db: Database, id: string) {
   db.transaction((tx) => {
     const found = findStation(tx, id);
     tx.update(station).set({ retired: true }).where(eq(station.id, id)).run();
-    moveEntries(tx, unloggedEntries(tx, id), defaultStation(tx, found.exerciseId, found.gymId));
+    moveOff(tx, found, id);
   });
 }
 
@@ -63,7 +64,8 @@ export function setStationNotes(db: Database, id: string, notes: string) {
 
 // Two Stations that turn out to be the same equipment collapse into one history. Only Stations of
 // one Exercise at one Gym can be: history never crosses either (ADR 0001). The target stays as it
-// is, so the moved sets read in its unit, and a Workout that logged on both keeps both slots.
+// is, so the moved sets read in its unit, and a Workout that logged on both keeps both slots. A
+// Retired target takes no new sets, so the Workout in progress moves off it as when retiring.
 export function mergeStation(db: Database, sourceId: string, targetId: string) {
   if (sourceId === targetId) throw new Error(`Station ${sourceId} can't merge into itself`);
   db.transaction((tx) => {
@@ -81,6 +83,7 @@ export function mergeStation(db: Database, sourceId: string, targetId: string) {
       .where(eq(station.id, targetId))
       .run();
     tx.delete(station).where(eq(station.id, sourceId)).run();
+    if (target.retired) moveOff(tx, target, targetId);
   });
 }
 
@@ -118,9 +121,9 @@ export function deleteStation(db: Database, id: string) {
       .map((finished) => finished.id);
     // Detached first, or the cascade would take them too.
     const unlogged = unloggedEntries(tx, id);
-    moveEntries(tx, unlogged, undefined);
+    assignEntries(tx, unlogged, null);
     tx.delete(station).where(eq(station.id, id)).run();
-    moveEntries(tx, unlogged, defaultStation(tx, found.exerciseId, found.gymId));
+    assignEntries(tx, unlogged, defaultStation(tx, found.exerciseId, found.gymId)?.id ?? null);
     deleteWorkoutsLeftEmpty(tx, finishedIds);
   });
 }
@@ -149,9 +152,13 @@ function unloggedEntries(db: Database, stationId: string) {
     .map((entry) => entry.id);
 }
 
-function moveEntries(db: Database, ids: string[], to: { id: string } | undefined) {
-  db.update(workoutExercise)
-    .set({ stationId: to?.id ?? null })
-    .where(inArray(workoutExercise.id, ids))
-    .run();
+// Moves the unlogged Exercises of the Workout in progress from a Station that takes no new sets
+// to their default Station, or to none yet when the Gym has no other.
+function moveOff(db: Database, at: { exerciseId: string; gymId: string }, stationId: string) {
+  const to = defaultStation(db, at.exerciseId, at.gymId)?.id ?? null;
+  assignEntries(db, unloggedEntries(db, stationId), to);
+}
+
+function assignEntries(db: Database, ids: string[], stationId: string | null) {
+  db.update(workoutExercise).set({ stationId }).where(inArray(workoutExercise.id, ids)).run();
 }

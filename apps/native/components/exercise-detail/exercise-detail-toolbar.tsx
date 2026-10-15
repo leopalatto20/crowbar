@@ -4,15 +4,17 @@ import { LEDGER_MENU_ICON } from "@/components/workout/ledger-icons";
 import { useDb } from "@/db/context";
 import { hideExercise, unhideExercise } from "@/db/exercises";
 import type { ExerciseProgress, ProgressStation } from "@/db/progress";
-import { retireStation, returnStationToService, setStationUnit } from "@/db/stations";
+import { returnStationToService, setStationUnit } from "@/db/stations";
 import { useI18n } from "@/lib/i18n";
-import { UNITS } from "@/lib/workout/model";
+import { stationUnits } from "@/lib/workout/model";
 
 import { stationName } from "./station-name";
 
-// Actions that need a prompt, a confirm or a sheet are handed back; the rest act at once.
+// Actions that need a prompt, a confirm, a sheet or the screen's state are handed back; the rest
+// act at once.
 export type ExerciseDetailActions = {
   onRename: () => void;
+  onRetire: () => void;
   onEditNotes: () => void;
   onMerge: (target: ProgressStation) => void;
   onDeleteStation: () => void;
@@ -41,10 +43,6 @@ export function ExerciseDetailToolbar({
   const mergeTargets = current
     ? progress.stations.filter(({ id, gymId }) => gymId === current.gymId && id !== current.id)
     : [];
-  // A Bodyweight load is weight added to the body, which no Stack level can express.
-  const units = UNITS.filter(
-    (unit) => unit !== "level" || selected?.format.loadType !== "bodyweight",
-  );
 
   return (
     <Stack.Toolbar placement="right">
@@ -63,7 +61,7 @@ export function ExerciseDetailToolbar({
               {selected.notes ? t.ledger.editNotes : t.ledger.addNotes}
             </Stack.Toolbar.MenuAction>
             <Stack.Toolbar.Menu title={t.stationActions.changeUnit} icon="scalemass">
-              {units.map((unit) => (
+              {stationUnits(selected.format.loadType).map((unit) => (
                 <Stack.Toolbar.MenuAction
                   key={unit}
                   isOn={unit === current.unit}
@@ -81,10 +79,7 @@ export function ExerciseDetailToolbar({
                 {t.stationActions.returnToService}
               </Stack.Toolbar.MenuAction>
             ) : (
-              <Stack.Toolbar.MenuAction
-                icon="archivebox"
-                onPress={() => retireStation(db, current.id)}
-              >
+              <Stack.Toolbar.MenuAction icon="archivebox" onPress={actions.onRetire}>
                 {t.stationActions.retire}
               </Stack.Toolbar.MenuAction>
             )}

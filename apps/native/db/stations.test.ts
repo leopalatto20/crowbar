@@ -158,6 +158,23 @@ describe("retiring a Station", () => {
     expect(getLedger(db, workoutId, "en")!.exercises[0]!.station).toBeNull();
   });
 
+  test("stays listed for an Exercise of the Workout in progress already logged on it", async () => {
+    const { db, gymId } = await libraryDatabase();
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 1_000 });
+    addWorkoutExercise(db, workoutId, chestPress.id);
+    confirmSet(db, getLedger(db, workoutId, "en")!.exercises[0]!.sets[0]!.id, {
+      load: 50,
+      reps: 10,
+    });
+    const { station: retired } = getLedger(db, workoutId, "en")!.exercises[0]!;
+
+    retireStation(db, retired!.id);
+
+    const [entry] = getLedger(db, workoutId, "en")!.exercises;
+    expect(entry?.station?.id).toBe(retired!.id);
+    expect(entry?.stations).toEqual([{ id: retired!.id, label: null }]);
+  });
+
   test("returned to service, it is the default Station again", async () => {
     const { db, gymId } = await libraryDatabase();
     logWorkout(db, { gymId, exerciseId: chestPress.id, at: 1_000, loads: [50] });
@@ -198,6 +215,26 @@ describe("merging Stations", () => {
     expect(target.format.unit).toBe("lb");
     expect(target.notes).toBe("Pin 7\nSeat 4");
     expect(target.workouts.map((w) => w.sets.map((set) => set.load))).toEqual([[70], [50]]);
+  });
+
+  test("moves the Workout in progress off a Retired target where nothing is logged", async () => {
+    const { db, gymId } = await libraryDatabase();
+    logWorkout(db, { gymId, exerciseId: chestPress.id, at: 1_000, loads: [50] });
+    const sourceId = selected(db, chestPress.id).station.id;
+    const targetId = logOnNewStation(db, {
+      gymId,
+      exerciseId: chestPress.id,
+      at: 2_000,
+      label: "Hammer Strength",
+    });
+    retireStation(db, targetId);
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 3_000 });
+    addWorkoutExercise(db, workoutId, chestPress.id);
+    expect(getLedger(db, workoutId, "en")!.exercises[0]!.station?.id).toBe(sourceId);
+
+    mergeStation(db, sourceId, targetId);
+
+    expect(getLedger(db, workoutId, "en")!.exercises[0]!.station).toBeNull();
   });
 
   test("the source's notes become the target's when it has none", async () => {

@@ -348,8 +348,13 @@ export function getLedger(db: Database, id: string, language: Language): Ledger 
             unilateral,
           },
           station: stationId ? { id: stationId, label: stationLabel, notes: stationNotes } : null,
+          // A Retired Station is left out, since nothing new is logged to it, unless the Exercise
+          // is on it already, having logged there before it was retired.
           stations: stationsAtGym
-            .filter((option) => option.exerciseId === exerciseId)
+            .filter(
+              (option) =>
+                option.exerciseId === exerciseId && (!option.retired || option.id === stationId),
+            )
             .map(({ id, label }) => ({ id, label })),
           // An Exercise with no Station yet shows the unit its Station will be created with.
           unit: unit ?? newStationUnit(defaultWeightUnit, loadType),
@@ -361,18 +366,16 @@ export function getLedger(db: Database, id: string, language: Language): Ledger 
   };
 }
 
-// A Retired Station is left out: nothing new is logged to it until it's returned to service.
 function stationsAt(db: Database, exerciseIds: string[], gymId: string) {
   return db
-    .select({ id: station.id, exerciseId: station.exerciseId, label: station.label })
+    .select({
+      id: station.id,
+      exerciseId: station.exerciseId,
+      label: station.label,
+      retired: station.retired,
+    })
     .from(station)
-    .where(
-      and(
-        inArray(station.exerciseId, exerciseIds),
-        eq(station.gymId, gymId),
-        eq(station.retired, false),
-      ),
-    )
+    .where(and(inArray(station.exerciseId, exerciseIds), eq(station.gymId, gymId)))
     .orderBy(asc(sql`${station.label} collate nocase`), asc(station.id))
     .all();
 }

@@ -16,6 +16,7 @@ import {
   deleteStation,
   mergeStation,
   renameStation,
+  retireStation,
   setStationNotes,
   stationHistoryCounts,
 } from "@/db/stations";
@@ -65,6 +66,12 @@ export function ExerciseDetail({
         progress={progress}
         onDone={onDone}
         onRename={() => setRenaming(true)}
+        // Pinned first: the default would otherwise move off the Station once it's retired,
+        // taking Return to Service out of reach.
+        onRetire={() => {
+          setStationId(selected!.station.id);
+          retireStation(db, selected!.station.id);
+        }}
         onEditNotes={() => setEditingNotes(true)}
         onMerge={(target) =>
           setMerging({ target, sets: stationHistoryCounts(db, selected!.station.id).sets })
