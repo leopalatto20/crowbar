@@ -1,4 +1,4 @@
-import { and, count, countDistinct, eq, exists, inArray, isNotNull, notExists } from "drizzle-orm";
+import { and, count, countDistinct, eq, exists, isNotNull } from "drizzle-orm";
 
 import type { EquipmentType, LoadType, MuscleGroup } from "@/lib/exercise/model";
 import type { Language } from "@/lib/i18n/locale";
@@ -7,6 +7,7 @@ import type { BuiltInExercise } from "./built-in-exercises";
 import type { Database } from "./database";
 import { newId } from "./id";
 import { exercise, station, workout, workoutExercise, workoutSet } from "./schema";
+import { deleteWorkoutsLeftEmpty } from "./workouts";
 
 // Insert-only: a shipped Built-in Exercise never changes, and its hidden flag belongs to the lifter.
 export function seedBuiltInExercises(db: Database, builtIns: readonly BuiltInExercise[]) {
@@ -206,20 +207,7 @@ export function deleteCustomExercise(db: Database, id: string) {
       .all()
       .map((found) => found.id);
     tx.delete(exercise).where(eq(exercise.id, id)).run();
-    tx.delete(workout)
-      .where(
-        and(
-          inArray(workout.id, finishedIds),
-          notExists(
-            tx
-              .select()
-              .from(workoutSet)
-              .innerJoin(workoutExercise, eq(workoutExercise.id, workoutSet.workoutExerciseId))
-              .where(and(eq(workoutExercise.workoutId, workout.id), eq(workoutSet.done, true))),
-          ),
-        ),
-      )
-      .run();
+    deleteWorkoutsLeftEmpty(tx, finishedIds);
   });
 }
 

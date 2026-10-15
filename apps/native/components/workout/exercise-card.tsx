@@ -1,9 +1,10 @@
 import { SymbolView } from "expo-symbols";
 import { useState } from "react";
-import { Pressable, TextInput, View } from "react-native";
+import { TextInput, View } from "react-native";
 import Animated, { useReducedMotion } from "react-native-reanimated";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { NotesInput, NotesLine } from "@/components/machine-notes";
 import { PressableScale } from "@/components/pressable-scale";
 import { StationLabelPrompt } from "@/components/station-label-prompt";
 import { useDb } from "@/db/context";
@@ -133,6 +134,7 @@ export function ExerciseCard({
         {editingNotes ? (
           <NotesInput
             notes={notes}
+            maxFontSizeMultiplier={LEDGER_MAX_FONT_SCALE}
             onCommit={(text) => {
               setMachineNotes(db, entry.id, text);
               setEditingNotes(false);
@@ -142,6 +144,7 @@ export function ExerciseCard({
           notes && (
             <NotesLine
               notes={notes}
+              maxFontSizeMultiplier={LEDGER_MAX_FONT_SCALE}
               onPress={mode === "read" ? undefined : () => setEditingNotes(true)}
             />
           )
@@ -253,74 +256,6 @@ function StationChip({ label }: { label: string }) {
       <LedgerText numberOfLines={1} style={{ color: p.label, ...type.footnote, fontWeight: "600" }}>
         {label}
       </LedgerText>
-    </View>
-  );
-}
-
-function PinIcon() {
-  const p = useColors();
-  return (
-    <SymbolView
-      name={{ ios: "pin.fill", android: "push_pin" }}
-      size={12}
-      tintColor={p.secondary}
-      style={{ marginTop: 2 }}
-    />
-  );
-}
-
-function NotesLine({ notes, onPress }: { notes: string; onPress?: () => void }) {
-  const p = useColors();
-  const { t } = useI18n();
-  const content = (
-    <>
-      <PinIcon />
-      <LedgerText style={{ flex: 1, color: p.secondary, ...type.footnote }}>{notes}</LedgerText>
-    </>
-  );
-  const style = { flexDirection: "row", alignItems: "flex-start", gap: spacing.xs } as const;
-  if (!onPress) return <View style={style}>{content}</View>;
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={notes}
-      accessibilityHint={t.ledger.editNotes}
-      style={style}
-    >
-      {content}
-    </Pressable>
-  );
-}
-
-// Edited in place and saved when the field loses focus, as the set fields are.
-function NotesInput({
-  notes,
-  onCommit,
-}: {
-  notes: string | null;
-  onCommit: (text: string) => void;
-}) {
-  const p = useColors();
-  const { t } = useI18n();
-  const [text, setText] = useState(notes ?? "");
-  return (
-    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: spacing.xs }}>
-      <PinIcon />
-      <TextInput
-        value={text}
-        onChangeText={setText}
-        onBlur={() => onCommit(text)}
-        autoFocus
-        // Wraps a long note, while Return saves it: notes are a line or two, never paragraphs.
-        multiline
-        submitBehavior="blurAndSubmit"
-        returnKeyType="done"
-        placeholder={t.ledger.notesPlaceholder}
-        placeholderTextColor={p.tertiary}
-        maxFontSizeMultiplier={LEDGER_MAX_FONT_SCALE}
-        style={{ flex: 1, color: p.label, ...type.footnote, padding: 0 }}
-      />
     </View>
   );
 }

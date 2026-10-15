@@ -7,6 +7,11 @@ export const EFFORTS = ["RIR", "RPE"] as const;
 export type Effort = (typeof EFFORTS)[number];
 export const UNITS = ["kg", "lb", "level"] as const;
 export type Unit = (typeof UNITS)[number];
+
+// A Bodyweight load is weight added to the body, which no Stack level can express.
+export function stationUnits(loadType: LoadType): Unit[] {
+  return UNITS.filter((unit) => unit !== "level" || loadType !== "bodyweight");
+}
 export const SET_KINDS = ["warmup", "working"] as const;
 export type SetKind = (typeof SET_KINDS)[number];
 export const WORKOUT_EDIT_KINDS = ["swap", "add", "remove", "move"] as const;

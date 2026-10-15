@@ -1,42 +1,93 @@
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { startTransition, useState } from "react";
 import { Pressable, ScrollView, Text, type TextStyle, View } from "react-native";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
+import { EditExerciseSheet } from "@/components/custom-exercise-sheet";
+import { useDeleteExercise } from "@/components/delete-exercise";
 import { EmptyState } from "@/components/empty-state";
-import type { ProgressOpening, RepRecords, StationWorkout } from "@/db/progress";
+import { NotesInput, NotesLine } from "@/components/machine-notes";
+import { NamePrompt } from "@/components/name-prompt";
+import { useDb } from "@/db/context";
+import type { ProgressOpening, ProgressStation, RepRecords, StationWorkout } from "@/db/progress";
+import {
+  type StationHistoryCounts,
+  deleteStation,
+  mergeStation,
+  renameStation,
+  retireStation,
+  setStationNotes,
+  stationHistoryCounts,
+} from "@/db/stations";
 import { useExerciseProgress } from "@/lib/exercise/use-progress";
 import { useI18n } from "@/lib/i18n";
 import { radii, spacing, type, useColors } from "@/lib/theme";
 import { useEffort } from "@/lib/workout/effort";
 import { type LoadFormat, formatLoad, formatPerformance } from "@/lib/workout/model";
 
+import { ExerciseDetailToolbar } from "./exercise-detail-toolbar";
 import { ProgressChart } from "./progress-chart";
+import { stationName } from "./station-name";
 import { StationSwitcher } from "./station-switcher";
 
 // Opens on `stationId` when given, else on the Station last used at `gymId`, or at the current or
-// last-used Gym when that's not given either.
+// last-used Gym when that's not given either. `onDone` adds a Done button, for when it's a sheet.
 export function ExerciseDetail({
   exerciseId,
   stationId: initialStationId,
   gymId,
-}: ProgressOpening & { exerciseId: string }) {
+  onDone,
+}: ProgressOpening & { exerciseId: string; onDone?: () => void }) {
+  const db = useDb();
+  const router = useRouter();
   const p = useColors();
   const i18n = useI18n();
   const { t } = i18n;
   const [stationId, setStationId] = useState(initialStationId);
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [editingExercise, setEditingExercise] = useState(false);
+  // Counted when the confirm opens, so it states exactly what the action will take.
+  const [merging, setMerging] = useState<{ target: ProgressStation; sets: number } | null>(null);
+  const [deletingStation, setDeletingStation] = useState<StationHistoryCounts | null>(null);
+  const exerciseDeletion = useDeleteExercise(() => router.back());
   const progress = useExerciseProgress(exerciseId, { stationId, gymId });
   if (!progress) return null;
   const { selected } = progress;
+  // Keeps the current Station on screen while the next one reads, instead of blanking.
+  const switchTo = (id: string | undefined) => startTransition(() => setStationId(id));
 
   return (
     <>
       <Stack.Screen options={{ title: progress.name }} />
+      <ExerciseDetailToolbar
+        exerciseId={exerciseId}
+        progress={progress}
+        onDone={onDone}
+        onRename={() => setRenaming(true)}
+        // Pinned first: the default would otherwise move off the Station once it's retired,
+        // taking Return to Service out of reach.
+        onRetire={() => {
+          setStationId(selected!.station.id);
+          retireStation(db, selected!.station.id);
+        }}
+        onEditNotes={() => setEditingNotes(true)}
+        onMerge={(target) =>
+          setMerging({ target, sets: stationHistoryCounts(db, selected!.station.id).sets })
+        }
+        onDeleteStation={() => setDeletingStation(stationHistoryCounts(db, selected!.station.id))}
+        onEditExercise={() => setEditingExercise(true)}
+        onDeleteExercise={() =>
+          exerciseDeletion.request({ id: exerciseId, name: progress.name, hidden: progress.hidden })
+        }
+      />
       {!selected ? (
         <EmptyState message={t.exerciseDetail.noSets} />
       ) : (
         <ScrollView
           contentInsetAdjustmentBehavior="automatic"
+          keyboardShouldPersistTaps="handled"
           style={{ backgroundColor: p.background }}
           contentContainerStyle={{
             padding: spacing.xl,
@@ -48,12 +99,24 @@ export function ExerciseDetail({
             <StationSwitcher
               stations={progress.stations}
               current={selected.station}
-              // Keeps the current Station on screen while the next one reads, instead of blanking.
-              onSwitch={(id) => startTransition(() => setStationId(id))}
+              onSwitch={switchTo}
             />
             <Text style={{ color: p.secondary, ...type.footnote }}>
               {t.exerciseDetail.loadsIn(t.unitName[selected.format.unit])}
             </Text>
+            {editingNotes ? (
+              <NotesInput
+                notes={selected.notes}
+                onCommit={(text) => {
+                  setStationNotes(db, selected.station.id, text);
+                  setEditingNotes(false);
+                }}
+              />
+            ) : (
+              selected.notes && (
+                <NotesLine notes={selected.notes} onPress={() => setEditingNotes(true)} />
+              )
+            )}
           </View>
           {selected.workouts.length === 0 ? (
             <Text style={{ color: p.secondary, ...type.body, textAlign: "center" }}>
@@ -76,6 +139,65 @@ export function ExerciseDetail({
           )}
         </ScrollView>
       )}
+      {selected && (
+        <>
+          <NamePrompt
+            // Remounted per Station, so the field starts from the label it has now.
+            key={`${selected.station.id}:${selected.station.label}`}
+            visible={renaming}
+            title={t.stationActions.rename}
+            placeholder={t.stationActions.renamePlaceholder}
+            confirmLabel={t.stationActions.save}
+            initialName={selected.station.label ?? ""}
+            onSave={(label) => {
+              setRenaming(false);
+              renameStation(db, selected.station.id, label);
+            }}
+            onDismiss={() => setRenaming(false)}
+          />
+          <ConfirmDialog
+            visible={merging !== null}
+            title={merging ? t.stationActions.mergeTitle(stationName(merging.target, i18n)) : ""}
+            message={
+              merging
+                ? [
+                    t.stationActions.mergeMessage(merging.sets, stationName(merging.target, i18n)),
+                    ...(merging.target.unit === selected.station.unit
+                      ? []
+                      : [t.stationActions.mergeUnit(t.unitName[merging.target.unit])]),
+                  ].join(" ")
+                : ""
+            }
+            confirmLabel={t.stationActions.merge}
+            cancelLabel={t.stationActions.cancel}
+            onConfirm={() => {
+              setMerging(null);
+              if (!merging) return;
+              mergeStation(db, selected.station.id, merging.target.id);
+              switchTo(merging.target.id);
+            }}
+            onDismiss={() => setMerging(null)}
+          />
+          <ConfirmDialog
+            visible={deletingStation !== null}
+            title={t.stationActions.deleteTitle(stationName(selected.station, i18n))}
+            message={deletingStation ? t.stationActions.deleteMessage(deletingStation) : ""}
+            confirmLabel={t.stationActions.delete}
+            cancelLabel={t.stationActions.cancel}
+            onConfirm={() => {
+              setDeletingStation(null);
+              deleteStation(db, selected.station.id);
+              switchTo(undefined);
+            }}
+            onDismiss={() => setDeletingStation(null)}
+          />
+        </>
+      )}
+      <EditExerciseSheet
+        exerciseId={editingExercise ? exerciseId : null}
+        onClose={() => setEditingExercise(false)}
+      />
+      {exerciseDeletion.dialog}
     </>
   );
 }

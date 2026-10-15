@@ -1,6 +1,7 @@
 import type { EquipmentType, LoadType, MuscleGroup } from "@/lib/exercise/model";
 import type { ExerciseHistoryCounts } from "@/db/exercises";
 import type { GymHistoryCounts } from "@/db/gyms";
+import type { StationHistoryCounts } from "@/db/stations";
 import type { WriteBackEdit } from "@/db/workouts";
 import type { Age } from "@/lib/routine/model";
 
@@ -248,6 +249,26 @@ export const en = {
     chartReps: (reps: string, perSide: boolean) => `${reps} reps${perSide ? "/side" : ""}`,
     chartSets: (count: number) => `${count} ${count === 1 ? "set" : "sets"}`,
     chartSummary: (value: string, detail: string) => `Latest: ${value}, ${detail}`,
+  },
+  stationActions: {
+    more: "More",
+    rename: "Rename Station",
+    renamePlaceholder: "Label",
+    save: "Save",
+    changeUnit: "Change Unit",
+    retire: "Retire Station",
+    returnToService: "Return to Service",
+    mergeInto: "Merge Into",
+    merge: "Merge",
+    mergeTitle: (target: string) => `Merge into “${target}”?`,
+    mergeMessage: (sets: number, target: string) =>
+      `Moves ${sets} ${sets === 1 ? "set" : "sets"} to ${target} and deletes this Station. Its machine notes are added to ${target}'s.`,
+    mergeUnit: (unit: string) => `Moved loads will read in ${unit}.`,
+    delete: "Delete Station",
+    deleteTitle: (station: string) => `Delete “${station}”?`,
+    deleteMessage: ({ sets, workouts }: StationHistoryCounts) =>
+      `Deletes ${sets} ${sets === 1 ? "set" : "sets"} across ${workouts} ${workouts === 1 ? "Workout" : "Workouts"}.`,
+    cancel: "Cancel",
   },
   stationPrompt: {
     title: "New Station",

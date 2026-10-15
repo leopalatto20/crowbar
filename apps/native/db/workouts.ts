@@ -348,8 +348,13 @@ export function getLedger(db: Database, id: string, language: Language): Ledger 
             unilateral,
           },
           station: stationId ? { id: stationId, label: stationLabel, notes: stationNotes } : null,
+          // A Retired Station is left out, since nothing new is logged to it, unless the Exercise
+          // is on it already, having logged there before it was retired.
           stations: stationsAtGym
-            .filter((option) => option.exerciseId === exerciseId)
+            .filter(
+              (option) =>
+                option.exerciseId === exerciseId && (!option.retired || option.id === stationId),
+            )
             .map(({ id, label }) => ({ id, label })),
           // An Exercise with no Station yet shows the unit its Station will be created with.
           unit: unit ?? newStationUnit(defaultWeightUnit, loadType),
@@ -363,7 +368,12 @@ export function getLedger(db: Database, id: string, language: Language): Ledger 
 
 function stationsAt(db: Database, exerciseIds: string[], gymId: string) {
   return db
-    .select({ id: station.id, exerciseId: station.exerciseId, label: station.label })
+    .select({
+      id: station.id,
+      exerciseId: station.exerciseId,
+      label: station.label,
+      retired: station.retired,
+    })
     .from(station)
     .where(and(inArray(station.exerciseId, exerciseIds), eq(station.gymId, gymId)))
     .orderBy(asc(sql`${station.label} collate nocase`), asc(station.id))
@@ -686,13 +696,16 @@ export function listGymChangeRelabels(
 
 // The Station last used for the Exercise at the Gym. One never logged to, kept for its label or
 // notes, comes after every Station in use: SQLite sorts the null start time last when descending.
-function defaultStation(db: Database, exerciseId: string, gymId: string) {
+// A Retired Station never is: with no other, the first logged set creates a fresh one.
+export function defaultStation(db: Database, exerciseId: string, gymId: string) {
   return db
     .select({ id: station.id, unit: station.unit })
     .from(station)
     .leftJoin(workoutExercise, eq(workoutExercise.stationId, station.id))
     .leftJoin(workout, eq(workout.id, workoutExercise.workoutId))
-    .where(and(eq(station.exerciseId, exerciseId), eq(station.gymId, gymId)))
+    .where(
+      and(eq(station.exerciseId, exerciseId), eq(station.gymId, gymId), eq(station.retired, false)),
+    )
     .groupBy(station.id)
     .orderBy(desc(max(workout.startedAt)), desc(station.id))
     .limit(1)
@@ -722,6 +735,7 @@ export function addStation(
         and(
           eq(station.exerciseId, entry.exerciseId),
           eq(station.gymId, entry.gymId),
+          eq(station.retired, false),
           isNull(station.label),
         ),
       )
@@ -750,10 +764,13 @@ export function switchStation(db: Database, workoutExerciseId: string, stationId
           eq(station.id, stationId),
           eq(station.exerciseId, entry.exerciseId),
           eq(station.gymId, entry.gymId),
+          eq(station.retired, false),
         ),
       )
       .get();
-    if (!target) throw new Error(`Station ${stationId} isn't one for this Exercise at this Gym`);
+    if (!target) {
+      throw new Error(`Station ${stationId} isn't one in service for this Exercise at this Gym`);
+    }
     assignStation(tx, workoutExerciseId, stationId);
   });
 }
@@ -1228,6 +1245,24 @@ function removeWorkout(db: Database, id: string) {
   const stationIds = stationsOf(db, id);
   db.delete(workout).where(eq(workout.id, id)).run();
   deleteEmptyStations(db, stationIds);
+}
+
+// For a delete that cascaded into these Workouts: one left with no logged set records no session.
+export function deleteWorkoutsLeftEmpty(db: Database, ids: string[]) {
+  db.delete(workout)
+    .where(
+      and(
+        inArray(workout.id, ids),
+        notExists(
+          db
+            .select()
+            .from(workoutSet)
+            .innerJoin(workoutExercise, eq(workoutExercise.id, workoutSet.workoutExerciseId))
+            .where(and(eq(workoutExercise.workoutId, workout.id), eq(workoutSet.done, true))),
+        ),
+      ),
+    )
+    .run();
 }
 
 function stationsOf(db: Database, workoutId: string) {
