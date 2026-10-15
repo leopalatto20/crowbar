@@ -11,14 +11,18 @@ import {
   Text,
 } from "@expo/ui";
 import { Stack, useRouter } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Linking, Platform } from "react-native";
 
 import { NoticeDialog } from "@/components/notice-dialog";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { restOptions } from "@/components/routine/rest-options";
-import { useDb } from "@/db/context";
+import { type DataSummary, summarizeData } from "@/db/backups";
+import { useDatabaseReplacement, useDb } from "@/db/context";
 import { updateSettings } from "@/db/settings";
+import { currentWorkout } from "@/db/workouts";
 import { exportBackup } from "@/lib/backup/export-backup";
+import { discardPickedBackup, pickBackup } from "@/lib/backup/restore-backup";
 import { useI18n } from "@/lib/i18n";
 import { ageOf } from "@/lib/i18n/locale";
 import { useSettings } from "@/lib/settings";
@@ -30,14 +34,72 @@ export default function SettingsTab() {
   const db = useDb();
   const router = useRouter();
   const p = useColors();
-  const { t } = useI18n();
-  const { effortScale, defaultWeightUnit, restTimerEnabled, defaultRestSeconds, lastExportedAt } =
-    useSettings();
+  const { t, formatFullDate } = useI18n();
+  const replacement = useDatabaseReplacement();
+  const {
+    effortScale,
+    defaultWeightUnit,
+    restTimerEnabled,
+    defaultRestSeconds,
+    lastExportedAt,
+    undoRestoreReplacedAt,
+  } = useSettings();
   const notificationStatus = useNotificationStatus();
   // Once asked, only system settings can turn notifications back on; Crowbar never asks again.
   const denied = notificationStatus === "denied";
   const [exporting, setExporting] = useState(false);
   const [exportFailed, setExportFailed] = useState(false);
+  const [picking, setPicking] = useState(false);
+  // Kept after dismissing, so a dialog's text holds while it animates away.
+  const [notice, setNotice] = useState({ title: "", message: "", shown: false });
+  const [restoring, setRestoring] = useState({
+    backup: { workouts: 0, lastWorkoutAt: null } as DataSummary,
+    current: { workouts: 0, lastWorkoutAt: null } as DataSummary,
+    shown: false,
+  });
+  const [undoing, setUndoing] = useState(false);
+  // iOS reports a confirmed alert as dismissed too, which mustn't discard the Backup being restored.
+  const restoreConfirmed = useRef(false);
+
+  function showNotice(title: string, message: string) {
+    setNotice({ title, message, shown: true });
+  }
+
+  // Restoring replaces the Workout in progress along with everything else.
+  function refusedMidWorkout() {
+    if (!currentWorkout(db)) return false;
+    showNotice(t.restore.workoutInProgressTitle, t.restore.workoutInProgressMessage);
+    return true;
+  }
+
+  async function chooseBackup() {
+    if (refusedMidWorkout()) return;
+    setPicking(true);
+    try {
+      const inspection = await pickBackup(db, replacement.folder);
+      if (!inspection) return;
+      if (!inspection.valid) {
+        showNotice(t.restore.rejectedTitle, t.restore.rejected[inspection.problem]);
+        return;
+      }
+      restoreConfirmed.current = false;
+      setRestoring({ backup: inspection, current: summarizeData(db), shown: true });
+    } catch {
+      discardPickedBackup(replacement.folder);
+      showNotice(t.restore.failedTitle.restore, t.restore.failedMessage.restore);
+    } finally {
+      setPicking(false);
+    }
+  }
+
+  function describe({ workouts, lastWorkoutAt }: DataSummary) {
+    return t.restore.summary(
+      workouts,
+      lastWorkoutAt === null ? null : formatFullDate(lastWorkoutAt),
+    );
+  }
+
+  const replacedOn = undoRestoreReplacedAt === null ? "" : formatFullDate(undoRestoreReplacedAt);
 
   async function shareBackup() {
     setExporting(true);
@@ -137,6 +199,21 @@ export default function SettingsTab() {
               disabled={exporting}
               onPress={() => void shareBackup()}
             />
+            <Button
+              variant="text"
+              label={t.restore.restoreFromBackup}
+              disabled={picking}
+              onPress={() => void chooseBackup()}
+            />
+            {undoRestoreReplacedAt !== null && (
+              <Button
+                variant="text"
+                label={t.restore.undoRestore(replacedOn)}
+                onPress={() => {
+                  if (!refusedMidWorkout()) setUndoing(true);
+                }}
+              />
+            )}
             {lastExportedAt !== null && (
               <FieldGroup.SectionFooter>
                 <Text>{t.settings.lastExported(t.ago(ageOf(lastExportedAt, Date.now())))}</Text>
@@ -151,6 +228,41 @@ export default function SettingsTab() {
         message={t.settings.exportFailedMessage}
         dismissLabel={t.settings.exportFailedDismiss}
         onDismiss={() => setExportFailed(false)}
+      />
+      <NoticeDialog
+        visible={notice.shown}
+        title={notice.title}
+        message={notice.message}
+        dismissLabel={t.restore.dismiss}
+        onDismiss={() => setNotice({ ...notice, shown: false })}
+      />
+      <ConfirmDialog
+        visible={restoring.shown}
+        title={t.restore.confirmTitle}
+        message={t.restore.confirmMessage(describe(restoring.backup), describe(restoring.current))}
+        confirmLabel={t.restore.confirm}
+        cancelLabel={t.restore.cancel}
+        onConfirm={() => {
+          restoreConfirmed.current = true;
+          setRestoring({ ...restoring, shown: false });
+          replacement.restore();
+        }}
+        onDismiss={() => {
+          setRestoring({ ...restoring, shown: false });
+          if (!restoreConfirmed.current) discardPickedBackup(replacement.folder);
+        }}
+      />
+      <ConfirmDialog
+        visible={undoing}
+        title={t.restore.undoTitle}
+        message={t.restore.undoMessage(replacedOn)}
+        confirmLabel={t.restore.undo}
+        cancelLabel={t.restore.cancel}
+        onConfirm={() => {
+          setUndoing(false);
+          replacement.undoRestore();
+        }}
+        onDismiss={() => setUndoing(false)}
       />
     </>
   );

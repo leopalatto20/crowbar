@@ -105,6 +105,41 @@ export const es: Messages = {
       `Se eliminarán ${stations} ${stations === 1 ? "estación" : "estaciones"} y ${sets} ${sets === 1 ? "serie" : "series"} de ${workouts} ${workouts === 1 ? "entrenamiento" : "entrenamientos"}.`,
     cancel: "Cancelar",
   },
+  restore: {
+    restoreFromBackup: "Restaurar copia de seguridad…",
+    undoRestore: (date) => `Deshacer restauración (reemplazó ${date})`,
+    workoutInProgressTitle: "Entrenamiento en curso",
+    workoutInProgressMessage: "Termina o descarta tu entrenamiento antes de restaurar.",
+    rejectedTitle: "No se puede restaurar este archivo",
+    rejected: {
+      foreign: "Este archivo no es una copia de seguridad de Crowbar.",
+      corrupt: "Esta copia de seguridad está dañada y no se puede leer.",
+      newer:
+        "Esta copia de seguridad es de una versión más reciente de Crowbar. Actualiza la app e inténtalo de nuevo.",
+    },
+    confirmTitle: "¿Reemplazar todos tus datos?",
+    confirmMessage: (backup, current) =>
+      `Esta copia de seguridad tiene ${backup}. Crowbar tiene ahora ${current}. Restaurar reemplaza todo; puedes deshacerlo desde Ajustes.`,
+    summary: (workouts, last) =>
+      last === null
+        ? "0 entrenamientos"
+        : `${workouts} ${workouts === 1 ? "entrenamiento" : "entrenamientos"}, el último el ${last}`,
+    confirm: "Restaurar",
+    undoTitle: "¿Deshacer la restauración?",
+    undoMessage: (date) =>
+      `Crowbar vuelve a los datos que reemplazó la restauración del ${date}. Se pierde todo lo registrado desde entonces.`,
+    undo: "Deshacer restauración",
+    cancel: "Cancelar",
+    failedTitle: {
+      restore: "No se pudo restaurar la copia de seguridad",
+      undoRestore: "No se pudo deshacer la restauración",
+    },
+    failedMessage: {
+      restore: "No se cambió nada. Inténtalo de nuevo o restaura otra copia de seguridad.",
+      undoRestore: "Los datos de antes de la restauración ya no están en este dispositivo.",
+    },
+    dismiss: "Aceptar",
+  },
   databaseFailure: {
     title: "Crowbar no pudo abrir tus datos",
     message:

@@ -1,10 +1,10 @@
 import { Database as BunSqlite } from "bun:sqlite";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { backupFileName, writeBackup } from "./backups";
+import { BACKUP_HEADER_BYTES, backupFileName, inspectBackup, writeBackup } from "./backups";
 import type { BuiltInExercise } from "./built-in-exercises";
 import { seedBuiltInExercises } from "./exercises";
 import { createGym } from "./gyms";
@@ -43,6 +43,12 @@ async function midWorkout() {
   const [firstSet] = getLedger(db, workoutId, "en")!.exercises[0]!.sets;
   confirmSet(db, firstSet!.id, { load: 100, reps: 5 });
   return { db, workoutId };
+}
+
+// Reads the header the way the app does before validating a picked file.
+async function inspect(path: string) {
+  const header = readFileSync(path).subarray(0, BACKUP_HEADER_BYTES);
+  return inspectBackup(await createTestDatabase(), path, header);
 }
 
 function readAll(path: string) {
@@ -89,6 +95,71 @@ describe("writeBackup", () => {
 
     expect(currentWorkout(restored)?.id).toBe(workoutId);
     expect(getLedger(restored, workoutId, "en")).toEqual(getLedger(db, workoutId, "en"));
+  });
+});
+
+describe("inspectBackup", () => {
+  test("summarizes a Backup's Workouts, the one in progress included", async () => {
+    const { db } = await midWorkout();
+    const startedAt = currentWorkout(db)!.startedAt;
+    writeBackup(db, join(directory, "backup.crowbar"));
+
+    expect(await inspect(join(directory, "backup.crowbar"))).toEqual({
+      valid: true,
+      workouts: 1,
+      lastWorkoutAt: startedAt,
+    });
+  });
+
+  test("rejects a Crowbar Backup damaged past its header as corrupt", async () => {
+    const path = join(directory, "backup.crowbar");
+    await midWorkout().then(({ db }) => writeBackup(db, path));
+    const bytes = readFileSync(path);
+    // Keeps page 1, where the header and application_id live, and scrambles the pages after it.
+    for (let i = 4096; i < bytes.length; i += 7) bytes[i] = 0xa5;
+    writeFileSync(path, bytes);
+
+    expect(await inspect(path)).toEqual({
+      valid: false,
+      problem: "corrupt",
+    });
+  });
+
+  test("rejects a Backup from a newer app version, whose migrations this one doesn't bundle", async () => {
+    const path = join(directory, "backup.crowbar");
+    await midWorkout().then(({ db }) => writeBackup(db, path));
+    const backup = new BunSqlite(path);
+    backup.run("INSERT INTO __drizzle_migrations (hash, created_at) VALUES ('future', ?)", [
+      Date.UTC(2099, 0, 1),
+    ]);
+    backup.close();
+
+    expect(await inspect(path)).toEqual({ valid: false, problem: "newer" });
+  });
+
+  test("rejects another app's SQLite database as foreign", async () => {
+    const path = join(directory, "notes.db");
+    const foreign = new BunSqlite(path);
+    foreign.run("CREATE TABLE workout (started_at INTEGER)");
+    foreign.close();
+
+    expect(await inspect(path)).toEqual({
+      valid: false,
+      problem: "foreign",
+    });
+  });
+
+  test("rejects a file that isn't a database at all as foreign", async () => {
+    const path = join(directory, "photo.crowbar");
+    writeFileSync(
+      path,
+      "\x89PNG not a database, just some bytes long enough to hold a header ".repeat(20),
+    );
+
+    expect(await inspect(path)).toEqual({
+      valid: false,
+      problem: "foreign",
+    });
   });
 });
 
