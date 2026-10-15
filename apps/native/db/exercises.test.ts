@@ -23,7 +23,7 @@ import {
   addWorkoutExercise,
   confirmSet,
   currentWorkout,
-  discardWorkout,
+  deleteWorkout,
   finishWorkout,
   getLedger,
   setMachineNotes,
@@ -282,7 +282,7 @@ describe("deleteCustomExercise with history", () => {
     const { id } = createCustomExercise(db, { name: "Ring Dip" });
     const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 1_000 });
     setMachineNotes(db, addWorkoutExercise(db, workoutId, id), "Rings at notch 4");
-    discardWorkout(db, workoutId);
+    deleteWorkout(db, workoutId);
 
     expect(exerciseHistoryCounts(db, id)).toEqual({ stations: 1, workouts: 0, sets: 0 });
   });

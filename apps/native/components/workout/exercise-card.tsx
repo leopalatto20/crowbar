@@ -54,6 +54,7 @@ export function ExerciseCard({
   entry,
   position,
   count,
+  readOnly,
   onConfirmed,
   onSwap,
 }: {
@@ -61,6 +62,7 @@ export function ExerciseCard({
   // Its index in the Ledger, of `count` Exercises.
   position: number;
   count: number;
+  readOnly: boolean;
   onConfirmed: (set: LedgerSet) => void;
   onSwap: () => void;
 }) {
@@ -92,28 +94,34 @@ export function ExerciseCard({
       }}
     >
       <View style={{ paddingHorizontal: 14, paddingBottom: 10, gap: 2 }}>
-        <ExerciseMenu
-          name={entry.exercise.name}
-          stations={entry.stations}
-          currentStationId={entry.station?.id ?? null}
-          hasNotes={notes !== null}
-          canSwap={!logged}
-          canMoveUp={position > 0}
-          canMoveDown={position < count - 1}
-          onSwitchStation={(stationId) => {
-            haptics.selection();
-            switchStation(db, entry.id, stationId);
-          }}
-          onNewStation={() => setNamingStation(true)}
-          onEditNotes={() => setEditingNotes(true)}
-          onSwap={onSwap}
-          onMoveUp={() => moveWorkoutExercise(db, entry.id, position - 1)}
-          onMoveDown={() => moveWorkoutExercise(db, entry.id, position + 1)}
-          // An Exercise with nothing logged is cheap to add back, so it needs no confirm.
-          onRemove={() =>
-            logged ? setConfirmingRemove(true) : removeWorkoutExercise(db, entry.id)
-          }
-        />
+        {readOnly ? (
+          <LedgerText style={{ color: p.label, ...type.headline }}>
+            {entry.exercise.name}
+          </LedgerText>
+        ) : (
+          <ExerciseMenu
+            name={entry.exercise.name}
+            stations={entry.stations}
+            currentStationId={entry.station?.id ?? null}
+            hasNotes={notes !== null}
+            canSwap={!logged}
+            canMoveUp={position > 0}
+            canMoveDown={position < count - 1}
+            onSwitchStation={(stationId) => {
+              haptics.selection();
+              switchStation(db, entry.id, stationId);
+            }}
+            onNewStation={() => setNamingStation(true)}
+            onEditNotes={() => setEditingNotes(true)}
+            onSwap={onSwap}
+            onMoveUp={() => moveWorkoutExercise(db, entry.id, position - 1)}
+            onMoveDown={() => moveWorkoutExercise(db, entry.id, position + 1)}
+            // An Exercise with nothing logged is cheap to add back, so it needs no confirm.
+            onRemove={() =>
+              logged ? setConfirmingRemove(true) : removeWorkoutExercise(db, entry.id)
+            }
+          />
+        )}
         {chipLabel && <StationChip label={chipLabel} />}
         {editingNotes ? (
           <NotesInput
@@ -124,7 +132,9 @@ export function ExerciseCard({
             }}
           />
         ) : (
-          notes && <NotesLine notes={notes} onPress={() => setEditingNotes(true)} />
+          notes && (
+            <NotesLine notes={notes} onPress={readOnly ? undefined : () => setEditingNotes(true)} />
+          )
         )}
         {/* A guide only: always the same quiet line, however the logged sets compare. */}
         {entry.target && (
@@ -143,39 +153,50 @@ export function ExerciseCard({
           {unilateral ? t.load.perSide(t.ledger.repsColumn) : t.ledger.repsColumn}
         </HeaderCell>
         <HeaderCell flex={COLUMNS.field}>{t.effort[effort]}</HeaderCell>
-        <View style={{ width: COLUMNS.check }} />
+        {!readOnly && <View style={{ width: COLUMNS.check }} />}
       </View>
 
-      {entry.sets.map((set, index) => (
-        <SetRow
-          key={set.id}
-          set={set}
-          format={format}
-          workingNumber={workingIndex(entry.sets, index)}
-          onConfirmed={() => onConfirmed(set)}
-        />
-      ))}
+      {entry.sets.map((set, index) =>
+        readOnly ? (
+          <LoggedSetRow
+            key={set.id}
+            set={set}
+            format={format}
+            workingNumber={workingIndex(entry.sets, index)}
+          />
+        ) : (
+          <SetRow
+            key={set.id}
+            set={set}
+            format={format}
+            workingNumber={workingIndex(entry.sets, index)}
+            onConfirmed={() => onConfirmed(set)}
+          />
+        ),
+      )}
 
-      <PressableScale
-        onPress={() => addSet(db, entry.id)}
-        style={{
-          marginHorizontal: 14,
-          marginTop: 8,
-          height: 36,
-          borderRadius: radii.control,
-          borderCurve: "continuous",
-          backgroundColor: p.fill,
-          alignItems: "center",
-          justifyContent: "center",
-          flexDirection: "row",
-          gap: 4,
-        }}
-      >
-        <SymbolView name={{ ios: "plus", android: "add" }} size={16} tintColor={p.label} />
-        <LedgerText style={{ color: p.label, ...type.cell, fontWeight: "500" }}>
-          {t.ledger.addSet}
-        </LedgerText>
-      </PressableScale>
+      {!readOnly && (
+        <PressableScale
+          onPress={() => addSet(db, entry.id)}
+          style={{
+            marginHorizontal: 14,
+            marginTop: 8,
+            height: 36,
+            borderRadius: radii.control,
+            borderCurve: "continuous",
+            backgroundColor: p.fill,
+            alignItems: "center",
+            justifyContent: "center",
+            flexDirection: "row",
+            gap: 4,
+          }}
+        >
+          <SymbolView name={{ ios: "plus", android: "add" }} size={16} tintColor={p.label} />
+          <LedgerText style={{ color: p.label, ...type.cell, fontWeight: "500" }}>
+            {t.ledger.addSet}
+          </LedgerText>
+        </PressableScale>
+      )}
       <StationLabelPrompt
         visible={namingStation}
         // The Gym's only Station is still unnamed, so it's named along with the new one.
@@ -237,19 +258,26 @@ function PinIcon() {
   );
 }
 
-function NotesLine({ notes, onPress }: { notes: string; onPress: () => void }) {
+function NotesLine({ notes, onPress }: { notes: string; onPress?: () => void }) {
   const p = useColors();
   const { t } = useI18n();
+  const content = (
+    <>
+      <PinIcon />
+      <LedgerText style={{ flex: 1, color: p.secondary, ...type.footnote }}>{notes}</LedgerText>
+    </>
+  );
+  const style = { flexDirection: "row", alignItems: "flex-start", gap: spacing.xs } as const;
+  if (!onPress) return <View style={style}>{content}</View>;
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={notes}
       accessibilityHint={t.ledger.editNotes}
-      style={{ flexDirection: "row", alignItems: "flex-start", gap: spacing.xs }}
+      style={style}
     >
-      <PinIcon />
-      <LedgerText style={{ flex: 1, color: p.secondary, ...type.footnote }}>{notes}</LedgerText>
+      {content}
     </Pressable>
   );
 }
@@ -413,43 +441,12 @@ function SetRow({
           dropDraft("rir");
         }}
         accessibilityLabel={warmup ? t.ledger.makeWorking : t.ledger.makeWarmup}
-        style={{
-          width: COLUMNS.set,
-          height: 30,
-          borderRadius: radii.control,
-          borderCurve: "continuous",
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: warmup ? p.orangeTint : p.fill,
-        }}
+        style={setNumberStyle(warmup, p)}
       >
-        <LedgerText
-          style={{
-            color: warmup ? p.orange : p.label,
-            ...type.cell,
-            fontWeight: "700",
-            fontVariant: ["tabular-nums"],
-          }}
-        >
-          {warmup ? t.ledger.warmupMarker : workingNumber}
-        </LedgerText>
+        <SetNumber warmup={warmup} workingNumber={workingNumber} />
       </PressableScale>
 
-      <LedgerText
-        numberOfLines={1}
-        // Bodyweight and Unilateral sets read longer, as in "BW +20 × 8/side @2".
-        adjustsFontSizeToFit
-        minimumFontScale={0.75}
-        style={{
-          flex: COLUMNS.lastHere,
-          textAlign: "center",
-          color: p.secondary,
-          ...type.cell,
-          fontVariant: ["tabular-nums"],
-        }}
-      >
-        {set.lastHere ? formatPerformance(set.lastHere, format, effort, i18n) : "–"}
-      </LedgerText>
+      <LastHere lastHere={set.lastHere} format={format} />
 
       {input("load")}
       {input("reps")}
@@ -483,6 +480,122 @@ function SetRow({
         }}
       />
     </Animated.View>
+  );
+}
+
+function setNumberStyle(warmup: boolean, p: ReturnType<typeof useColors>) {
+  return {
+    width: COLUMNS.set,
+    height: 30,
+    borderRadius: radii.control,
+    borderCurve: "continuous",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: warmup ? p.orangeTint : p.fill,
+  } as const;
+}
+
+function SetNumber({ warmup, workingNumber }: { warmup: boolean; workingNumber: number }) {
+  const p = useColors();
+  const { t } = useI18n();
+  return (
+    <LedgerText
+      style={{
+        color: warmup ? p.orange : p.label,
+        ...type.cell,
+        fontWeight: "700",
+        fontVariant: ["tabular-nums"],
+      }}
+    >
+      {warmup ? t.ledger.warmupMarker : workingNumber}
+    </LedgerText>
+  );
+}
+
+function LastHere({ lastHere, format }: { lastHere: LedgerSet["lastHere"]; format: LoadFormat }) {
+  const p = useColors();
+  const effort = useEffort();
+  const i18n = useI18n();
+  return (
+    <LedgerText
+      numberOfLines={1}
+      // Bodyweight and Unilateral sets read longer, as in "BW +20 × 8/side @2".
+      adjustsFontSizeToFit
+      minimumFontScale={0.75}
+      style={{
+        flex: COLUMNS.lastHere,
+        textAlign: "center",
+        color: p.secondary,
+        ...type.cell,
+        fontVariant: ["tabular-nums"],
+      }}
+    >
+      {lastHere ? formatPerformance(lastHere, format, effort, i18n) : "–"}
+    </LedgerText>
+  );
+}
+
+// A past set as logged: the values it was confirmed with, with nothing to type or tap.
+function LoggedSetRow({
+  set,
+  format,
+  workingNumber,
+}: {
+  set: LedgerSet;
+  format: LoadFormat;
+  workingNumber: number;
+}) {
+  const p = useColors();
+  const effort = useEffort();
+  const i18n = useI18n();
+  const { t } = i18n;
+  const warmup = set.kind === "warmup";
+  // A Bodyweight load of 0 is bodyweight only, as the Ledger shows it.
+  const load =
+    set.load === null
+      ? "–"
+      : format.loadType === "bodyweight" && set.load === 0
+        ? t.load.bodyweight
+        : i18n.formatDecimal(set.load);
+  const rir = toEffortDisplay(set.rir, effort);
+
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+      }}
+    >
+      <View style={setNumberStyle(warmup, p)}>
+        <SetNumber warmup={warmup} workingNumber={workingNumber} />
+      </View>
+      <LastHere lastHere={set.lastHere} format={format} />
+      <LoggedValue>{load}</LoggedValue>
+      <LoggedValue>{set.reps === null ? "–" : String(set.reps)}</LoggedValue>
+      <LoggedValue>{rir === null ? "–" : String(rir)}</LoggedValue>
+    </View>
+  );
+}
+
+function LoggedValue({ children }: { children: string }) {
+  const p = useColors();
+  return (
+    <LedgerText
+      numberOfLines={1}
+      style={{
+        flex: COLUMNS.field,
+        textAlign: "center",
+        color: p.label,
+        ...type.callout,
+        fontWeight: "600",
+        fontVariant: ["tabular-nums"],
+      }}
+    >
+      {children}
+    </LedgerText>
   );
 }
 

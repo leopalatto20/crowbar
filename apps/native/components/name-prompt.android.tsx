@@ -10,17 +10,18 @@ import { useState } from "react";
 
 import { useI18n } from "@/lib/i18n";
 
-import type { GymNamePromptProps } from "./gym-name-prompt.types";
+import type { NamePromptProps } from "./name-prompt.types";
 
 // `message` is iOS-only: here the field's label is all the dialog needs to say.
-export function GymNamePrompt({
+export function NamePrompt({
   visible,
   title,
+  placeholder,
   confirmLabel,
   initialName = "",
   onSave,
   onDismiss,
-}: GymNamePromptProps) {
+}: NamePromptProps) {
   const { t } = useI18n();
   const [name, setName] = useState(initialName);
   const text = useNativeState(initialName);
@@ -34,7 +35,7 @@ export function GymNamePrompt({
         <AlertDialog.Text>
           <TextField value={text} onValueChange={setName} autoFocus singleLine>
             <TextField.Label>
-              <Text>{t.gymPrompt.placeholder}</Text>
+              <Text>{placeholder}</Text>
             </TextField.Label>
           </TextField>
         </AlertDialog.Text>
@@ -45,7 +46,7 @@ export function GymNamePrompt({
         </AlertDialog.ConfirmButton>
         <AlertDialog.DismissButton>
           <TextButton onClick={onDismiss}>
-            <Text>{t.gymPrompt.cancel}</Text>
+            <Text>{t.namePrompt.cancel}</Text>
           </TextButton>
         </AlertDialog.DismissButton>
       </AlertDialog>

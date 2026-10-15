@@ -3,6 +3,8 @@ import { describe, expect, test } from "bun:test";
 import {
   formatDecimal,
   formatEditableDecimal,
+  formatDate,
+  formatMonth,
   formatTime,
   parseDecimal,
   resolveLanguage,
@@ -72,5 +74,24 @@ describe("formatTime", () => {
 
   test("uses a 12-hour clock when the device does", () => {
     expect(formatTime(evening, "en-US", false)).toMatch(/^6:42\sPM$/);
+  });
+});
+
+describe("dates in a Workout's time zone", () => {
+  // 03:00 UTC on October 1 is still the evening of September 30 in Mexico City.
+  const lateEvening = Date.UTC(2026, 9, 1, 3);
+
+  test("formatTime reads the clock in the given zone", () => {
+    expect(formatTime(lateEvening, "en-US", true, "America/Mexico_City")).toBe("21:00");
+  });
+
+  test("formatDate reads the day in the given zone", () => {
+    expect(formatDate(lateEvening, "en-US", "America/Mexico_City")).toBe("Wed, Sep 30");
+    expect(formatDate(lateEvening, "en-US", "Asia/Tokyo")).toBe("Thu, Oct 1");
+  });
+
+  test("formatMonth names the month and year in the locale", () => {
+    expect(formatMonth(2026, 10, "en-US")).toBe("October 2026");
+    expect(formatMonth(2026, 1, "es-ES")).toBe("enero de 2026");
   });
 });

@@ -49,6 +49,18 @@ export const en = {
       `Deletes ${stations} ${stations === 1 ? "Station" : "Stations"} and ${sets} ${sets === 1 ? "set" : "sets"} across ${workouts} ${workouts === 1 ? "Workout" : "Workouts"}.`,
     hideKeepsHistory: "Hiding it instead keeps its history.",
   },
+  history: {
+    exercises: (count: number) => `${count} ${count === 1 ? "exercise" : "exercises"}`,
+    started: (date: string, time: string) => `${date} · ${time}`,
+    more: "More",
+    saveAsRoutine: "Save as Routine",
+    save: "Save",
+    delete: "Delete Workout",
+    deleteTitle: "Delete this Workout?",
+    deleteMessage: (sets: number) =>
+      `Deletes ${sets} ${sets === 1 ? "set" : "sets"}. This can’t be undone.`,
+    cancel: "Cancel",
+  },
   settings: {
     logging: "Logging",
     effortScale: "Effort scale",
@@ -135,10 +147,12 @@ export const en = {
     title: "Where are you training?",
     message: "Progress is tracked separately at each Gym.",
     placeholder: "Gym name",
-    cancel: "Cancel",
     start: "Start",
     newGymTitle: "New Gym",
     add: "Add",
+  },
+  namePrompt: {
+    cancel: "Cancel",
   },
   gymPicker: {
     title: "Gym",
