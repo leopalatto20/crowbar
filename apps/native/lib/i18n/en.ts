@@ -170,6 +170,12 @@ export const en = {
     editNotes: "Edit machine notes",
     notesPlaceholder: "Seat height, pin position…",
     station: (label: string) => `Station: ${label}`,
+    swap: "Swap Exercise",
+    moveUp: "Move Up",
+    moveDown: "Move Down",
+    remove: "Remove from Workout",
+    removeTitle: (exercise: string) => `Remove ${exercise}?`,
+    removeMessage: "Its logged sets will be deleted.",
   },
   stationPrompt: {
     title: "New Station",

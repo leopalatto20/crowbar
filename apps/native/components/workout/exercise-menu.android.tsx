@@ -13,16 +13,24 @@ export function ExerciseMenu({
   stations,
   currentStationId,
   hasNotes,
+  canSwap,
+  canMoveUp,
+  canMoveDown,
   onSwitchStation,
   onNewStation,
   onEditNotes,
+  onSwap,
+  onMoveUp,
+  onMoveDown,
+  onRemove,
 }: ExerciseMenuProps) {
   const p = useColors();
   const { t } = useI18n();
   const [shown, setShown] = useState<"closed" | "exercise" | "stations">("closed");
-  const item = (label: string, action: () => void, selected = false) => (
+  const item = (label: string, action: () => void, selected = false, enabled = true) => (
     <DropdownMenuItem
       key={label}
+      enabled={enabled}
       onClick={() => {
         setShown("closed");
         action();
@@ -74,7 +82,11 @@ export function ExerciseMenu({
                       </DropdownMenuItem>,
                     ]
                   : []),
+                item(t.ledger.swap, onSwap, false, canSwap),
                 item(hasNotes ? t.ledger.editNotes : t.ledger.addNotes, onEditNotes),
+                item(t.ledger.moveUp, onMoveUp, false, canMoveUp),
+                item(t.ledger.moveDown, onMoveDown, false, canMoveDown),
+                item(t.ledger.remove, onRemove),
               ]}
         </DropdownMenu.Items>
       </DropdownMenu>

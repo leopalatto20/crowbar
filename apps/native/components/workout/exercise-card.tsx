@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import Animated, { useReducedMotion } from "react-native-reanimated";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PressableScale } from "@/components/pressable-scale";
 import { StationLabelPrompt } from "@/components/station-label-prompt";
 import { useDb } from "@/db/context";
@@ -13,6 +14,8 @@ import {
   addSet,
   addStation,
   confirmSet,
+  moveWorkoutExercise,
+  removeWorkoutExercise,
   reopenSet,
   setMachineNotes,
   switchStation,
@@ -49,10 +52,17 @@ const FIELDS: Field[] = ["load", "reps", "rir"];
 
 export function ExerciseCard({
   entry,
+  position,
+  count,
   onConfirmed,
+  onSwap,
 }: {
   entry: LedgerExercise;
+  // Its index in the Ledger, of `count` Exercises.
+  position: number;
+  count: number;
   onConfirmed: (set: LedgerSet) => void;
+  onSwap: () => void;
 }) {
   const db = useDb();
   const p = useColors();
@@ -66,6 +76,8 @@ export function ExerciseCard({
   const loadSign = { external: "", bodyweight: "+", assisted: "−" }[loadType];
   const [editingNotes, setEditingNotes] = useState(false);
   const [namingStation, setNamingStation] = useState(false);
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
+  const logged = entry.sets.some((set) => set.done);
   const notes = entry.station?.notes ?? null;
   // The chip only tells Stations apart, so a lone Station shows none.
   const chipLabel = entry.stations.length > 1 ? entry.station?.label : null;
@@ -85,12 +97,22 @@ export function ExerciseCard({
           stations={entry.stations}
           currentStationId={entry.station?.id ?? null}
           hasNotes={notes !== null}
+          canSwap={!logged}
+          canMoveUp={position > 0}
+          canMoveDown={position < count - 1}
           onSwitchStation={(stationId) => {
             haptics.selection();
             switchStation(db, entry.id, stationId);
           }}
           onNewStation={() => setNamingStation(true)}
           onEditNotes={() => setEditingNotes(true)}
+          onSwap={onSwap}
+          onMoveUp={() => moveWorkoutExercise(db, entry.id, position - 1)}
+          onMoveDown={() => moveWorkoutExercise(db, entry.id, position + 1)}
+          // An Exercise with nothing logged is cheap to add back, so it needs no confirm.
+          onRemove={() =>
+            logged ? setConfirmingRemove(true) : removeWorkoutExercise(db, entry.id)
+          }
         />
         {chipLabel && <StationChip label={chipLabel} />}
         {editingNotes ? (
@@ -163,6 +185,18 @@ export function ExerciseCard({
           addStation(db, entry.id, labels);
         }}
         onDismiss={() => setNamingStation(false)}
+      />
+      <ConfirmDialog
+        visible={confirmingRemove}
+        title={t.ledger.removeTitle(entry.exercise.name)}
+        message={t.ledger.removeMessage}
+        confirmLabel={t.ledger.remove}
+        cancelLabel={t.ledger.keepLogging}
+        onConfirm={() => {
+          setConfirmingRemove(false);
+          removeWorkoutExercise(db, entry.id);
+        }}
+        onDismiss={() => setConfirmingRemove(false)}
       />
     </View>
   );

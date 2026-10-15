@@ -131,6 +131,7 @@ function Editor({ routine }: { routine: RoutineDetail }) {
       </ScrollView>
 
       <ExercisePickerSheet
+        title={t.exercisePicker.title}
         visible={picking}
         marked={{
           ids: routine.exercises.map((e) => e.exercise.id),
