@@ -95,7 +95,7 @@ export type NewCustomExercise = {
 // Names are unique case-insensitively across every name an Exercise has, hidden ones included,
 // so no language ever shows two Exercises under one name.
 export function createCustomExercise(db: Database, fields: NewCustomExercise): ExerciseListing {
-  const name = freeName(db, fields.name);
+  const name = availableName(db, fields.name);
   const id = newId(db);
   db.insert(exercise)
     .values({ ...fields, id, name, builtIn: false })
@@ -110,8 +110,8 @@ export function createCustomExercise(db: Database, fields: NewCustomExercise): E
   };
 }
 
-// The trimmed name, once it's known to be free for the Exercise `renamedId` or for a new one.
-function freeName(db: Database, typed: string, renamedId?: string) {
+// An Exercise being renamed may keep its own name in another case.
+function availableName(db: Database, typed: string, renamedId?: string) {
   const name = typed.trim();
   if (!name) throw new Error("A Custom Exercise needs a name");
   // Compared in JS rather than SQL: SQLite's lower() folds only ASCII, so "EXTENSIÓN" would
@@ -130,10 +130,10 @@ const LOCKED_FIELDS = ["equipmentType", "loadType", "unilateral"] as const;
 
 export type CustomExercise = CustomExerciseFields & { id: string; locked: boolean };
 
-// Only confirmed sets are history: one still waiting in the Ledger locks nothing.
+// Only confirmed sets are history: an unconfirmed one in the Workout in progress is not.
 function loggedSetsOf(db: Database, id: string | typeof exercise.id) {
   return db
-    .select({ id: workoutSet.id })
+    .select({ id: workoutSet.id, workoutId: workoutExercise.workoutId })
     .from(workoutSet)
     .innerJoin(workoutExercise, eq(workoutExercise.id, workoutSet.workoutExerciseId))
     .where(and(eq(workoutExercise.exerciseId, id), eq(workoutSet.done, true)));
@@ -167,7 +167,7 @@ export function editCustomExercise(
     );
     if (changed) throw new Error(`${changed} of Exercise ${id} is locked by its logged sets`);
   }
-  const name = change.name === undefined ? undefined : freeName(db, change.name, id);
+  const name = change.name === undefined ? undefined : availableName(db, change.name, id);
   db.update(exercise)
     .set({ ...change, name })
     .where(eq(exercise.id, id))
@@ -176,26 +176,25 @@ export function editCustomExercise(
 
 export type ExerciseHistoryCounts = { stations: number; workouts: number; sets: number };
 
-// What deleting the Exercise takes with it. Only logged sets count, and the Workouts they were
-// logged in: the unconfirmed sets of a Workout in progress were never part of any history.
+// What deleting the Exercise takes with it: its Stations, its logged sets and the Workouts they
+// were logged in.
 export function exerciseHistoryCounts(db: Database, id: string): ExerciseHistoryCounts {
   const [stations] = db
     .select({ count: count() })
     .from(station)
     .where(eq(station.exerciseId, id))
     .all();
-  const [logged] = db
-    .select({ sets: count(), workouts: countDistinct(workoutExercise.workoutId) })
-    .from(workoutSet)
-    .innerJoin(workoutExercise, eq(workoutExercise.id, workoutSet.workoutExerciseId))
-    .where(and(eq(workoutExercise.exerciseId, id), eq(workoutSet.done, true)))
+  const logged = loggedSetsOf(db, id).as("logged");
+  const [sets] = db
+    .select({ count: count(), workouts: countDistinct(logged.workoutId) })
+    .from(logged)
     .all();
-  return { stations: stations!.count, workouts: logged!.workouts, sets: logged!.sets };
+  return { stations: stations!.count, workouts: sets!.workouts, sets: sets!.count };
 }
 
 // Its Routine slots, Stations and sets cascade from the Exercise in the schema. A finished
-// Workout holds only Exercises with logged sets, so one left with no Exercise has no sets and
-// goes too. The Workout in progress stays: finishing drops it if nothing else gets logged.
+// Workout left with no logged set goes too; the Workout in progress stays, since finishing drops
+// it if nothing else gets logged.
 export function deleteCustomExercise(db: Database, id: string) {
   db.transaction((tx) => {
     findCustomExercise(tx, id);
@@ -212,7 +211,11 @@ export function deleteCustomExercise(db: Database, id: string) {
         and(
           inArray(workout.id, finishedIds),
           notExists(
-            tx.select().from(workoutExercise).where(eq(workoutExercise.workoutId, workout.id)),
+            tx
+              .select()
+              .from(workoutSet)
+              .innerJoin(workoutExercise, eq(workoutExercise.id, workoutSet.workoutExerciseId))
+              .where(and(eq(workoutExercise.workoutId, workout.id), eq(workoutSet.done, true))),
           ),
         ),
       )

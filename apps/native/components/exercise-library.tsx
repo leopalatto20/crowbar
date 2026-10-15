@@ -15,7 +15,6 @@ import {
 import { MUSCLE_GROUPS } from "@/lib/exercise/model";
 import { useI18n } from "@/lib/i18n";
 
-// The library's Exercises sectioned by Muscle group, with everything that manages them.
 export function ExerciseLibraryList({
   listings,
   onOpenHidden,
@@ -40,10 +39,11 @@ export function ExerciseLibraryList({
     }))
     .filter((section) => section.listings.length > 0);
 
-  function remove(listing: ExerciseListing) {
+  function requestDelete(listing: ExerciseListing) {
     const counts = exerciseHistoryCounts(db, listing.id);
-    // With no logged sets there's no history to lose, so it goes without a confirm.
-    if (counts.sets === 0) deleteCustomExercise(db, listing.id);
+    // With nothing to lose it goes without a confirm. A Station counts even with no sets: it is
+    // only kept for the lifter's label or machine notes.
+    if (counts.sets === 0 && counts.stations === 0) deleteCustomExercise(db, listing.id);
     else setDeleting({ listing, counts });
   }
 
@@ -56,7 +56,7 @@ export function ExerciseLibraryList({
         onToggleHidden={(listing) =>
           listing.hidden ? unhideExercise(db, listing.id) : hideExercise(db, listing.id)
         }
-        onDelete={remove}
+        onDelete={requestDelete}
       />
       <EditExerciseSheet exerciseId={editingId} onClose={() => setEditingId(null)} />
       <ConfirmDialog

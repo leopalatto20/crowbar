@@ -28,14 +28,14 @@ export function ConfirmDialog({
         {/* Material dialogs have two button slots; Compose lays both out in one flow row, so
             the alternative shares the confirm slot. */}
         <AlertDialog.ConfirmButton>
-          <TextButton onClick={onConfirm}>
-            <Text color={p.red}>{confirmLabel}</Text>
-          </TextButton>
           {alternative && (
             <TextButton onClick={alternative.onPress}>
               <Text>{alternative.label}</Text>
             </TextButton>
           )}
+          <TextButton onClick={onConfirm}>
+            <Text color={p.red}>{confirmLabel}</Text>
+          </TextButton>
         </AlertDialog.ConfirmButton>
         <AlertDialog.DismissButton>
           <TextButton onClick={onDismiss}>

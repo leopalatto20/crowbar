@@ -23,8 +23,10 @@ import {
   addWorkoutExercise,
   confirmSet,
   currentWorkout,
+  discardWorkout,
   finishWorkout,
   getLedger,
+  setMachineNotes,
   startWorkout,
 } from "./workouts";
 
@@ -273,6 +275,16 @@ describe("deleteCustomExercise with history", () => {
     const { db, id } = await ringDipHistory();
 
     expect(exerciseHistoryCounts(db, id)).toEqual({ stations: 2, workouts: 4, sets: 7 });
+  });
+
+  test("counts a Station kept for its machine notes, though it has no sets", async () => {
+    const { db, gymId } = await trainingDatabase();
+    const { id } = createCustomExercise(db, { name: "Ring Dip" });
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 1_000 });
+    setMachineNotes(db, addWorkoutExercise(db, workoutId, id), "Rings at notch 4");
+    discardWorkout(db, workoutId);
+
+    expect(exerciseHistoryCounts(db, id)).toEqual({ stations: 1, workouts: 0, sets: 0 });
   });
 
   test("removes its sets everywhere, and the Workouts left with none", async () => {

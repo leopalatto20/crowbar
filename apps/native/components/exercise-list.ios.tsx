@@ -22,7 +22,7 @@ import type { ExerciseListing } from "@/db/exercises";
 import { useI18n } from "@/lib/i18n";
 import { useColors } from "@/lib/theme";
 
-import type { ExerciseListProps } from "./exercise-list.types";
+import type { ExerciseActions, ExerciseListProps } from "./exercise-list.types";
 
 // Hide and Unhide wait behind the swipe; the long-press menu holds every action.
 export function ExerciseList({ sections, onOpenHidden, ...actions }: ExerciseListProps) {
@@ -57,7 +57,7 @@ function ExerciseRow({
   onEdit,
   onToggleHidden,
   onDelete,
-}: Omit<ExerciseListProps, "sections" | "onOpenHidden"> & { listing: ExerciseListing }) {
+}: ExerciseActions & { listing: ExerciseListing }) {
   const p = useColors();
   const { t } = useI18n();
   const hideLabel = listing.hidden ? t.exercises.unhide : t.exercises.hide;

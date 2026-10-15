@@ -52,8 +52,8 @@ function ExerciseLibrary({ search }: { search: string }) {
   const exercises = searchExercises(library, search);
   const anyHidden = library.some((listing) => listing.hidden);
 
-  if (exercises.length === 0 && !anyHidden) {
-    const query = search.trim();
+  const query = search.trim();
+  if (exercises.length === 0 && (query || !anyHidden)) {
     return <EmptyState message={query ? t.exercises.noMatches(query) : t.empty.exercises} />;
   }
 

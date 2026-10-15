@@ -37,7 +37,7 @@ export function CustomExerciseSheet({
   );
 }
 
-// Edits the Custom Exercise `exerciseId`; null while the sheet is closed.
+// `exerciseId` is null while the sheet is closed.
 export function EditExerciseSheet({
   exerciseId,
   onClose,
@@ -121,34 +121,14 @@ function CustomExerciseForm({
       />
       <Host style={{ flex: 1 }}>
         <FieldGroup>
-          <FieldGroup.Section>
-            <TextInput
-              defaultValue={initialName}
-              onChangeText={setName}
-              placeholder={t.customExercise.name}
-              autoFocus
-              autoCapitalize="words"
-              autoCorrect={false}
-              returnKeyType="done"
-              onSubmitEditing={save}
-            />
-            {taken ? (
-              <Button
-                variant="text"
-                label={taken.hidden ? t.customExercise.unhide : t.customExercise.useExisting}
-                onPress={() => takeExisting(taken)}
-              />
-            ) : null}
-            {taken ? (
-              <FieldGroup.SectionFooter>
-                <Text>
-                  {taken.hidden
-                    ? t.customExercise.nameTakenHidden(taken.name)
-                    : t.customExercise.nameTaken(taken.name)}
-                </Text>
-              </FieldGroup.SectionFooter>
-            ) : null}
-          </FieldGroup.Section>
+          <NameSection
+            initialName={initialName}
+            autoFocus
+            taken={taken}
+            onChangeText={setName}
+            onSubmit={save}
+            onTakeExisting={takeExisting}
+          />
           <ExerciseFieldsSection
             fields={{ ...fields, muscleGroup }}
             locked={false}
@@ -203,26 +183,12 @@ function EditExerciseFields({
       />
       <Host style={{ flex: 1 }}>
         <FieldGroup>
-          <FieldGroup.Section>
-            <TextInput
-              defaultValue={initial.name}
-              onChangeText={(name) => setFields({ ...fields, name })}
-              placeholder={t.customExercise.name}
-              autoCapitalize="words"
-              autoCorrect={false}
-              returnKeyType="done"
-              onSubmitEditing={save}
-            />
-            {taken ? (
-              <FieldGroup.SectionFooter>
-                <Text>
-                  {taken.hidden
-                    ? t.customExercise.nameTakenHidden(taken.name)
-                    : t.customExercise.nameTaken(taken.name)}
-                </Text>
-              </FieldGroup.SectionFooter>
-            ) : null}
-          </FieldGroup.Section>
+          <NameSection
+            initialName={initial.name}
+            taken={taken}
+            onChangeText={(name) => setFields((current) => ({ ...current, name }))}
+            onSubmit={save}
+          />
           <ExerciseFieldsSection
             fields={fields}
             locked={locked}
@@ -265,6 +231,56 @@ function FormHeader({
         <Button variant="text" label={t.customExercise.save} onPress={onSave} disabled={!canSave} />
       </Host>
     </View>
+  );
+}
+
+// A name taken by another Exercise blocks Save. While creating, `onTakeExisting` offers that
+// Exercise instead.
+function NameSection({
+  initialName,
+  autoFocus,
+  taken,
+  onChangeText,
+  onSubmit,
+  onTakeExisting,
+}: {
+  initialName: string;
+  autoFocus?: boolean;
+  taken: ExerciseListing | undefined;
+  onChangeText: (name: string) => void;
+  onSubmit: () => void;
+  onTakeExisting?: (listing: ExerciseListing) => void;
+}) {
+  const { t } = useI18n();
+  return (
+    <FieldGroup.Section>
+      <TextInput
+        defaultValue={initialName}
+        onChangeText={onChangeText}
+        placeholder={t.customExercise.name}
+        autoFocus={autoFocus}
+        autoCapitalize="words"
+        autoCorrect={false}
+        returnKeyType="done"
+        onSubmitEditing={onSubmit}
+      />
+      {taken && onTakeExisting ? (
+        <Button
+          variant="text"
+          label={taken.hidden ? t.customExercise.unhide : t.customExercise.useExisting}
+          onPress={() => onTakeExisting(taken)}
+        />
+      ) : null}
+      {taken ? (
+        <FieldGroup.SectionFooter>
+          <Text>
+            {taken.hidden
+              ? t.customExercise.nameTakenHidden(taken.name)
+              : t.customExercise.nameTaken(taken.name)}
+          </Text>
+        </FieldGroup.SectionFooter>
+      ) : null}
+    </FieldGroup.Section>
   );
 }
 

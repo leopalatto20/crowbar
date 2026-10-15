@@ -13,7 +13,7 @@ import type { ExerciseListing } from "@/db/exercises";
 import { useI18n } from "@/lib/i18n";
 import { useColors } from "@/lib/theme";
 
-import type { ExerciseListProps } from "./exercise-list.types";
+import type { ExerciseActions, ExerciseListProps } from "./exercise-list.types";
 
 // A tap opens the row's menu: Compose has no swipe actions to put Hide behind.
 export function ExerciseList({ sections, onOpenHidden, ...actions }: ExerciseListProps) {
@@ -52,7 +52,7 @@ function ExerciseRow({
   onEdit,
   onToggleHidden,
   onDelete,
-}: Omit<ExerciseListProps, "sections" | "onOpenHidden"> & { listing: ExerciseListing }) {
+}: ExerciseActions & { listing: ExerciseListing }) {
   const { t } = useI18n();
   const [menu, setMenu] = useState(false);
   const item = (label: string, action: () => void) => (
