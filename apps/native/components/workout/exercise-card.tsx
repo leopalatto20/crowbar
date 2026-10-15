@@ -1,17 +1,21 @@
 import { SymbolView } from "expo-symbols";
 import { useState } from "react";
-import { TextInput, View } from "react-native";
+import { Pressable, TextInput, View } from "react-native";
 import Animated, { useReducedMotion } from "react-native-reanimated";
 
 import { PressableScale } from "@/components/pressable-scale";
+import { StationLabelPrompt } from "@/components/station-label-prompt";
 import { useDb } from "@/db/context";
 import {
   type LedgerExercise,
   type LedgerSet,
   type SetChange,
   addSet,
+  addStation,
   confirmSet,
   reopenSet,
+  setMachineNotes,
+  switchStation,
   toggleSetKind,
   updateSet,
 } from "@/db/workouts";
@@ -22,6 +26,7 @@ import {
   LEDGER_MAX_FONT_SCALE,
   motion,
   radii,
+  spacing,
   transitionEaseOut,
   type,
   useColors,
@@ -36,6 +41,7 @@ import {
   workingIndex,
 } from "@/lib/workout/model";
 
+import { ExerciseMenu } from "./exercise-menu";
 import { LedgerText } from "./ledger-text";
 
 const COLUMNS = { set: 34, lastHere: 1.4, field: 1, check: 40 };
@@ -58,6 +64,11 @@ export function ExerciseCard({
   const hint = t.load.hints[equipmentType];
   // Bodyweight and Assisted loads are entered as the amount added or taken off bodyweight.
   const loadSign = { external: "", bodyweight: "+", assisted: "−" }[loadType];
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [namingStation, setNamingStation] = useState(false);
+  const notes = entry.station?.notes ?? null;
+  // The chip only tells Stations apart, so a lone Station shows none.
+  const chipLabel = entry.stations.length > 1 ? entry.station?.label : null;
 
   return (
     <View
@@ -69,7 +80,30 @@ export function ExerciseCard({
       }}
     >
       <View style={{ paddingHorizontal: 14, paddingBottom: 10, gap: 2 }}>
-        <LedgerText style={{ color: p.label, ...type.headline }}>{entry.exercise.name}</LedgerText>
+        <ExerciseMenu
+          name={entry.exercise.name}
+          stations={entry.stations}
+          currentStationId={entry.station?.id ?? null}
+          hasNotes={notes !== null}
+          onSwitchStation={(stationId) => {
+            haptics.selection();
+            switchStation(db, entry.id, stationId);
+          }}
+          onNewStation={() => setNamingStation(true)}
+          onEditNotes={() => setEditingNotes(true)}
+        />
+        {chipLabel && <StationChip label={chipLabel} />}
+        {editingNotes ? (
+          <NotesInput
+            notes={notes}
+            onCommit={(text) => {
+              setMachineNotes(db, entry.id, text);
+              setEditingNotes(false);
+            }}
+          />
+        ) : (
+          notes && <NotesLine notes={notes} onPress={() => setEditingNotes(true)} />
+        )}
         {/* A guide only: always the same quiet line, however the logged sets compare. */}
         {entry.target && (
           <LedgerText style={{ color: p.secondary, ...type.footnote }}>
@@ -120,6 +154,100 @@ export function ExerciseCard({
           {t.ledger.addSet}
         </LedgerText>
       </PressableScale>
+      <StationLabelPrompt
+        visible={namingStation}
+        // The Gym's only Station is still unnamed, so it's named along with the new one.
+        nameExisting={entry.stations.length === 1 && entry.stations[0]!.label === null}
+        onSave={(labels) => {
+          setNamingStation(false);
+          addStation(db, entry.id, labels);
+        }}
+        onDismiss={() => setNamingStation(false)}
+      />
+    </View>
+  );
+}
+
+function StationChip({ label }: { label: string }) {
+  const p = useColors();
+  const { t } = useI18n();
+  return (
+    <View
+      accessible
+      accessibilityLabel={t.ledger.station(label)}
+      style={{
+        alignSelf: "flex-start",
+        marginVertical: 2,
+        paddingHorizontal: spacing.sm,
+        paddingVertical: 2,
+        borderRadius: radii.pill,
+        backgroundColor: p.fill,
+      }}
+    >
+      <LedgerText numberOfLines={1} style={{ color: p.label, ...type.footnote, fontWeight: "600" }}>
+        {label}
+      </LedgerText>
+    </View>
+  );
+}
+
+function PinIcon() {
+  const p = useColors();
+  return (
+    <SymbolView
+      name={{ ios: "pin.fill", android: "push_pin" }}
+      size={12}
+      tintColor={p.secondary}
+      style={{ marginTop: 2 }}
+    />
+  );
+}
+
+function NotesLine({ notes, onPress }: { notes: string; onPress: () => void }) {
+  const p = useColors();
+  const { t } = useI18n();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={notes}
+      accessibilityHint={t.ledger.editNotes}
+      style={{ flexDirection: "row", alignItems: "flex-start", gap: spacing.xs }}
+    >
+      <PinIcon />
+      <LedgerText style={{ flex: 1, color: p.secondary, ...type.footnote }}>{notes}</LedgerText>
+    </Pressable>
+  );
+}
+
+// Edited in place and saved when the field loses focus, as the set fields are.
+function NotesInput({
+  notes,
+  onCommit,
+}: {
+  notes: string | null;
+  onCommit: (text: string) => void;
+}) {
+  const p = useColors();
+  const { t } = useI18n();
+  const [text, setText] = useState(notes ?? "");
+  return (
+    <View style={{ flexDirection: "row", alignItems: "flex-start", gap: spacing.xs }}>
+      <PinIcon />
+      <TextInput
+        value={text}
+        onChangeText={setText}
+        onBlur={() => onCommit(text)}
+        autoFocus
+        // Wraps a long note, while Return saves it: notes are a line or two, never paragraphs.
+        multiline
+        submitBehavior="blurAndSubmit"
+        returnKeyType="done"
+        placeholder={t.ledger.notesPlaceholder}
+        placeholderTextColor={p.tertiary}
+        maxFontSizeMultiplier={LEDGER_MAX_FONT_SCALE}
+        style={{ flex: 1, color: p.label, ...type.footnote, padding: 0 }}
+      />
     </View>
   );
 }

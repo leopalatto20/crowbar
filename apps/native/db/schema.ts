@@ -114,7 +114,7 @@ export const gym = sqliteTable("gym", {
 });
 
 // One Exercise on specific equipment at one Gym (ADR 0001). Created implicitly by the first
-// logged set of an Exercise at a Gym.
+// logged set or machine note of an Exercise at a Gym, or explicitly as a further Station.
 export const station = sqliteTable(
   "station",
   {
@@ -126,6 +126,9 @@ export const station = sqliteTable(
       .notNull()
       .references(() => gym.id, { onDelete: "cascade" }),
     unit: text("unit", { enum: UNITS }).notNull(),
+    // Unnamed until the Gym holds a second Station for the Exercise.
+    label: text("label"),
+    notes: text("notes"),
   },
   (t) => [
     index("station_exercise_id_gym_id").on(t.exerciseId, t.gymId),

@@ -1,4 +1,16 @@
-import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, max, notExists } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  max,
+  notExists,
+  sql,
+} from "drizzle-orm";
 
 import type { EquipmentType, LoadType } from "@/lib/exercise/model";
 import type { Language } from "@/lib/i18n/locale";
@@ -116,6 +128,8 @@ export type LedgerSet = {
   lastHere: Performance | null;
 };
 
+export type StationOption = { id: string; label: string | null };
+
 export type LedgerExercise = {
   id: string;
   exercise: {
@@ -125,6 +139,10 @@ export type LedgerExercise = {
     loadType: LoadType;
     unilateral: boolean;
   };
+  // Null until the first logged set or machine note when the Gym has no Station for it yet.
+  station: (StationOption & { notes: string | null }) | null;
+  // Every Station of the Exercise at the Gym; several mean each one shows its label.
+  stations: StationOption[];
   unit: Unit;
   // Null when nothing was planned, as for an Exercise added mid-Workout.
   target: Target | null;
@@ -168,6 +186,8 @@ export function getLedger(db: Database, id: string, language: Language): Ledger 
       loadType: exercise.loadType,
       unilateral: exercise.unilateral,
       stationId: workoutExercise.stationId,
+      stationLabel: station.label,
+      stationNotes: station.notes,
       unit: station.unit,
       sets: workoutExercise.sets,
       repMin: workoutExercise.repMin,
@@ -205,6 +225,11 @@ export function getLedger(db: Database, id: string, language: Language): Ledger 
   for (const { workoutExerciseId, ...set } of sets) {
     setsByEntry.set(workoutExerciseId, [...(setsByEntry.get(workoutExerciseId) ?? []), set]);
   }
+  const stationsAtGym = stationsAt(
+    db,
+    entries.map((entry) => entry.exerciseId),
+    found.gymId,
+  );
   const { defaultWeightUnit } = getSettings(db);
 
   return {
@@ -219,6 +244,8 @@ export function getLedger(db: Database, id: string, language: Language): Ledger 
         loadType,
         unilateral,
         stationId,
+        stationLabel,
+        stationNotes,
         unit,
         ...target
       }) => {
@@ -233,6 +260,10 @@ export function getLedger(db: Database, id: string, language: Language): Ledger 
             loadType,
             unilateral,
           },
+          station: stationId ? { id: stationId, label: stationLabel, notes: stationNotes } : null,
+          stations: stationsAtGym
+            .filter((option) => option.exerciseId === exerciseId)
+            .map(({ id, label }) => ({ id, label })),
           // An Exercise with no Station yet shows the unit its Station will be created with.
           unit: unit ?? newStationUnit(defaultWeightUnit, loadType),
           target: Object.values(target).every((value) => value === null) ? null : target,
@@ -241,6 +272,15 @@ export function getLedger(db: Database, id: string, language: Language): Ledger 
       },
     ),
   };
+}
+
+function stationsAt(db: Database, exerciseIds: string[], gymId: string) {
+  return db
+    .select({ id: station.id, exerciseId: station.exerciseId, label: station.label })
+    .from(station)
+    .where(and(inArray(station.exerciseId, exerciseIds), eq(station.gymId, gymId)))
+    .orderBy(asc(sql`${station.label} collate nocase`), asc(station.id))
+    .all();
 }
 
 // A Bodyweight Exercise adds weight to the lifter's body, which no Stack level can express.
@@ -384,18 +424,88 @@ export function changeWorkoutGym(db: Database, workoutId: string, gymId: string)
   });
 }
 
-// The Station last used for the Exercise at the Gym. Stations only exist through the Workouts
-// that logged to them, so any Station of the Exercise there is found through its Workouts.
+// The Station last used for the Exercise at the Gym. One never logged to, kept for its label or
+// notes, comes after every Station in use: SQLite sorts the null start time last when descending.
 function defaultStation(db: Database, exerciseId: string, gymId: string) {
   return db
     .select({ id: station.id })
     .from(station)
-    .innerJoin(workoutExercise, eq(workoutExercise.stationId, station.id))
-    .innerJoin(workout, eq(workout.id, workoutExercise.workoutId))
+    .leftJoin(workoutExercise, eq(workoutExercise.stationId, station.id))
+    .leftJoin(workout, eq(workout.id, workoutExercise.workoutId))
     .where(and(eq(station.exerciseId, exerciseId), eq(station.gymId, gymId)))
-    .orderBy(desc(workout.startedAt))
+    .groupBy(station.id)
+    .orderBy(desc(max(workout.startedAt)), desc(station.id))
     .limit(1)
     .get();
+}
+
+export type NewStationLabels = {
+  label: string;
+  // Names the Station the Gym already holds when it's still unnamed, as it is until a second.
+  existingLabel?: string;
+};
+
+// The Exercise moves onto the new Station for this Workout, sets and all. Once a Gym holds
+// several Stations for an Exercise, each one carries a label, so they can be told apart.
+export function addStation(
+  db: Database,
+  workoutExerciseId: string,
+  { label, existingLabel }: NewStationLabels,
+) {
+  if (!label.trim()) throw new Error("A new Station needs a label");
+  db.transaction((tx) => {
+    const entry = findWorkoutExercise(tx, workoutExerciseId);
+    const unnamed = tx
+      .select({ id: station.id })
+      .from(station)
+      .where(
+        and(
+          eq(station.exerciseId, entry.exerciseId),
+          eq(station.gymId, entry.gymId),
+          isNull(station.label),
+        ),
+      )
+      .get();
+    if (unnamed) {
+      if (!existingLabel?.trim()) throw new Error(`Station ${unnamed.id} needs a label too`);
+      tx.update(station)
+        .set({ label: existingLabel.trim() })
+        .where(eq(station.id, unnamed.id))
+        .run();
+    }
+    assignStation(tx, workoutExerciseId, insertStation(tx, entry, label.trim()));
+  });
+}
+
+// Sets belong to the Workout Exercise, so they move with it: the numbers stay as logged and read
+// in the new Station's unit.
+export function switchStation(db: Database, workoutExerciseId: string, stationId: string) {
+  db.transaction((tx) => {
+    const entry = findWorkoutExercise(tx, workoutExerciseId);
+    const target = tx
+      .select({ id: station.id })
+      .from(station)
+      .where(
+        and(
+          eq(station.id, stationId),
+          eq(station.exerciseId, entry.exerciseId),
+          eq(station.gymId, entry.gymId),
+        ),
+      )
+      .get();
+    if (!target) throw new Error(`Station ${stationId} isn't one for this Exercise at this Gym`);
+    assignStation(tx, workoutExerciseId, stationId);
+  });
+}
+
+// Notes need a Station to belong to, so notes written before the first logged set create it.
+export function setMachineNotes(db: Database, workoutExerciseId: string, notes: string) {
+  db.transaction((tx) => {
+    tx.update(station)
+      .set({ notes: notes.trim() || null })
+      .where(eq(station.id, ensureStation(tx, workoutExerciseId)))
+      .run();
+  });
 }
 
 export type SetChange = Partial<Pick<LedgerSet, "load" | "reps" | "rir">>;
@@ -520,12 +630,15 @@ function stationsOf(db: Database, workoutId: string) {
     .map((entry) => entry.id!);
 }
 
-// A Station created by sets that were then dropped would otherwise linger with no history.
+// A Station created by sets that were then dropped would otherwise linger with no history. One
+// the lifter named or wrote notes for is kept: it stands for real equipment.
 function deleteEmptyStations(db: Database, ids: string[]) {
   db.delete(station)
     .where(
       and(
         inArray(station.id, ids),
+        isNull(station.label),
+        isNull(station.notes),
         notExists(
           db.select().from(workoutExercise).where(eq(workoutExercise.stationId, station.id)),
         ),
@@ -534,7 +647,7 @@ function deleteEmptyStations(db: Database, ids: string[]) {
     .run();
 }
 
-function ensureStation(db: Database, workoutExerciseId: string) {
+function findWorkoutExercise(db: Database, workoutExerciseId: string) {
   const entry = db
     .select({
       stationId: workoutExercise.stationId,
@@ -548,23 +661,41 @@ function ensureStation(db: Database, workoutExerciseId: string) {
     .where(eq(workoutExercise.id, workoutExerciseId))
     .get();
   if (!entry) throw new Error(`Workout Exercise ${workoutExerciseId} doesn't exist`);
-  if (entry.stationId) return;
-  let stationId = defaultStation(db, entry.exerciseId, entry.gymId)?.id;
-  if (!stationId) {
-    stationId = newId(db);
-    db.insert(station)
-      .values({
-        id: stationId,
-        exerciseId: entry.exerciseId,
-        gymId: entry.gymId,
-        unit: newStationUnit(getSettings(db).defaultWeightUnit, entry.loadType),
-      })
-      .run();
-  }
+  return entry;
+}
+
+function assignStation(db: Database, workoutExerciseId: string, stationId: string) {
   db.update(workoutExercise)
     .set({ stationId })
     .where(eq(workoutExercise.id, workoutExerciseId))
     .run();
+}
+
+function insertStation(
+  db: Database,
+  entry: { exerciseId: string; gymId: string; loadType: LoadType },
+  label: string | null = null,
+) {
+  const id = newId(db);
+  db.insert(station)
+    .values({
+      id,
+      exerciseId: entry.exerciseId,
+      gymId: entry.gymId,
+      unit: newStationUnit(getSettings(db).defaultWeightUnit, entry.loadType),
+      label,
+    })
+    .run();
+  return id;
+}
+
+function ensureStation(db: Database, workoutExerciseId: string) {
+  const entry = findWorkoutExercise(db, workoutExerciseId);
+  if (entry.stationId) return entry.stationId;
+  const stationId =
+    defaultStation(db, entry.exerciseId, entry.gymId)?.id ?? insertStation(db, entry);
+  assignStation(db, workoutExerciseId, stationId);
+  return stationId;
 }
 
 function loadTypeOf(db: Database, workoutExerciseId: string) {
