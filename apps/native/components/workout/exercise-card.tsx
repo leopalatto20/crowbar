@@ -60,7 +60,6 @@ export function ExerciseCard({
   position,
   count,
   mode,
-  onConfirmed,
   onSwap,
   onHistory,
 }: {
@@ -69,7 +68,6 @@ export function ExerciseCard({
   position: number;
   count: number;
   mode: LedgerMode;
-  onConfirmed: (set: LedgerSet) => void;
   onSwap: () => void;
   onHistory: () => void;
 }) {
@@ -184,7 +182,6 @@ export function ExerciseCard({
             format={format}
             workingNumber={workingIndex(entry.sets, index)}
             editing={mode === "edit"}
-            onConfirmed={() => onConfirmed(set)}
           />
         ),
       )}
@@ -291,13 +288,11 @@ function SetRow({
   format,
   workingNumber,
   editing,
-  onConfirmed,
 }: {
   set: LedgerSet;
   format: LoadFormat;
   workingNumber: number;
   editing: boolean;
-  onConfirmed: () => void;
 }) {
   const db = useDb();
   const p = useColors();
@@ -428,7 +423,6 @@ function SetRow({
             confirmSet(db, set.id, draftChange());
             if (!editing) haptics.light();
             setDrafts({});
-            onConfirmed();
           }}
         />
       )}

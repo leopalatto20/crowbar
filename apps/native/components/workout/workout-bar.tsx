@@ -4,8 +4,8 @@ import { Pressable, Text } from "react-native";
 
 import { useI18n } from "@/lib/i18n";
 import { spacing, type, useColors } from "@/lib/theme";
-import { formatElapsed, workoutTitle } from "@/lib/workout/model";
-import { useElapsedSeconds } from "@/lib/workout/use-workout";
+import { formatClock, formatElapsed, workoutTitle } from "@/lib/workout/model";
+import { useElapsedSeconds, useRest, useRestClock } from "@/lib/workout/use-workout";
 
 type WorkoutInProgress = { routineName: string | null; startedAt: number };
 
@@ -16,6 +16,10 @@ export function WorkoutBar({ workout }: { workout: WorkoutInProgress }) {
   const i18n = useI18n();
   const title = workoutTitle(workout.routineName, i18n);
   const elapsed = formatElapsed(useElapsedSeconds(workout.startedAt));
+  const rest = useRestClock(useRest());
+  // While a Rest counts down the bar shows that instead: it's what the lifter waits on.
+  const resting = rest && !rest.over;
+  const clock = resting ? formatClock(rest.remaining) : elapsed;
 
   return (
     <Pressable
@@ -23,7 +27,7 @@ export function WorkoutBar({ workout }: { workout: WorkoutInProgress }) {
       onPress={() => router.navigate("/workout")}
       accessibilityRole="button"
       accessibilityLabel={title}
-      accessibilityValue={{ text: elapsed }}
+      accessibilityValue={{ text: resting ? i18n.t.workoutBar.resting(clock) : clock }}
       accessibilityHint={i18n.t.workoutBar.open}
       style={{
         flex: 1,
@@ -44,8 +48,14 @@ export function WorkoutBar({ workout }: { workout: WorkoutInProgress }) {
       >
         {title}
       </Text>
-      <Text style={{ color: p.secondary, ...type.subheadline, fontVariant: ["tabular-nums"] }}>
-        {elapsed}
+      <Text
+        style={{
+          color: resting ? p.blue : p.secondary,
+          ...type.subheadline,
+          fontVariant: ["tabular-nums"],
+        }}
+      >
+        {clock}
       </Text>
     </Pressable>
   );

@@ -265,3 +265,23 @@ export const workoutEdit = sqliteTable(
     check("workout_edit_remove", sql`(${t.kind} = 'remove') = (${t.workoutExerciseId} is null)`),
   ],
 );
+
+export const REST_ID = 1;
+
+// The one Rest running, if any. Only `endsAt` is needed to reconcile it after a kill; it's never
+// part of history, so it hangs off the set that started it and goes when that set does.
+export const rest = sqliteTable(
+  "rest",
+  {
+    id: integer("id").primaryKey(),
+    setId: text("set_id")
+      .notNull()
+      .references(() => workoutSet.id, { onDelete: "cascade" }),
+    startedAt: integer("started_at").notNull(),
+    endsAt: integer("ends_at").notNull(),
+  },
+  (t) => [
+    check("rest_single_row", sql`${t.id} = ${sql.raw(String(REST_ID))}`),
+    index("rest_set_id").on(t.setId),
+  ],
+);

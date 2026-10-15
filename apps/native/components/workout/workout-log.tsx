@@ -14,10 +14,9 @@ import {
   swapWorkoutExercise,
 } from "@/db/workouts";
 import { useI18n } from "@/lib/i18n";
-import { useSettings } from "@/lib/settings";
 import { radii, spacing, type, useColors } from "@/lib/theme";
 import { epochOf } from "@/lib/workout/time";
-import type { Rest } from "@/lib/workout/use-workout";
+import { useRest } from "@/lib/workout/use-workout";
 
 import { ExerciseCard, type LedgerMode } from "./exercise-card";
 import { LedgerText } from "./ledger-text";
@@ -33,9 +32,8 @@ export function WorkoutLog({ ledger, mode }: { ledger: Ledger; mode: LedgerMode 
   const p = useColors();
   const i18n = useI18n();
   const { t } = i18n;
-  const { defaultRestSeconds } = useSettings();
   const [picking, setPicking] = useState<Picking | null>(null);
-  const [rest, setRest] = useState<Rest | null>(null);
+  const rest = useRest();
   const resting = ledger.exercises.find((entry) => entry.id === rest?.workoutExerciseId);
 
   return (
@@ -98,16 +96,6 @@ export function WorkoutLog({ ledger, mode }: { ledger: Ledger; mode: LedgerMode 
                 },
               })
             }
-            onConfirmed={(set) => {
-              // Warm-ups flow straight into the next set, and a correction to history never rests.
-              if (set.kind === "warmup" || mode !== "live") return;
-              const duration = entry.target?.restSeconds ?? defaultRestSeconds;
-              setRest({
-                endsAt: Date.now() + duration * 1000,
-                duration,
-                workoutExerciseId: entry.id,
-              });
-            }}
           />
         ))}
         {mode !== "read" && (
@@ -133,22 +121,8 @@ export function WorkoutLog({ ledger, mode }: { ledger: Ledger; mode: LedgerMode 
           </PressableScale>
         )}
       </ScrollView>
-      {mode === "live" && (
-        <RestBar
-          rest={rest}
-          exerciseName={resting?.exercise.name ?? ""}
-          onAdjust={(seconds) =>
-            setRest(
-              (current) =>
-                current && {
-                  ...current,
-                  endsAt: current.endsAt + seconds * 1000,
-                  duration: current.duration + seconds,
-                },
-            )
-          }
-          onEnd={() => setRest(null)}
-        />
+      {mode === "live" && rest && resting && (
+        <RestBar rest={rest} exerciseName={resting.exercise.name} />
       )}
       {mode !== "read" && (
         <ExercisePickerSheet

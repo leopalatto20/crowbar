@@ -77,6 +77,9 @@ export const es: Messages = {
     defaultWeightUnit: "Unidad de peso predeterminada",
     training: "Entrenamiento",
     gyms: "Gimnasios",
+    rest: "Descanso",
+    restTimer: "Temporizador de descanso",
+    defaultRest: "Descanso predeterminado",
   },
   gyms: {
     title: "Gimnasios",
@@ -279,6 +282,7 @@ export const es: Messages = {
   },
   workoutBar: {
     open: "Abre el entrenamiento",
+    resting: (remaining) => `Descansando, quedan ${remaining}`,
   },
   finish: {
     title: "Terminar entrenamiento",
@@ -302,6 +306,9 @@ export const es: Messages = {
     subtract: "−15",
     add: "+15",
     skip: "Saltar",
+    overTitle: (exercise) => `Descanso terminado · ${exercise}`,
+    overtime: (duration) => `+${duration}`,
+    dismiss: "Cerrar",
   },
   routine: {
     untitled: "Nueva rutina",
