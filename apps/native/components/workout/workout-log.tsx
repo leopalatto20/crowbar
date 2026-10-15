@@ -87,6 +87,17 @@ export function WorkoutLog({ ledger, mode }: { ledger: Ledger; mode: LedgerMode 
             count={ledger.exercises.length}
             mode={mode}
             onSwap={() => setPicking({ purpose: "swap", workoutExerciseId: entry.id })}
+            onHistory={() =>
+              router.push({
+                pathname: "/exercise-history",
+                params: {
+                  exerciseId: entry.exercise.id,
+                  gymId: ledger.gymId,
+                  // An Exercise with nothing logged at the Gym yet has no Station of its own.
+                  ...(entry.station && { stationId: entry.station.id }),
+                },
+              })
+            }
             onConfirmed={(set) => {
               // Warm-ups flow straight into the next set, and a correction to history never rests.
               if (set.kind === "warmup" || mode !== "live") return;

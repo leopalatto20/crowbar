@@ -1,0 +1,1 @@
+ALTER TABLE `station` ADD `retired` integer DEFAULT false NOT NULL;

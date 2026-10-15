@@ -61,6 +61,7 @@ export function ExerciseCard({
   mode,
   onConfirmed,
   onSwap,
+  onHistory,
 }: {
   entry: LedgerExercise;
   // Its index in the Ledger, of `count` Exercises.
@@ -69,6 +70,7 @@ export function ExerciseCard({
   mode: LedgerMode;
   onConfirmed: (set: LedgerSet) => void;
   onSwap: () => void;
+  onHistory: () => void;
 }) {
   const db = useDb();
   const p = useColors();
@@ -111,6 +113,7 @@ export function ExerciseCard({
             canSwap={!logged}
             canMoveUp={position > 0}
             canMoveDown={position < count - 1}
+            onHistory={onHistory}
             onSwitchStation={(stationId) => {
               if (mode === "live") haptics.selection();
               switchStation(db, entry.id, stationId);

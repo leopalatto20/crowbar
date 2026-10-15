@@ -21,6 +21,7 @@ export function ExerciseMenu({
   canSwap,
   canMoveUp,
   canMoveDown,
+  onHistory,
   onSwitchStation,
   onNewStation,
   onEditNotes,
@@ -48,6 +49,11 @@ export function ExerciseMenu({
         }
         modifiers={[accessibilityLabel(t.ledger.exerciseMenu(name))]}
       >
+        <Button
+          label={t.ledger.history}
+          systemImage="chart.line.uptrend.xyaxis"
+          onPress={onHistory}
+        />
         {currentStationId && (
           <Menu label={t.ledger.switchStation} systemImage="arrow.left.arrow.right">
             {/* A lone Station is unnamed, and is the one in use: only the new one is offered. */}

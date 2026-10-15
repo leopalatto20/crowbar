@@ -129,6 +129,8 @@ export const station = sqliteTable(
     // Unnamed until the Gym holds a second Station for the Exercise.
     label: text("label"),
     notes: text("notes"),
+    // Its equipment is gone from the Gym; its history stays readable.
+    retired: integer("retired", { mode: "boolean" }).notNull().default(false),
   },
   (t) => [
     index("station_exercise_id_gym_id").on(t.exerciseId, t.gymId),

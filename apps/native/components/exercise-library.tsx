@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { useState } from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -23,6 +24,7 @@ export function ExerciseLibraryList({
   onOpenHidden?: () => void;
 }) {
   const db = useDb();
+  const router = useRouter();
   const { t } = useI18n();
   const [editingId, setEditingId] = useState<string | null>(null);
   // Counted when the confirm opens, so it states exactly what the delete will take.
@@ -52,6 +54,9 @@ export function ExerciseLibraryList({
       <ExerciseList
         sections={sections}
         onOpenHidden={onOpenHidden}
+        onOpen={(listing) =>
+          router.push({ pathname: "/exercise", params: { exerciseId: listing.id } })
+        }
         onEdit={(listing) => setEditingId(listing.id)}
         onToggleHidden={(listing) =>
           listing.hidden ? unhideExercise(db, listing.id) : hideExercise(db, listing.id)

@@ -11,6 +11,7 @@ export type ExerciseMenuProps = {
   canSwap: boolean;
   canMoveUp: boolean;
   canMoveDown: boolean;
+  onHistory: () => void;
   onSwitchStation: (stationId: string) => void;
   onNewStation: () => void;
   onEditNotes: () => void;

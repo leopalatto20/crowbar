@@ -6,7 +6,7 @@ import {
   ListItem,
   Text,
 } from "@expo/ui/jetpack-compose";
-import { clickable, padding } from "@expo/ui/jetpack-compose/modifiers";
+import { clickable, combinedClickable, padding } from "@expo/ui/jetpack-compose/modifiers";
 import { useState } from "react";
 
 import type { ExerciseListing } from "@/db/exercises";
@@ -15,7 +15,7 @@ import { useColors } from "@/lib/theme";
 
 import type { ExerciseActions, ExerciseListProps } from "./exercise-list.types";
 
-// A tap opens the row's menu: Compose has no swipe actions to put Hide behind.
+// A long press opens the row's menu: Compose has no swipe actions to put Hide behind.
 export function ExerciseList({ sections, onOpenHidden, ...actions }: ExerciseListProps) {
   const p = useColors();
   const { t } = useI18n();
@@ -49,6 +49,7 @@ export function ExerciseList({ sections, onOpenHidden, ...actions }: ExerciseLis
 
 function ExerciseRow({
   listing,
+  onOpen,
   onEdit,
   onToggleHidden,
   onDelete,
@@ -70,7 +71,11 @@ function ExerciseRow({
   return (
     <DropdownMenu expanded={menu} onDismissRequest={() => setMenu(false)}>
       <DropdownMenu.Trigger>
-        <ListItem modifiers={[clickable(() => setMenu(true))]}>
+        <ListItem
+          modifiers={[
+            combinedClickable({ onClick: () => onOpen(listing), onLongClick: () => setMenu(true) }),
+          ]}
+        >
           <ListItem.HeadlineContent>
             <Text>{listing.name}</Text>
           </ListItem.HeadlineContent>
