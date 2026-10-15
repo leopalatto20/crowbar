@@ -30,6 +30,15 @@ export function markExported(db: Database, at: number) {
   db.update(settings).set({ lastExportedAt: at }).where(eq(settings.id, SETTINGS_ID)).run();
 }
 
+export type UndoRestore = { path: string; replacedAt: number };
+
+export function setUndoRestore(db: Database, undo: UndoRestore | null) {
+  db.update(settings)
+    .set({ undoRestorePath: undo?.path ?? null, undoRestoreReplacedAt: undo?.replacedAt ?? null })
+    .where(eq(settings.id, SETTINGS_ID))
+    .run();
+}
+
 // Turning the Rest timer off ends the Rest running, so no card is left counting.
 export function updateSettings(db: Database, change: SettingsChange) {
   db.transaction((tx) => {

@@ -105,6 +105,40 @@ export const en = {
       `Deletes ${stations} ${stations === 1 ? "Station" : "Stations"} and ${sets} ${sets === 1 ? "set" : "sets"} across ${workouts} ${workouts === 1 ? "Workout" : "Workouts"}.`,
     cancel: "Cancel",
   },
+  restore: {
+    restoreFromBackup: "Restore from backup…",
+    undoRestore: (date: string) => `Undo restore (replaced ${date})`,
+    workoutInProgressTitle: "Workout in progress",
+    workoutInProgressMessage: "Finish or discard your Workout before restoring.",
+    rejectedTitle: "Can’t restore this file",
+    rejected: {
+      foreign: "This file isn’t a Crowbar backup.",
+      corrupt: "This backup is damaged and can’t be read.",
+      newer: "This backup is from a newer version of Crowbar. Update the app, then try again.",
+    },
+    confirmTitle: "Replace all your data?",
+    confirmMessage: (backup: string, current: string) =>
+      `This backup has ${backup}. Crowbar now has ${current}. Restoring replaces everything; you can undo it from Settings.`,
+    summary: (workouts: number, last: string | null) =>
+      last === null
+        ? "no Workouts"
+        : `${workouts} ${workouts === 1 ? "Workout" : "Workouts"}, the last on ${last}`,
+    confirm: "Restore",
+    undoTitle: "Undo restore?",
+    undoMessage: (date: string) =>
+      `Crowbar goes back to the data the restore on ${date} replaced. Anything logged since is lost.`,
+    undo: "Undo restore",
+    cancel: "Cancel",
+    failedTitle: {
+      restore: "Couldn’t restore the backup",
+      undoRestore: "Couldn’t undo the restore",
+    },
+    failedMessage: {
+      restore: "Nothing was changed. Try again, or restore a different backup.",
+      undoRestore: "The data from before the restore is no longer on this device.",
+    },
+    dismiss: "OK",
+  },
   databaseFailure: {
     title: "Crowbar couldn’t open your data",
     message:

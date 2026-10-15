@@ -7,6 +7,7 @@ import {
   formatDecimal,
   formatDate,
   formatEditableDecimal,
+  formatFullDate,
   formatMonth,
   formatTime,
   resolveLanguage,
@@ -32,6 +33,7 @@ export function useI18n() {
     formatTime: (epochMs: number, timeZone?: string) =>
       formatTime(epochMs, languageTag, uses24HourClock, timeZone),
     formatDate: (epochMs: number, timeZone: string) => formatDate(epochMs, languageTag, timeZone),
+    formatFullDate: (epochMs: number) => formatFullDate(epochMs, languageTag),
     formatMonth: (year: number, month: number) => formatMonth(year, month, languageTag),
   };
 }

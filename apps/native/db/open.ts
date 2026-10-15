@@ -4,7 +4,7 @@ import type { Database } from "./database";
 import journal from "./migrations/meta/_journal.json";
 
 // "CROW" in ASCII. Backup validation reads it to reject SQLite files that aren't Crowbar's.
-const CROWBAR_APPLICATION_ID = 0x43524f57;
+export const CROWBAR_APPLICATION_ID = 0x43524f57;
 
 export type Snapshot = { path: string; exists: () => boolean; delete: () => void };
 
@@ -30,14 +30,20 @@ export async function openDatabase(
   if (snapshot.exists()) snapshot.delete();
 }
 
-// Mirrors Drizzle's own rule: a migration is pending when it is newer than the last one applied.
+// Drizzle marks each migration by its journal timestamp. It applies those newer than the last one
+// recorded and silently accepts a database recording ones it doesn't bundle.
+export const LATEST_MIGRATION = Math.max(...journal.entries.map((entry) => entry.when));
+
 function hasPendingMigrations(db: Database) {
-  const latest = Math.max(...journal.entries.map((entry) => entry.when));
   if (countTables(db, sql`name = '__drizzle_migrations'`) === 0) return true;
+  return lastAppliedMigration(db, "main") < LATEST_MIGRATION;
+}
+
+export function lastAppliedMigration(db: Database, schema: "main" | "backup") {
   const [last] = db.all<{ createdAt: number | null }>(
-    sql`SELECT max(created_at) AS createdAt FROM __drizzle_migrations`,
+    sql`SELECT max(created_at) AS createdAt FROM ${sql.identifier(schema)}.__drizzle_migrations`,
   );
-  return (last?.createdAt ?? 0) < latest;
+  return last?.createdAt ?? 0;
 }
 
 // A first launch has nothing worth a snapshot. Drizzle creates its bookkeeping table outside the

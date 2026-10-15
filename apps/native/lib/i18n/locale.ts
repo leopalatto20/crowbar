@@ -58,6 +58,11 @@ export function formatDate(epochMs: number, languageTag: string, timeZone: strin
   }).format(epochMs);
 }
 
+// In the device's zone: a day for the lifter to recognize, not one tied to where it was logged.
+export function formatFullDate(epochMs: number, languageTag: string) {
+  return new Intl.DateTimeFormat(languageTag, { dateStyle: "medium" }).format(epochMs);
+}
+
 // `month` runs 1-12. Read in UTC, so no zone can shift the first of the month into another.
 export function formatMonth(year: number, month: number, languageTag: string) {
   return new Intl.DateTimeFormat(languageTag, {
