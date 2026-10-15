@@ -1,6 +1,7 @@
 import { Button, Divider, Host, Menu, Text } from "@expo/ui/swift-ui";
 import {
   accessibilityLabel,
+  disabled,
   font,
   foregroundStyle,
   frame,
@@ -17,9 +18,16 @@ export function ExerciseMenu({
   stations,
   currentStationId,
   hasNotes,
+  canSwap,
+  canMoveUp,
+  canMoveDown,
   onSwitchStation,
   onNewStation,
   onEditNotes,
+  onSwap,
+  onMoveUp,
+  onMoveDown,
+  onRemove,
 }: ExerciseMenuProps) {
   const p = useColors();
   const { t } = useI18n();
@@ -62,10 +70,31 @@ export function ExerciseMenu({
           </Menu>
         )}
         <Button
+          label={t.ledger.swap}
+          systemImage="arrow.triangle.2.circlepath"
+          onPress={onSwap}
+          modifiers={[disabled(!canSwap)]}
+        />
+        <Button
           label={hasNotes ? t.ledger.editNotes : t.ledger.addNotes}
           systemImage="pin"
           onPress={onEditNotes}
         />
+        <Divider />
+        <Button
+          label={t.ledger.moveUp}
+          systemImage="arrow.up"
+          onPress={onMoveUp}
+          modifiers={[disabled(!canMoveUp)]}
+        />
+        <Button
+          label={t.ledger.moveDown}
+          systemImage="arrow.down"
+          onPress={onMoveDown}
+          modifiers={[disabled(!canMoveDown)]}
+        />
+        <Divider />
+        <Button label={t.ledger.remove} systemImage="trash" role="destructive" onPress={onRemove} />
       </Menu>
     </Host>
   );

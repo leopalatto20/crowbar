@@ -11,7 +11,7 @@ import {
 
 // Relative imports: drizzle-kit loads this file without the app's path aliases.
 import { EQUIPMENT_TYPES, LOAD_TYPES, MUSCLE_GROUPS } from "../lib/exercise/model";
-import { EFFORTS, SET_KINDS, UNITS } from "../lib/workout/model";
+import { EFFORTS, SET_KINDS, UNITS, WORKOUT_EDIT_KINDS } from "../lib/workout/model";
 
 export const SETTINGS_ID = 1;
 
@@ -176,6 +176,11 @@ export const workoutExercise = sqliteTable(
       .references(() => exercise.id, { onDelete: "cascade" }),
     // Null until the first logged set when the Gym has no Station for the Exercise yet.
     stationId: text("station_id").references(() => station.id, { onDelete: "cascade" }),
+    // The Routine slot it was snapshotted from, which write-back edits; null for an Exercise added
+    // mid-Workout, or once the slot is gone from the Routine.
+    routineExerciseId: text("routine_exercise_id").references(() => routineExercise.id, {
+      onDelete: "set null",
+    }),
     position: integer("position").notNull(),
     // Snapshotted from the Routine slot at the start; blank for an Exercise added mid-Workout.
     sets: integer("sets"),
@@ -189,6 +194,7 @@ export const workoutExercise = sqliteTable(
     index("workout_exercise_workout_id").on(t.workoutId),
     index("workout_exercise_exercise_id").on(t.exerciseId),
     index("workout_exercise_station_id").on(t.stationId),
+    index("workout_exercise_routine_exercise_id").on(t.routineExerciseId),
   ],
 );
 
@@ -217,5 +223,43 @@ export const workoutSet = sqliteTable(
     check("set_load", sql`${t.load} >= 0`),
     check("set_reps", sql`${t.reps} >= 0`),
     check("set_rir", sql`${t.rir} between 0 and 10`),
+  ],
+);
+
+// The Swap / Add / Remove / Move edits made to a Workout started from a Routine, in the order they
+// were made, for write-back to replay by slot. Recorded explicitly rather than read off the result,
+// so an Exercise that simply wasn't logged is never taken for a removal.
+export const workoutEdit = sqliteTable(
+  "workout_edit",
+  {
+    id: text("id").primaryKey(),
+    workoutId: text("workout_id")
+      .notNull()
+      .references(() => workout.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    kind: text("kind", { enum: WORKOUT_EDIT_KINDS }).notNull(),
+    // The Routine slot a Swap, Remove or Move edits. Null once the slot is gone from the Routine,
+    // which write-back skips.
+    routineExerciseId: text("routine_exercise_id").references(() => routineExercise.id, {
+      onDelete: "set null",
+    }),
+    // The Exercise a Swap puts in the slot.
+    exerciseId: text("exercise_id").references(() => exercise.id, { onDelete: "cascade" }),
+    // The Exercise a Swap, Add or Move edited in the Workout. Removing it, or finishing with
+    // nothing logged on it, takes its edits with it: an unlogged Exercise records nothing. Write-back
+    // places these by where the Exercise sits in the Ledger at finish.
+    workoutExerciseId: text("workout_exercise_id").references(() => workoutExercise.id, {
+      onDelete: "cascade",
+    }),
+  },
+  (t) => [
+    index("workout_edit_workout_id").on(t.workoutId),
+    index("workout_edit_routine_exercise_id").on(t.routineExerciseId),
+    index("workout_edit_exercise_id").on(t.exerciseId),
+    index("workout_edit_workout_exercise_id").on(t.workoutExerciseId),
+    check("workout_edit_kind", oneOf(t.kind, WORKOUT_EDIT_KINDS)),
+    check("workout_edit_swap", sql`(${t.kind} = 'swap') = (${t.exerciseId} is not null)`),
+    // A Remove has no Exercise left in the Workout to point at.
+    check("workout_edit_remove", sql`(${t.kind} = 'remove') = (${t.workoutExerciseId} is null)`),
   ],
 );

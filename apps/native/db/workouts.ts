@@ -25,6 +25,7 @@ import {
   routineExercise,
   station,
   workout,
+  workoutEdit,
   workoutExercise,
   workoutSet,
 } from "./schema";
@@ -70,7 +71,20 @@ function snapshotRoutine(db: Database, workoutId: string, gymId: string, routine
     .orderBy(asc(routineExercise.position))
     .all();
   slots.forEach(
-    ({ exerciseId, warmups, sets, repMin, repMax, rirMin, rirMax, restSeconds }, position) => {
+    (
+      {
+        id: routineExerciseId,
+        exerciseId,
+        warmups,
+        sets,
+        repMin,
+        repMax,
+        rirMin,
+        rirMax,
+        restSeconds,
+      },
+      position,
+    ) => {
       const id = newId(db);
       db.insert(workoutExercise)
         .values({
@@ -78,6 +92,7 @@ function snapshotRoutine(db: Database, workoutId: string, gymId: string, routine
           workoutId,
           exerciseId,
           stationId: defaultStation(db, exerciseId, gymId)?.id ?? null,
+          routineExerciseId,
           position,
           sets,
           repMin,
@@ -370,7 +385,7 @@ export function addWorkoutExercise(db: Database, workoutId: string, exerciseId: 
   const id = newId(db);
   db.transaction((tx) => {
     const found = tx
-      .select({ gymId: workout.gymId })
+      .select({ gymId: workout.gymId, routineId: workout.routineId })
       .from(workout)
       .where(eq(workout.id, workoutId))
       .get();
@@ -392,8 +407,150 @@ export function addWorkoutExercise(db: Database, workoutId: string, exerciseId: 
     tx.insert(workoutSet)
       .values({ id: newId(tx), workoutExerciseId: id, position: 0 })
       .run();
+    if (found.routineId) recordEdit(tx, workoutId, { kind: "add", workoutExerciseId: id });
   });
   return id;
+}
+
+// The new Exercise takes over the slot, Targets and set rows included, on its own default Station.
+// Logged sets never move between Exercises, so a slot with a confirmed set can't be swapped.
+export function swapWorkoutExercise(db: Database, workoutExerciseId: string, exerciseId: string) {
+  db.transaction((tx) => {
+    const entry = findWorkoutExercise(tx, workoutExerciseId);
+    if (hasConfirmedSet(tx, workoutExerciseId)) {
+      throw new Error(`Workout Exercise ${workoutExerciseId} has confirmed sets`);
+    }
+    tx.update(workoutExercise)
+      .set({ exerciseId, stationId: defaultStation(tx, exerciseId, entry.gymId)?.id ?? null })
+      .where(eq(workoutExercise.id, workoutExerciseId))
+      .run();
+    // Values typed for the old Exercise mean nothing for the new one, which shows its own ghosts.
+    tx.update(workoutSet)
+      .set({ load: null, reps: null, rir: null })
+      .where(eq(workoutSet.workoutExerciseId, workoutExerciseId))
+      .run();
+    if (entry.stationId) deleteEmptyStations(tx, [entry.stationId]);
+    if (entry.routineExerciseId) {
+      recordEdit(tx, entry.workoutId, {
+        kind: "swap",
+        routineExerciseId: entry.routineExerciseId,
+        workoutExerciseId,
+        exerciseId,
+      });
+    }
+  });
+}
+
+// Distinct from leaving an Exercise unlogged: its logged sets go too.
+export function removeWorkoutExercise(db: Database, workoutExerciseId: string) {
+  db.transaction((tx) => {
+    const entry = findWorkoutExercise(tx, workoutExerciseId);
+    tx.delete(workoutExercise).where(eq(workoutExercise.id, workoutExerciseId)).run();
+    if (entry.stationId) deleteEmptyStations(tx, [entry.stationId]);
+    if (entry.routineExerciseId) {
+      recordEdit(tx, entry.workoutId, {
+        kind: "remove",
+        routineExerciseId: entry.routineExerciseId,
+      });
+    }
+  });
+}
+
+// `position` is the Exercise's index in the Ledger once moved.
+export function moveWorkoutExercise(db: Database, workoutExerciseId: string, position: number) {
+  db.transaction((tx) => {
+    const { workoutId, routineExerciseId } = findWorkoutExercise(tx, workoutExerciseId);
+    const ids = tx
+      .select({ id: workoutExercise.id })
+      .from(workoutExercise)
+      .where(eq(workoutExercise.workoutId, workoutId))
+      .orderBy(asc(workoutExercise.position))
+      .all()
+      .map((entry) => entry.id)
+      .filter((id) => id !== workoutExerciseId);
+    if (position < 0 || position > ids.length) {
+      throw new Error(`Position ${position} is outside the Workout`);
+    }
+    ids.splice(position, 0, workoutExerciseId);
+    ids.forEach((id, index) => {
+      tx.update(workoutExercise).set({ position: index }).where(eq(workoutExercise.id, id)).run();
+    });
+    // Write-back takes the order from the Ledger at finish, so a slot needs only one Move.
+    if (routineExerciseId && !hasMove(tx, workoutExerciseId)) {
+      recordEdit(tx, workoutId, { kind: "move", routineExerciseId, workoutExerciseId });
+    }
+  });
+}
+
+function hasMove(db: Database, workoutExerciseId: string) {
+  const move = db
+    .select({ id: workoutEdit.id })
+    .from(workoutEdit)
+    .where(and(eq(workoutEdit.kind, "move"), eq(workoutEdit.workoutExerciseId, workoutExerciseId)))
+    .get();
+  return move !== undefined;
+}
+
+// Swap, Move and Remove edit a Routine slot (`routineExerciseId`), null once the slot is gone from
+// the Routine. Swaps and moves of an added Exercise are part of its Add. `workoutExerciseId` is the
+// Exercise in the Workout, whose place in the Ledger at finish places the edit.
+export type WorkoutEdit =
+  | {
+      kind: "swap";
+      routineExerciseId: string | null;
+      workoutExerciseId: string;
+      exerciseId: string;
+    }
+  | { kind: "add"; workoutExerciseId: string; exerciseId: string }
+  | { kind: "move"; routineExerciseId: string | null; workoutExerciseId: string }
+  | { kind: "remove"; routineExerciseId: string | null };
+
+// An Add's Exercise isn't stored: it's whatever the added Exercise is now, swaps included.
+type RecordedEdit =
+  | { kind: "swap"; routineExerciseId: string; workoutExerciseId: string; exerciseId: string }
+  | { kind: "add"; workoutExerciseId: string }
+  | { kind: "move"; routineExerciseId: string; workoutExerciseId: string }
+  | { kind: "remove"; routineExerciseId: string };
+
+function recordEdit(db: Database, workoutId: string, edit: RecordedEdit) {
+  const [last] = db
+    .select({ position: max(workoutEdit.position) })
+    .from(workoutEdit)
+    .where(eq(workoutEdit.workoutId, workoutId))
+    .all();
+  db.insert(workoutEdit)
+    .values({ id: newId(db), workoutId, position: (last?.position ?? -1) + 1, ...edit })
+    .run();
+}
+
+export function listWorkoutEdits(db: Database, workoutId: string): WorkoutEdit[] {
+  return db
+    .select({
+      kind: workoutEdit.kind,
+      routineExerciseId: workoutEdit.routineExerciseId,
+      swappedTo: workoutEdit.exerciseId,
+      workoutExerciseId: workoutEdit.workoutExerciseId,
+      current: workoutExercise.exerciseId,
+    })
+    .from(workoutEdit)
+    .leftJoin(workoutExercise, eq(workoutExercise.id, workoutEdit.workoutExerciseId))
+    .where(eq(workoutEdit.workoutId, workoutId))
+    .orderBy(asc(workoutEdit.position))
+    .all()
+    .map(({ kind, routineExerciseId, swappedTo, workoutExerciseId, current }): WorkoutEdit => {
+      // The workout_edit_swap and workout_edit_remove checks guarantee what each kind carries.
+      if (kind === "remove") return { kind, routineExerciseId };
+      if (kind === "add")
+        return { kind, workoutExerciseId: workoutExerciseId!, exerciseId: current! };
+      if (kind === "move")
+        return { kind, routineExerciseId, workoutExerciseId: workoutExerciseId! };
+      return {
+        kind,
+        routineExerciseId,
+        workoutExerciseId: workoutExerciseId!,
+        exerciseId: swappedTo!,
+      };
+    });
 }
 
 // Each Exercise moves to its default Station at the new Gym, so prefill follows the Gym. Sets
@@ -413,12 +570,7 @@ export function changeWorkoutGym(db: Database, workoutId: string, gymId: string)
         .set({ stationId: defaultStation(tx, entry.exerciseId, gymId)?.id ?? null })
         .where(eq(workoutExercise.id, entry.id))
         .run();
-      const logged = tx
-        .select({ id: workoutSet.id })
-        .from(workoutSet)
-        .where(and(eq(workoutSet.workoutExerciseId, entry.id), eq(workoutSet.done, true)))
-        .get();
-      if (logged) ensureStation(tx, entry.id);
+      if (hasConfirmedSet(tx, entry.id)) ensureStation(tx, entry.id);
     }
     deleteEmptyStations(tx, previousStationIds);
   });
@@ -650,6 +802,8 @@ function deleteEmptyStations(db: Database, ids: string[]) {
 function findWorkoutExercise(db: Database, workoutExerciseId: string) {
   const entry = db
     .select({
+      workoutId: workoutExercise.workoutId,
+      routineExerciseId: workoutExercise.routineExerciseId,
       stationId: workoutExercise.stationId,
       exerciseId: workoutExercise.exerciseId,
       loadType: exercise.loadType,
@@ -707,6 +861,15 @@ function loadTypeOf(db: Database, workoutExerciseId: string) {
     .get();
   if (!entry) throw new Error(`Workout Exercise ${workoutExerciseId} doesn't exist`);
   return entry.loadType;
+}
+
+function hasConfirmedSet(db: Database, workoutExerciseId: string) {
+  const confirmed = db
+    .select({ id: workoutSet.id })
+    .from(workoutSet)
+    .where(and(eq(workoutSet.workoutExerciseId, workoutExerciseId), eq(workoutSet.done, true)))
+    .get();
+  return confirmed !== undefined;
 }
 
 function findSet(db: Database, id: string) {

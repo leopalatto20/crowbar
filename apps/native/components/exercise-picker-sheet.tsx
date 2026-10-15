@@ -23,11 +23,13 @@ type Marked = { ids: string[]; label: string };
 
 export function ExercisePickerSheet({
   visible,
+  title,
   marked,
   onClose,
   onPick,
 }: {
   visible: boolean;
+  title: string;
   marked: Marked;
   onClose: () => void;
   onPick: (exercise: ExerciseListing) => void;
@@ -43,7 +45,7 @@ export function ExercisePickerSheet({
       <View style={{ flex: 1, backgroundColor: p.background }}>
         <Suspense fallback={null}>
           {/* Modal renders nothing while closed, so every opening starts with an empty search. */}
-          <ExercisePicker marked={marked} onClose={onClose} onPick={onPick} />
+          <ExercisePicker title={title} marked={marked} onClose={onClose} onPick={onPick} />
         </Suspense>
       </View>
     </Modal>
@@ -51,10 +53,12 @@ export function ExercisePickerSheet({
 }
 
 function ExercisePicker({
+  title,
   marked,
   onClose,
   onPick,
 }: {
+  title: string;
   marked: Marked;
   onClose: () => void;
   onPick: (exercise: ExerciseListing) => void;
@@ -100,7 +104,7 @@ function ExercisePicker({
         <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button">
           <Text style={{ color: p.blue, ...type.body }}>{t.exercisePicker.cancel}</Text>
         </Pressable>
-        <Text style={{ color: p.label, ...type.headline }}>{t.exercisePicker.title}</Text>
+        <Text style={{ color: p.label, ...type.headline }}>{title}</Text>
         <View style={{ width: 52 }} />
       </View>
       <View

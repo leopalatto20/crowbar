@@ -50,6 +50,13 @@
       "when": 1792021452011,
       "tag": "0006_station_label_notes",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1792031253001,
+      "tag": "0007_workout_edit",
+      "breakpoints": true
     }
   ]
 }

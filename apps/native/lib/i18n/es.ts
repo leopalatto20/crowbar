@@ -173,6 +173,12 @@ export const es: Messages = {
     editNotes: "Editar notas de la máquina",
     notesPlaceholder: "Altura del asiento, posición del pin…",
     station: (label) => `Estación: ${label}`,
+    swap: "Cambiar ejercicio",
+    moveUp: "Mover arriba",
+    moveDown: "Mover abajo",
+    remove: "Quitar del entrenamiento",
+    removeTitle: (exercise) => `¿Quitar ${exercise}?`,
+    removeMessage: "Se borrarán sus series registradas.",
   },
   stationPrompt: {
     title: "Nueva estación",

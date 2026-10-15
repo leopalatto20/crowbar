@@ -6,7 +6,7 @@ import { ScrollView, View } from "react-native";
 import { ExercisePickerSheet } from "@/components/exercise-picker-sheet";
 import { PressableScale } from "@/components/pressable-scale";
 import { useDb } from "@/db/context";
-import { type Ledger, addWorkoutExercise } from "@/db/workouts";
+import { type Ledger, addWorkoutExercise, swapWorkoutExercise } from "@/db/workouts";
 import { useI18n } from "@/lib/i18n";
 import { useSettings } from "@/lib/settings";
 import { radii, spacing, type, useColors } from "@/lib/theme";
@@ -17,13 +17,15 @@ import { LedgerText } from "./ledger-text";
 import { RestBar } from "./rest-bar";
 import { WorkoutMeta } from "./workout-meta";
 
+type Picking = { purpose: "add" } | { purpose: "swap"; workoutExerciseId: string };
+
 export function WorkoutLog({ ledger }: { ledger: Ledger }) {
   const db = useDb();
   const router = useRouter();
   const p = useColors();
   const { t } = useI18n();
   const { defaultRestSeconds } = useSettings();
-  const [picking, setPicking] = useState(false);
+  const [picking, setPicking] = useState<Picking | null>(null);
   const [rest, setRest] = useState<Rest | null>(null);
   const resting = ledger.exercises.find((entry) => entry.id === rest?.workoutExerciseId);
 
@@ -41,10 +43,13 @@ export function WorkoutLog({ ledger }: { ledger: Ledger }) {
           startedAt={ledger.startedAt}
           onChangeGym={() => router.push("/gym-picker")}
         />
-        {ledger.exercises.map((entry) => (
+        {ledger.exercises.map((entry, position) => (
           <ExerciseCard
             key={entry.id}
             entry={entry}
+            position={position}
+            count={ledger.exercises.length}
+            onSwap={() => setPicking({ purpose: "swap", workoutExerciseId: entry.id })}
             onConfirmed={(set) => {
               // Warm-ups flow straight into the next set.
               if (set.kind === "warmup") return;
@@ -58,7 +63,7 @@ export function WorkoutLog({ ledger }: { ledger: Ledger }) {
           />
         ))}
         <PressableScale
-          onPress={() => setPicking(true)}
+          onPress={() => setPicking({ purpose: "add" })}
           style={{
             height: 50,
             borderRadius: radii.card,
@@ -94,13 +99,18 @@ export function WorkoutLog({ ledger }: { ledger: Ledger }) {
         onEnd={() => setRest(null)}
       />
       <ExercisePickerSheet
-        visible={picking}
+        visible={picking !== null}
+        title={picking?.purpose === "swap" ? t.ledger.swap : t.exercisePicker.title}
         marked={{
           ids: ledger.exercises.map((entry) => entry.exercise.id),
           label: t.exercisePicker.inWorkout,
         }}
-        onClose={() => setPicking(false)}
-        onPick={(exercise) => addWorkoutExercise(db, ledger.id, exercise.id)}
+        onClose={() => setPicking(null)}
+        onPick={(exercise) =>
+          picking?.purpose === "swap"
+            ? swapWorkoutExercise(db, picking.workoutExerciseId, exercise.id)
+            : addWorkoutExercise(db, ledger.id, exercise.id)
+        }
       />
     </View>
   );
