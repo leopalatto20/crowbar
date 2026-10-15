@@ -1,10 +1,12 @@
 # Settings
 
-App-wide logging preferences stored in the single `settings` row: Effort scale (RIR or RPE) and Default weight unit (kg, lb, Stack level).
+App-wide preferences stored in the single `settings` row: Effort scale (RIR or RPE), Default weight unit (kg, lb, Stack level), the Rest timer and Default rest.
 
 ## Sub-features
 
 Both rows sit in a "Logging" section.
+
+A "Rest" section holds "Rest timer" (a `CheckBox` in the tree, value 1 when on, stored as `rest_timer_enabled`) and "Default rest" (a PopUpButton labelled with the current value, `2:00` by default, presets 0:45 to 5:00, stored as `default_rest_seconds`). Off means confirming a Working set shows no Rest card and writes no `rest` row, and turning it off ends a running Rest. Set Default rest to 0:45 to reach "Rest over" quickly.
 
 A "Training" section holds the "Gyms" row, which pushes the Gyms list; see [gyms.md](gyms.md).
 
