@@ -8,6 +8,7 @@ export function ConfirmDialog({
   title,
   message,
   confirmLabel,
+  alternative,
   cancelLabel,
   onConfirm,
   onDismiss,
@@ -28,6 +29,7 @@ export function ConfirmDialog({
           <DialogAnchor />
         </Alert.Trigger>
         <Alert.Actions>
+          {alternative && <Button label={alternative.label} onPress={alternative.onPress} />}
           <Button label={confirmLabel} role="destructive" onPress={onConfirm} />
           <Button label={cancelLabel} role="cancel" onPress={onDismiss} />
         </Alert.Actions>

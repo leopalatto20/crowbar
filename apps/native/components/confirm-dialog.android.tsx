@@ -9,6 +9,7 @@ export function ConfirmDialog({
   title,
   message,
   confirmLabel,
+  alternative,
   cancelLabel,
   onConfirm,
   onDismiss,
@@ -24,10 +25,17 @@ export function ConfirmDialog({
         <AlertDialog.Text>
           <Text>{message}</Text>
         </AlertDialog.Text>
+        {/* Material dialogs have two button slots; Compose lays both out in one flow row, so
+            the alternative shares the confirm slot. */}
         <AlertDialog.ConfirmButton>
           <TextButton onClick={onConfirm}>
             <Text color={p.red}>{confirmLabel}</Text>
           </TextButton>
+          {alternative && (
+            <TextButton onClick={alternative.onPress}>
+              <Text>{alternative.label}</Text>
+            </TextButton>
+          )}
         </AlertDialog.ConfirmButton>
         <AlertDialog.DismissButton>
           <TextButton onClick={onDismiss}>

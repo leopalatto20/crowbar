@@ -39,6 +39,17 @@ export const es: Messages = {
     noMatches: (query) => `Ningún ejercicio coincide con «${query}».`,
     noMuscleGroup: "Sin grupo muscular",
     newExercise: "Nuevo ejercicio",
+    hiddenExercises: "Ejercicios ocultos",
+    noHiddenExercises: "No hay ejercicios ocultos.",
+    edit: "Editar",
+    hide: "Ocultar",
+    unhide: "Mostrar",
+    delete: "Eliminar",
+    cancel: "Cancelar",
+    deleteTitle: (exercise) => `¿Eliminar «${exercise}»?`,
+    deleteMessage: ({ stations, workouts, sets }) =>
+      `Se eliminarán ${stations} ${stations === 1 ? "estación" : "estaciones"} y ${sets} ${sets === 1 ? "serie" : "series"} de ${workouts} ${workouts === 1 ? "entrenamiento" : "entrenamientos"}.`,
+    hideKeepsHistory: "Si lo ocultas, conservas su historial.",
   },
   settings: {
     logging: "Registro",
@@ -243,6 +254,9 @@ export const es: Messages = {
   },
   customExercise: {
     title: "Nuevo ejercicio",
+    editTitle: "Editar ejercicio",
+    locked:
+      "El tipo de equipo, el tipo de carga y Unilateral se bloquean al registrar una serie, para que las series pasadas se lean siempre igual.",
     cancel: "Cancelar",
     save: "Guardar",
     name: "Nombre",

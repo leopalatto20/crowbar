@@ -1,4 +1,5 @@
 import type { EquipmentType, LoadType, MuscleGroup } from "@/lib/exercise/model";
+import type { ExerciseHistoryCounts } from "@/db/exercises";
 import type { GymHistoryCounts } from "@/db/gyms";
 import type { Age } from "@/lib/routine/model";
 
@@ -36,6 +37,17 @@ export const en = {
     noMatches: (query: string) => `No Exercises match “${query}”.`,
     noMuscleGroup: "No Muscle group",
     newExercise: "New Exercise",
+    hiddenExercises: "Hidden Exercises",
+    noHiddenExercises: "No Hidden Exercises.",
+    edit: "Edit",
+    hide: "Hide",
+    unhide: "Unhide",
+    delete: "Delete",
+    cancel: "Cancel",
+    deleteTitle: (exercise: string) => `Delete “${exercise}”?`,
+    deleteMessage: ({ stations, workouts, sets }: ExerciseHistoryCounts) =>
+      `Deletes ${stations} ${stations === 1 ? "Station" : "Stations"} and ${sets} ${sets === 1 ? "set" : "sets"} across ${workouts} ${workouts === 1 ? "Workout" : "Workouts"}.`,
+    hideKeepsHistory: "Hiding it instead keeps its history.",
   },
   settings: {
     logging: "Logging",
@@ -238,6 +250,9 @@ export const en = {
   },
   customExercise: {
     title: "New Exercise",
+    editTitle: "Edit Exercise",
+    locked:
+      "Equipment type, load type and Unilateral are locked once a set is logged, so past sets always read the same.",
     cancel: "Cancel",
     save: "Save",
     name: "Name",
