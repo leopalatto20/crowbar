@@ -95,7 +95,7 @@ function logFinishedWorkout(
     now,
     entries.map((entry) => ({ ...entry, logged: entry.sets })),
   );
-  finishWorkout(db, workoutId, now + 500);
+  finishWorkout(db, workoutId, { now: now + 500 });
   return workoutId;
 }
 

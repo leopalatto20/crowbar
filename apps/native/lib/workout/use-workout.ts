@@ -6,13 +6,16 @@ import { dbQuery } from "@/db/query";
 import {
   exercise,
   gym,
+  routine,
+  routineExercise,
   settings,
   station,
   workout,
+  workoutEdit,
   workoutExercise,
   workoutSet,
 } from "@/db/schema";
-import { currentWorkout, getLedger, listHistory } from "@/db/workouts";
+import { currentWorkout, getLedger, listHistory, listWriteBack } from "@/db/workouts";
 import { haptics } from "@/lib/haptics";
 import { useI18n } from "@/lib/i18n";
 
@@ -29,6 +32,27 @@ export function useCurrentWorkout() {
         const id = currentWorkout(db)?.id;
         return (id && getLedger(db, id, language)) || null;
       },
+    }),
+  ).data;
+}
+
+// What the Finish sheet offers to write back to the Workout's Routine; null when nothing.
+export function useWriteBack(workoutId: string) {
+  const db = useDb();
+  const { language } = useI18n();
+  return useSuspenseQuery(
+    dbQuery(db, {
+      tables: [
+        workout,
+        routine,
+        routineExercise,
+        workoutEdit,
+        workoutExercise,
+        workoutSet,
+        exercise,
+      ],
+      key: ["workout", workoutId, "writeBack", language],
+      fn: (db) => listWriteBack(db, workoutId, language),
     }),
   ).data;
 }

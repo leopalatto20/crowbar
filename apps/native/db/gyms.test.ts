@@ -70,11 +70,11 @@ async function twoGyms() {
     { exerciseId: benchPress.id, sets: 2, logged: 2 },
     { exerciseId: pullUp.id, sets: 1, logged: 1 },
   ]);
-  finishWorkout(db, first, 1_500);
+  finishWorkout(db, first, { now: 1_500 });
   const atGarage = logWorkout(db, garage, 2_000, [
     { exerciseId: benchPress.id, sets: 1, logged: 1 },
   ]);
-  finishWorkout(db, atGarage, 2_500);
+  finishWorkout(db, atGarage, { now: 2_500 });
   // In progress: one set logged, one not yet.
   const inProgress = logWorkout(db, downtown, 3_000, [
     { exerciseId: benchPress.id, sets: 2, logged: 1 },

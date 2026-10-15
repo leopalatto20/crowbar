@@ -785,10 +785,23 @@ export function reopenSet(db: Database, id: string) {
   db.update(workoutSet).set({ done: false }).where(eq(workoutSet.id, id)).run();
 }
 
+export type FinishOptions = {
+  now?: number;
+  // Applies exactly what listWriteBack lists to the Workout's Routine.
+  writeBack?: boolean;
+  // The name of a new Routine copied from the finished Workout, whose id is returned.
+  saveAsRoutine?: string;
+};
+
 // Skipped sets and Exercises leave no trace, so finishing takes no extra action from the lifter.
-// A Workout with nothing logged isn't worth keeping at all.
-export function finishWorkout(db: Database, id: string, now = Date.now()) {
-  db.transaction((tx) => {
+// A Workout with nothing logged isn't worth keeping at all, nor saving as a Routine.
+export function finishWorkout(
+  db: Database,
+  id: string,
+  { now = Date.now(), writeBack = false, saveAsRoutine }: FinishOptions = {},
+) {
+  return db.transaction((tx) => {
+    if (writeBack) writeBackToRoutine(tx, id);
     const stationIds = stationsOf(tx, id);
     const entries = tx
       .select({ id: workoutExercise.id })
@@ -810,51 +823,257 @@ export function finishWorkout(db: Database, id: string, now = Date.now()) {
         ),
       )
       .run();
-    if (tx.select().from(workoutExercise).where(eq(workoutExercise.workoutId, id)).get()) {
+    const kept = tx.select().from(workoutExercise).where(eq(workoutExercise.workoutId, id)).get();
+    if (kept) {
       tx.update(workout).set({ finishedAt: now }).where(eq(workout.id, id)).run();
     } else {
       tx.delete(workout).where(eq(workout.id, id)).run();
     }
     deleteEmptyStations(tx, stationIds);
+    if (kept && saveAsRoutine !== undefined) return copyToRoutine(tx, id, saveAsRoutine);
+  });
+}
+
+type PlannedEdit =
+  | { kind: "swap"; routineExerciseId: string; from: string; exerciseId: string }
+  | { kind: "add"; workoutExerciseId: string; exerciseId: string; workingSets: number }
+  | { kind: "move" | "remove"; routineExerciseId: string; exerciseId: string };
+
+type LedgerEntry = {
+  id: string;
+  routineExerciseId: string | null;
+  exerciseId: string;
+  loggedSets: number;
+  workingSets: number;
+};
+
+// What write-back would apply to the Routine as it is now. Only edits on Exercises with a confirmed
+// set count, as finishing keeps only those, and an edit whose slot is gone from the Routine is
+// skipped. `order` is the Routine afterwards: slot ids, and Workout Exercise ids for the Adds.
+function planWriteBack(db: Database, workoutId: string) {
+  const found = db
+    .select({ routineId: workout.routineId })
+    .from(workout)
+    .where(eq(workout.id, workoutId))
+    .get();
+  if (!found?.routineId) return null;
+  const slots = db
+    .select({ id: routineExercise.id, exerciseId: routineExercise.exerciseId })
+    .from(routineExercise)
+    .where(eq(routineExercise.routineId, found.routineId))
+    .orderBy(asc(routineExercise.position))
+    .all();
+  const slotExercise = new Map(slots.map((slot) => [slot.id, slot.exerciseId]));
+  const entries = ledgerEntries(db, workoutId);
+  const logged = new Map(
+    entries.filter((entry) => entry.loggedSets > 0).map((entry) => [entry.id, entry]),
+  );
+  // Nothing is kept at finish, so there's no Workout to bring the Routine in line with.
+  if (logged.size === 0) return null;
+
+  const edits: PlannedEdit[] = [];
+  for (const edit of listWorkoutEdits(db, workoutId)) {
+    if (edit.kind === "add") {
+      const entry = logged.get(edit.workoutExerciseId);
+      if (entry) edits.push({ ...edit, workingSets: entry.workingSets });
+      continue;
+    }
+    const { routineExerciseId } = edit;
+    const slotExerciseId = routineExerciseId && slotExercise.get(routineExerciseId);
+    if (!routineExerciseId || !slotExerciseId) continue;
+    const slot = { routineExerciseId, exerciseId: slotExerciseId };
+    if (edit.kind === "remove") {
+      edits.push({ kind: "remove", ...slot });
+      continue;
+    }
+    const entry = logged.get(edit.workoutExerciseId);
+    if (!entry) continue;
+    if (edit.kind === "move") {
+      edits.push({ kind: "move", ...slot });
+      continue;
+    }
+    // A slot swapped twice before its first set needs one Swap, to what was logged in it.
+    const earlier = edits.findIndex(
+      (planned) => planned.kind === "swap" && planned.routineExerciseId === slot.routineExerciseId,
+    );
+    if (earlier >= 0) edits.splice(earlier, 1);
+    if (entry.exerciseId !== slotExerciseId) {
+      edits.push({ ...slot, kind: "swap", from: slotExerciseId, exerciseId: entry.exerciseId });
+    }
+  }
+
+  const slotIds = slots.map((slot) => slot.id);
+  // A Move that leaves the order as it is would only list a change that never happens. The latest
+  // Moves are dropped first, so of two that reach the same order, the one made first is listed.
+  let kept = edits;
+  for (const move of edits.filter((edit) => edit.kind === "move").reverse()) {
+    const without = kept.filter((edit) => edit !== move);
+    if (sameOrder(replayOrder(slotIds, entries, without), replayOrder(slotIds, entries, kept))) {
+      kept = without;
+    }
+  }
+  return { routineId: found.routineId, edits: kept, order: replayOrder(slotIds, entries, kept) };
+}
+
+// Every Exercise in the Ledger, in order, with its confirmed sets counted.
+function ledgerEntries(db: Database, workoutId: string): LedgerEntry[] {
+  return db
+    .select({
+      id: workoutExercise.id,
+      routineExerciseId: workoutExercise.routineExerciseId,
+      exerciseId: workoutExercise.exerciseId,
+      loggedSets: count(workoutSet.id),
+      // total(), unlike sum(), reads 0 for an Exercise with no confirmed set.
+      workingSets: sql<number>`total(${workoutSet.kind} = 'working')`.mapWith(Number),
+    })
+    .from(workoutExercise)
+    .leftJoin(
+      workoutSet,
+      and(eq(workoutSet.workoutExerciseId, workoutExercise.id), eq(workoutSet.done, true)),
+    )
+    .where(eq(workoutExercise.workoutId, workoutId))
+    .groupBy(workoutExercise.id)
+    .orderBy(asc(workoutExercise.position))
+    .all();
+}
+
+// Slots nobody moved keep their place in the Routine, which may hold slots the Workout never
+// showed. Each moved slot or added Exercise goes right after the Exercise above it in the Ledger,
+// logged or not, or first when nothing in the Routine is above it.
+function replayOrder(slotIds: string[], ledger: LedgerEntry[], edits: PlannedEdit[]) {
+  const removed = new Set<string>();
+  const placed = new Set<string>();
+  for (const edit of edits) {
+    if (edit.kind === "remove") removed.add(edit.routineExerciseId);
+    if (edit.kind === "move") placed.add(edit.routineExerciseId);
+    if (edit.kind === "add") placed.add(edit.workoutExerciseId);
+  }
+  const order = slotIds.filter((id) => !removed.has(id) && !placed.has(id));
+  let above: string | null = null;
+  for (const entry of ledger) {
+    const key = entry.routineExerciseId ?? entry.id;
+    if (placed.has(key)) order.splice(above === null ? 0 : order.indexOf(above) + 1, 0, key);
+    if (order.includes(key)) above = key;
+  }
+  return order;
+}
+
+function sameOrder(a: string[], b: string[]) {
+  return a.length === b.length && a.every((id, index) => id === b[index]);
+}
+
+export type WriteBackEdit =
+  | { kind: "swap"; from: string; to: string }
+  | { kind: "add" | "move" | "remove"; exercise: string };
+
+// The Routine is named as it reads now, since that's the one write-back updates.
+export type WriteBack = { routineName: string; edits: WriteBackEdit[] };
+
+// Null when write-back has nothing to offer.
+export function listWriteBack(
+  db: Database,
+  workoutId: string,
+  language: Language,
+): WriteBack | null {
+  const plan = planWriteBack(db, workoutId);
+  if (!plan?.edits.length) return null;
+  const { name: routineName } = findRoutine(db, plan.routineId);
+  const exerciseIds = plan.edits.flatMap((edit) =>
+    edit.kind === "swap" ? [edit.from, edit.exerciseId] : [edit.exerciseId],
+  );
+  const names = new Map(
+    db
+      .select({ id: exercise.id, name: exercise.name, nameEs: exercise.nameEs })
+      .from(exercise)
+      .where(inArray(exercise.id, exerciseIds))
+      .all()
+      .map(({ id, name, nameEs }) => [id, language === "es" ? (nameEs ?? name) : name]),
+  );
+  const nameOf = (id: string) => names.get(id)!;
+  return {
+    routineName,
+    edits: plan.edits.map((edit) =>
+      edit.kind === "swap"
+        ? { kind: "swap", from: nameOf(edit.from), to: nameOf(edit.exerciseId) }
+        : { kind: edit.kind, exercise: nameOf(edit.exerciseId) },
+    ),
+  };
+}
+
+function writeBackToRoutine(db: Database, workoutId: string) {
+  const plan = planWriteBack(db, workoutId);
+  if (!plan) return;
+  for (const edit of plan.edits) {
+    if (edit.kind === "remove") {
+      db.delete(routineExercise).where(eq(routineExercise.id, edit.routineExerciseId)).run();
+    }
+    if (edit.kind === "swap") {
+      db.update(routineExercise)
+        .set({ exerciseId: edit.exerciseId })
+        .where(eq(routineExercise.id, edit.routineExerciseId))
+        .run();
+    }
+  }
+  const adds = new Map(
+    plan.edits.flatMap((edit) => (edit.kind === "add" ? [[edit.workoutExerciseId, edit]] : [])),
+  );
+  plan.order.forEach((id, position) => {
+    const add = adds.get(id);
+    if (!add) {
+      db.update(routineExercise).set({ position }).where(eq(routineExercise.id, id)).run();
+      return;
+    }
+    // Only the set count is known from one Workout; the rest is left for the lifter to plan.
+    db.insert(routineExercise)
+      .values({
+        id: newId(db),
+        routineId: plan.routineId,
+        exerciseId: add.exerciseId,
+        position,
+        sets: add.workingSets > 0 ? add.workingSets : null,
+      })
+      .run();
   });
 }
 
 // Only what the Workout shows for certain carries over: rep range, effort and rest are left for
 // the lifter to plan, and an Exercise with no Working set logged plans no set count.
 export function saveWorkoutAsRoutine(db: Database, workoutId: string, name: string) {
-  return db.transaction((tx) => {
-    const routineId = createRoutine(tx, name);
-    const entries = tx
-      .select({
-        exerciseId: workoutExercise.exerciseId,
-        workingSets: count(workoutSet.id),
+  return db.transaction((tx) => copyToRoutine(tx, workoutId, name));
+}
+
+function copyToRoutine(db: Database, workoutId: string, name: string) {
+  const routineId = createRoutine(db, name);
+  const entries = db
+    .select({
+      exerciseId: workoutExercise.exerciseId,
+      workingSets: count(workoutSet.id),
+    })
+    .from(workoutExercise)
+    .leftJoin(
+      workoutSet,
+      and(
+        eq(workoutSet.workoutExerciseId, workoutExercise.id),
+        eq(workoutSet.kind, "working"),
+        eq(workoutSet.done, true),
+      ),
+    )
+    .where(eq(workoutExercise.workoutId, workoutId))
+    .groupBy(workoutExercise.id)
+    .orderBy(asc(workoutExercise.position))
+    .all();
+  entries.forEach(({ exerciseId, workingSets }, position) => {
+    db.insert(routineExercise)
+      .values({
+        id: newId(db),
+        routineId,
+        exerciseId,
+        position,
+        sets: workingSets > 0 ? workingSets : null,
       })
-      .from(workoutExercise)
-      .leftJoin(
-        workoutSet,
-        and(
-          eq(workoutSet.workoutExerciseId, workoutExercise.id),
-          eq(workoutSet.kind, "working"),
-          eq(workoutSet.done, true),
-        ),
-      )
-      .where(eq(workoutExercise.workoutId, workoutId))
-      .groupBy(workoutExercise.id)
-      .orderBy(asc(workoutExercise.position))
-      .all();
-    entries.forEach(({ exerciseId, workingSets }, position) => {
-      tx.insert(routineExercise)
-        .values({
-          id: newId(tx),
-          routineId,
-          exerciseId,
-          position,
-          sets: workingSets > 0 ? workingSets : null,
-        })
-        .run();
-    });
-    return routineId;
+      .run();
   });
+  return routineId;
 }
 
 // What deleting the Workout takes with it. Only logged sets count: the unconfirmed ones of a
