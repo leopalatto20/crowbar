@@ -122,9 +122,11 @@ function GymPicker() {
         confirmLabel={t.gymPicker.move}
         cancelLabel={t.gymPicker.cancel}
         onConfirm={() => {
-          const gymId = confirming!.gymId;
+          // Not `confirming!`: the React Compiler reads a non-null-asserted path during render,
+          // where `confirming` is still null.
+          if (!confirming) return;
           setConfirming(null);
-          move(gymId);
+          move(confirming.gymId);
         }}
         onDismiss={() => setConfirming(null)}
       />

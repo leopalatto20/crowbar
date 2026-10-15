@@ -7,6 +7,8 @@ Every Workout is logged at one Gym, and progress splits by Gym. A new Workout st
 - Default: "Start empty Workout" (or a Routine) starts at the Gym of the latest Workout. Before any Workout, it uses the newest Gym.
 - Gym chip: the Ledger's first row, a `Button` labelled "Gym: <Gym>. Tap to change". It opens the Gym picker sheet: title "Gym", one row per Gym in name order (the current one labelled "<Gym>, Current Gym", with a checkmark), then "add, New Gym…".
 - Switching: picking a Gym moves every Exercise to its default Station at the new Gym, so "Last here" follows the new Gym. Sets already logged move with the Workout, and a Station left empty at the old Gym is deleted.
+- Past Workouts (#45): in History, a Workout's Edit turns its Gym chip into the same button, opening the same picker. Read mode shows the chip as plain text.
+- Relabel confirm: when a logged Exercise would land on a Station in another unit (its default Station at the new Gym, or a new one in the default weight unit), picking the Gym asks `Move this Workout to <Gym>?` ("Logged numbers stay as they are, so these will read in another unit:" then one `<Exercise>: kg → lb` line each), Cancel / Move. Cancel leaves the Workout where it was and the picker open. With every unit matching, the Gym changes at once. The live Ledger asks the same way.
 - New Gym…: the alert "New Gym" (placeholder "Gym name", Cancel/Add) creates the Gym and switches the Workout to it.
 - Settings, "Gyms": pushes the Gyms list (back button "Settings"). Tapping a row opens "Rename Gym", with the field prefilled with the current name (Cancel/Save). Long-press shows Rename/Delete, and a left swipe shows Delete/Rename.
 - Delete: the alert `Delete “<Gym>”?` with `Deletes <n> Station(s) and <n> set(s) across <n> Workout(s).` counts only logged sets. "Delete" removes the Gym, its Stations, its Workouts (including one in progress there) and their sets.
@@ -38,6 +40,22 @@ cv save-db "select (select count(*) from gym) gyms, (select count(*) from statio
 ```
 
 Proof: the chip reads the new Gym after the switch, the Station query shows only the new Gym, the confirm reads "Deletes 1 Station and 1 set across 1 Workout.", and the final counts are `1 | 0 | 0 | 0`.
+
+Past Workout (#45), with Workout 1 at Downtown (bench 100 × 5) and Workout 2 at Garage (bench 80 × 8), both kg:
+
+```sh
+cv tap History --element-type RadioButton && cv tap "Thu 15 Oct · Downtown · 1 exercise"
+cv tap Edit --element-type Button && cv tap "Gym: Downtown. Tap to change" --element-type Button
+cv tap Garage --element-type Button        # same unit: no confirm, chip reads Garage
+cv save-db "select g.name, s.unit from station s join gym g on g.id = s.gym_id"   # Garage | kg only
+cv tap Done --element-type Button && cv tap Settings --element-type RadioButton
+cv tap kg --element-type PopUpButton && cv tap lb --element-type Button
+cv tap History --element-type RadioButton && cv tap Edit --element-type Button
+cv tap "Gym: Garage. Tap to change" --element-type Button && cv tap "add, New Gym…" --element-type Button
+cv type "Home" && cv tap Add --element-type Button
+cv wait "Move this Workout to Home?" 5     # message lists "Barbell Bench Press: kg → lb"
+cv tap Move --element-type Button          # header LB, fields still 100 and 5
+```
 
 ## Gotchas
 
