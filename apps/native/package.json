@@ -8,7 +8,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "prebuild": "expo prebuild",
-    "check-types": "tsc --noEmit",
+    "typegen": "expo customize tsconfig.json",
+    "check-types": "bun run typegen && tsc --noEmit",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {

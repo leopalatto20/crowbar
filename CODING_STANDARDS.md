@@ -2,4 +2,4 @@
 - Comments explain a non-trivial decision or implementation, per the global rule.
 - Tautological tests considered harmful.
 - Avoid unnecesary abstractions, keep code legible.
-- Data module code must behave the same on expo-sqlite and bun:sqlite; tests only exercise bun, so treat raw SQL and transactions as unverified on device.
+- Data module code must behave the same on expo-sqlite and bun:sqlite, and on Hermes and Bun; tests only exercise bun, so treat raw SQL, transactions and `Intl` (time zones, `formatToParts`) as unverified on device.
