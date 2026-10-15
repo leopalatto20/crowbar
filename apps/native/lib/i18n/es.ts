@@ -240,6 +240,14 @@ export const es: Messages = {
     heaviestByReps: "Mayor carga por reps",
     loadColumn: "Carga",
     repsColumn: "Reps",
+    chartTitle: {
+      volume: (unit) => `Volumen (${unit})`,
+      levelReps: "Nivel × reps",
+      reps: "Reps en series efectivas",
+    },
+    chartReps: (reps, perSide) => `${reps} reps${perSide ? "/lado" : ""}`,
+    chartSets: (count) => `${count} ${count === 1 ? "serie" : "series"}`,
+    chartSummary: (value, detail) => `Último: ${value}, ${detail}`,
   },
   stationPrompt: {
     title: "Nueva estación",

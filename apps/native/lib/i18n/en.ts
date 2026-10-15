@@ -240,6 +240,14 @@ export const en = {
     heaviestByReps: "Heaviest load by reps",
     loadColumn: "Load",
     repsColumn: "Reps",
+    chartTitle: {
+      volume: (unit: string) => `Volume (${unit})`,
+      levelReps: "Level × reps",
+      reps: "Working-set reps",
+    },
+    chartReps: (reps: string, perSide: boolean) => `${reps} reps${perSide ? "/side" : ""}`,
+    chartSets: (count: number) => `${count} ${count === 1 ? "set" : "sets"}`,
+    chartSummary: (value: string, detail: string) => `Latest: ${value}, ${detail}`,
   },
   stationPrompt: {
     title: "New Station",

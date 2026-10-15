@@ -10,5 +10,6 @@ One file per user-facing feature. Each says what it is, how a user reaches it, h
 | Settings                              | [settings.md](settings.md)                 | Settings tab                       | Verified: both settings write, survive relaunch, reach the Ledger                                                          |
 | Gyms                                  | [gyms.md](gyms.md)                         | Ledger Gym chip; Settings, Gyms    | Verified on iOS: switch, New Gym, rename, counted delete cascade, past Workout Gym change with relabel confirm (#45)       |
 | History                               | [history.md](history.md)                   | History tab, "+"                   | Verified on iOS: log a past Workout (#46), empty and from a Routine, prefill before the date, future refused, Done, Cancel |
+| Exercise detail                       | [exercise-detail.md](exercise-detail.md)   | Exercises tab, an Exercise         | Verified on iOS: progress chart (#48) for kg, Stack level and Bodyweight Stations, scrub, two slots summed                 |
 
 Labels come from `apps/native/lib/i18n/en.ts`. Domain terms (Gym, Routine, Workout, Station, Target) are defined in `GLOSSARY.md`.
