@@ -72,7 +72,6 @@ export const es: Messages = {
     logging: "Registro",
     effortScale: "Escala de esfuerzo",
     defaultWeightUnit: "Unidad de peso predeterminada",
-    stackLevel: "Nivel",
     training: "Entrenamiento",
     gyms: "Gimnasios",
   },
@@ -100,6 +99,11 @@ export const es: Messages = {
     kg: "kg",
     lb: "lb",
     level: "niv",
+  },
+  unitName: {
+    kg: "kg",
+    lb: "lb",
+    level: "Nivel",
   },
   muscleGroup: {
     chest: "Pecho",
@@ -165,6 +169,14 @@ export const es: Messages = {
     title: "Gimnasio",
     newGym: "Nuevo gimnasio…",
     current: "Gimnasio actual",
+    moveTitle: (gym) => `¿Mover este entrenamiento a ${gym}?`,
+    relabelMessage: (relabels) =>
+      [
+        "Los números registrados no cambian, así que estos se leerán en otra unidad:",
+        ...relabels.map(({ exerciseName, from, to }) => `${exerciseName}: ${from} → ${to}`),
+      ].join("\n"),
+    move: "Mover",
+    cancel: "Cancelar",
   },
   workoutInProgress: {
     title: "Hay un entrenamiento en curso",

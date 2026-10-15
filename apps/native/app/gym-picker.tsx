@@ -1,17 +1,18 @@
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { Suspense, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { NamePrompt } from "@/components/name-prompt";
 import { useDb } from "@/db/context";
 import { createGym } from "@/db/gyms";
-import { changeWorkoutGym } from "@/db/workouts";
+import { type Relabel, changeWorkoutGym, listGymChangeRelabels } from "@/db/workouts";
 import { useGyms } from "@/lib/gym/use-gyms";
 import { haptics } from "@/lib/haptics";
 import { useI18n } from "@/lib/i18n";
 import { spacing, type, useColors } from "@/lib/theme";
-import { useCurrentWorkout } from "@/lib/workout/use-workout";
+import { useWorkout } from "@/lib/workout/use-workout";
 
 export default function GymPickerSheet() {
   return (
@@ -21,22 +22,39 @@ export default function GymPickerSheet() {
   );
 }
 
-// Picking or adding a Gym applies it to the Workout in progress straight away.
+type Move = { gymId: string; gymName: string; relabels: Relabel[] };
+
+// Picking or adding a Gym applies it to the Workout straight away, unless logged numbers would
+// read in another unit at the new Gym: that needs the lifter to agree first.
 function GymPicker() {
   const db = useDb();
   const router = useRouter();
   const p = useColors();
-  const { t } = useI18n();
-  const ledger = useCurrentWorkout();
+  const { t, language } = useI18n();
+  const { workoutId } = useLocalSearchParams<{ workoutId: string }>();
+  const ledger = useWorkout(workoutId);
   const gyms = useGyms();
   const [naming, setNaming] = useState(false);
+  const [confirming, setConfirming] = useState<Move | null>(null);
   if (!ledger) return null;
-  const { id: workoutId, gymId: currentGymId } = ledger;
+  const currentGymId = ledger.gymId;
+  // A correction to history has no haptics.
+  const live = ledger.finishedAt === null;
 
-  function pick(gymId: string) {
-    haptics.light();
-    if (gymId !== currentGymId) changeWorkoutGym(db, workoutId, gymId);
+  function move(gymId: string) {
+    changeWorkoutGym(db, workoutId, gymId);
     router.back();
+  }
+
+  function pick(gymId: string, gymName: string) {
+    if (live) haptics.light();
+    if (gymId === currentGymId) {
+      router.back();
+      return;
+    }
+    const relabels = listGymChangeRelabels(db, workoutId, gymId, language);
+    if (relabels.length > 0) setConfirming({ gymId, gymName, relabels });
+    else move(gymId);
   }
 
   return (
@@ -56,7 +74,7 @@ function GymPicker() {
         return (
           <Row
             key={gym.id}
-            onPress={() => pick(gym.id)}
+            onPress={() => pick(gym.id, gym.name)}
             accessibilityLabel={current ? `${gym.name}, ${t.gymPicker.current}` : undefined}
           >
             <Text style={{ flex: 1, color: p.label, ...type.body }}>{gym.name}</Text>
@@ -87,9 +105,28 @@ function GymPicker() {
         confirmLabel={t.gymPrompt.add}
         onSave={(name) => {
           setNaming(false);
-          pick(createGym(db, name));
+          pick(createGym(db, name), name);
         }}
         onDismiss={() => setNaming(false)}
+      />
+      <ConfirmDialog
+        visible={confirming !== null}
+        title={t.gymPicker.moveTitle(confirming?.gymName ?? "")}
+        message={t.gymPicker.relabelMessage(
+          (confirming?.relabels ?? []).map(({ exerciseName, from, to }) => ({
+            exerciseName,
+            from: t.unitName[from],
+            to: t.unitName[to],
+          })),
+        )}
+        confirmLabel={t.gymPicker.move}
+        cancelLabel={t.gymPicker.cancel}
+        onConfirm={() => {
+          const gymId = confirming!.gymId;
+          setConfirming(null);
+          move(gymId);
+        }}
+        onDismiss={() => setConfirming(null)}
       />
     </View>
   );

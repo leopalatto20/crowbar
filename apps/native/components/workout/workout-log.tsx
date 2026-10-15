@@ -59,7 +59,11 @@ export function WorkoutLog({ ledger, mode }: { ledger: Ledger; mode: LedgerMode 
                   )
                 : undefined
           }
-          onChangeGym={mode === "live" ? () => router.push("/gym-picker") : undefined}
+          onChangeGym={
+            mode === "read"
+              ? undefined
+              : () => router.push({ pathname: "/gym-picker", params: { workoutId: ledger.id } })
+          }
         />
         {mode === "edit" && ledger.finishedAt !== null && (
           <WorkoutTimes

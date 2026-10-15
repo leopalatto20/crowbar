@@ -7,7 +7,7 @@ import { updateSettings } from "@/db/settings";
 import { useI18n } from "@/lib/i18n";
 import { useSettings } from "@/lib/settings";
 import { useColors } from "@/lib/theme";
-import { EFFORTS, UNITS, type Unit } from "@/lib/workout/model";
+import { EFFORTS, UNITS } from "@/lib/workout/model";
 
 export default function SettingsTab() {
   const db = useDb();
@@ -15,7 +15,6 @@ export default function SettingsTab() {
   const p = useColors();
   const { t } = useI18n();
   const { effortScale, defaultWeightUnit } = useSettings();
-  const unitLabel = (unit: Unit) => (unit === "level" ? t.settings.stackLevel : t.unit[unit]);
 
   return (
     <>
@@ -43,7 +42,7 @@ export default function SettingsTab() {
                 onValueChange={(value) => updateSettings(db, { defaultWeightUnit: value })}
               >
                 {UNITS.map((unit) => (
-                  <Picker.Item key={unit} label={unitLabel(unit)} value={unit} />
+                  <Picker.Item key={unit} label={t.unitName[unit]} value={unit} />
                 ))}
               </Picker>
             </Row>
