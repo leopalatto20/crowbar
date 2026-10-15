@@ -119,3 +119,24 @@ export function formatElapsed(totalSeconds: number) {
 export function workingIndex(sets: { kind: SetKind }[], index: number) {
   return sets.slice(0, index + 1).filter((s) => s.kind === "working").length;
 }
+
+export function durationMinutes(startedAt: number, finishedAt: number) {
+  return Math.round((finishedAt - startedAt) / 60_000);
+}
+
+// "h" and "min" read the same in every language Crowbar ships.
+export function formatDuration(minutes: number) {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (hours === 0) return `${rest} min`;
+  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
+}
+
+const DURATION_PRESETS = Array.from({ length: 60 }, (_, index) => (index + 1) * 5);
+
+// A duration from outside the presets still has to be listed to show as the current one.
+export function durationOptions(minutes: number) {
+  return DURATION_PRESETS.includes(minutes) || minutes <= 0
+    ? DURATION_PRESETS
+    : [...DURATION_PRESETS, minutes].sort((a, b) => a - b);
+}

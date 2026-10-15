@@ -14,6 +14,7 @@ import {
   addSet,
   addStation,
   confirmSet,
+  deleteSet,
   moveWorkoutExercise,
   removeWorkoutExercise,
   reopenSet,
@@ -50,11 +51,14 @@ import { LedgerText } from "./ledger-text";
 const COLUMNS = { set: 34, lastHere: 1.4, field: 1, check: 40 };
 const FIELDS: Field[] = ["load", "reps", "rir"];
 
+// Edit mode corrects a finished Workout in place: a Rest or haptics would only answer logging.
+export type LedgerMode = "live" | "edit" | "read";
+
 export function ExerciseCard({
   entry,
   position,
   count,
-  readOnly,
+  mode,
   onConfirmed,
   onSwap,
 }: {
@@ -62,7 +66,7 @@ export function ExerciseCard({
   // Its index in the Ledger, of `count` Exercises.
   position: number;
   count: number;
-  readOnly: boolean;
+  mode: LedgerMode;
   onConfirmed: (set: LedgerSet) => void;
   onSwap: () => void;
 }) {
@@ -94,7 +98,7 @@ export function ExerciseCard({
       }}
     >
       <View style={{ paddingHorizontal: 14, paddingBottom: 10, gap: 2 }}>
-        {readOnly ? (
+        {mode === "read" ? (
           <LedgerText style={{ color: p.label, ...type.headline }}>
             {entry.exercise.name}
           </LedgerText>
@@ -108,7 +112,7 @@ export function ExerciseCard({
             canMoveUp={position > 0}
             canMoveDown={position < count - 1}
             onSwitchStation={(stationId) => {
-              haptics.selection();
+              if (mode === "live") haptics.selection();
               switchStation(db, entry.id, stationId);
             }}
             onNewStation={() => setNamingStation(true)}
@@ -133,7 +137,10 @@ export function ExerciseCard({
           />
         ) : (
           notes && (
-            <NotesLine notes={notes} onPress={readOnly ? undefined : () => setEditingNotes(true)} />
+            <NotesLine
+              notes={notes}
+              onPress={mode === "read" ? undefined : () => setEditingNotes(true)}
+            />
           )
         )}
         {/* A guide only: always the same quiet line, however the logged sets compare. */}
@@ -153,11 +160,11 @@ export function ExerciseCard({
           {unilateral ? t.load.perSide(t.ledger.repsColumn) : t.ledger.repsColumn}
         </HeaderCell>
         <HeaderCell flex={COLUMNS.field}>{t.effort[effort]}</HeaderCell>
-        {!readOnly && <View style={{ width: COLUMNS.check }} />}
+        {mode !== "read" && <View style={{ width: COLUMNS.check }} />}
       </View>
 
       {entry.sets.map((set, index) =>
-        readOnly ? (
+        mode === "read" ? (
           <LoggedSetRow
             key={set.id}
             set={set}
@@ -170,12 +177,13 @@ export function ExerciseCard({
             set={set}
             format={format}
             workingNumber={workingIndex(entry.sets, index)}
+            editing={mode === "edit"}
             onConfirmed={() => onConfirmed(set)}
           />
         ),
       )}
 
-      {!readOnly && (
+      {mode !== "read" && (
         <PressableScale
           onPress={() => addSet(db, entry.id)}
           style={{
@@ -212,7 +220,7 @@ export function ExerciseCard({
         title={t.ledger.removeTitle(entry.exercise.name)}
         message={t.ledger.removeMessage}
         confirmLabel={t.ledger.remove}
-        cancelLabel={t.ledger.keepLogging}
+        cancelLabel={mode === "live" ? t.ledger.keepLogging : t.history.cancel}
         onConfirm={() => {
           setConfirmingRemove(false);
           removeWorkoutExercise(db, entry.id);
@@ -338,16 +346,19 @@ function HeaderCell({
 // Typed text stays a draft until it's committed (blur or confirm), so nothing is written per
 // keystroke. Confirming commits the drafts too, since tapping ✓ doesn't blur the field. An empty
 // field shows its ghost value from "Last here", which confirming commits. A Bodyweight load left
-// empty with nothing to show means bodyweight only.
+// empty with nothing to show means bodyweight only. While `editing` a finished Workout, a logged
+// set is deleted rather than reopened: nothing there is waiting to be done.
 function SetRow({
   set,
   format,
   workingNumber,
+  editing,
   onConfirmed,
 }: {
   set: LedgerSet;
   format: LoadFormat;
   workingNumber: number;
+  editing: boolean;
   onConfirmed: () => void;
 }) {
   const db = useDb();
@@ -435,7 +446,7 @@ function SetRow({
     >
       <PressableScale
         onPress={() => {
-          haptics.selection();
+          if (!editing) haptics.selection();
           toggleSetKind(db, set.id);
           // A warm-up takes no effort, so a half-typed one mustn't be confirmed with it.
           dropDraft("rir");
@@ -465,20 +476,24 @@ function SetRow({
         input("rir")
       )}
 
-      <CheckButton
-        done={set.done}
-        disabled={!set.done && !canConfirm}
-        onPress={() => {
-          if (set.done) {
-            reopenSet(db, set.id);
-            return;
-          }
-          confirmSet(db, set.id, draftChange());
-          haptics.light();
-          setDrafts({});
-          onConfirmed();
-        }}
-      />
+      {editing && set.done ? (
+        <DeleteButton onPress={() => deleteSet(db, set.id)} />
+      ) : (
+        <CheckButton
+          done={set.done}
+          disabled={!set.done && !canConfirm}
+          onPress={() => {
+            if (set.done) {
+              reopenSet(db, set.id);
+              return;
+            }
+            confirmSet(db, set.id, draftChange());
+            if (!editing) haptics.light();
+            setDrafts({});
+            onConfirmed();
+          }}
+        />
+      )}
     </Animated.View>
   );
 }
@@ -687,6 +702,34 @@ function CheckButton({
           tintColor={done ? p.onAccent : p.secondary}
         />
       </Animated.View>
+    </PressableScale>
+  );
+}
+
+function DeleteButton({ onPress }: { onPress: () => void }) {
+  const p = useColors();
+  const { t } = useI18n();
+  return (
+    <PressableScale
+      onPress={onPress}
+      scaleTo={0.92}
+      accessibilityLabel={t.history.deleteSet}
+      style={{
+        width: COLUMNS.check,
+        height: 30,
+        borderRadius: radii.control,
+        borderCurve: "continuous",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: p.fillStrong,
+      }}
+    >
+      <SymbolView
+        name={{ ios: "minus", android: "remove" }}
+        weight="semibold"
+        size={18}
+        tintColor={p.red}
+      />
     </PressableScale>
   );
 }

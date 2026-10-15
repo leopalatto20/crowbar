@@ -1,12 +1,19 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { Keyboard } from "react-native";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { NamePrompt } from "@/components/name-prompt";
 import { LEDGER_MENU_ICON } from "@/components/workout/ledger-icons";
 import { WorkoutLog } from "@/components/workout/workout-log";
 import { useDb } from "@/db/context";
-import { type Ledger, deleteWorkout, saveWorkoutAsRoutine, workoutSetCount } from "@/db/workouts";
+import {
+  type Ledger,
+  deleteWorkout,
+  finishEditing,
+  saveWorkoutAsRoutine,
+  workoutSetCount,
+} from "@/db/workouts";
 import { useI18n } from "@/lib/i18n";
 import { useColors } from "@/lib/theme";
 import { workoutTitle } from "@/lib/workout/model";
@@ -43,13 +50,44 @@ function PastWorkoutLedger({ ledger }: { ledger: Ledger }) {
   const i18n = useI18n();
   const { t } = i18n;
   const [naming, setNaming] = useState(false);
+  const [editing, setEditing] = useState(false);
   // Counted when the confirm opens, so it states exactly what the delete will take.
   const [deletingSets, setDeletingSets] = useState<number | null>(null);
+
+  // Leaving edit mode, by Done or by going back, drops the sets added but never confirmed.
+  useEffect(() => {
+    if (!editing) return;
+    return () => finishEditing(db, ledger.id);
+  }, [db, editing, ledger.id]);
 
   return (
     <>
       <Stack.Screen options={{ title: workoutTitle(ledger.routineName, i18n) }} />
       <Stack.Toolbar placement="right">
+        {editing ? (
+          <Stack.Toolbar.Button
+            variant="done"
+            onPress={() => {
+              // Leaving edit mode unmounts the fields, so a value typed but not yet committed is
+              // saved by blurring its field first, once the keyboard is gone.
+              if (!Keyboard.isVisible()) {
+                setEditing(false);
+                return;
+              }
+              const hidden = Keyboard.addListener("keyboardDidHide", () => {
+                hidden.remove();
+                setEditing(false);
+              });
+              Keyboard.dismiss();
+            }}
+          >
+            {t.history.done}
+          </Stack.Toolbar.Button>
+        ) : (
+          <Stack.Toolbar.Button onPress={() => setEditing(true)}>
+            {t.history.edit}
+          </Stack.Toolbar.Button>
+        )}
         <Stack.Toolbar.Menu icon={LEDGER_MENU_ICON} accessibilityLabel={t.history.more}>
           <Stack.Toolbar.MenuAction icon="plus.square.on.square" onPress={() => setNaming(true)}>
             {t.history.saveAsRoutine}
@@ -63,7 +101,7 @@ function PastWorkoutLedger({ ledger }: { ledger: Ledger }) {
           </Stack.Toolbar.MenuAction>
         </Stack.Toolbar.Menu>
       </Stack.Toolbar>
-      <WorkoutLog ledger={ledger} readOnly />
+      <WorkoutLog ledger={ledger} mode={editing ? "edit" : "read"} />
       <NamePrompt
         visible={naming}
         title={t.history.saveAsRoutine}
