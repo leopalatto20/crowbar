@@ -166,6 +166,35 @@ describe("set history across slots", () => {
   });
 });
 
+describe("set history mid-Workout", () => {
+  test("a set confirmed ahead of an earlier one keeps the Ledger's number, and compares with it", async () => {
+    const { db, gymId } = await libraryDatabase();
+    logWorkout(db, {
+      gymId,
+      exerciseId: benchPress.id,
+      at: 1_000,
+      sets: [
+        { load: 100, reps: 5 },
+        { load: 90, reps: 8 },
+      ],
+    });
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 2_000 });
+    const entryId = addWorkoutExercise(db, workoutId, benchPress.id);
+    addSet(db, entryId);
+    confirmSet(db, getLedger(db, workoutId, "en")!.exercises[0]!.sets[1]!.id, {
+      load: 95,
+      reps: 8,
+    });
+
+    expect(
+      progress(db, benchPress.id).selected?.workouts[0]?.sets.map(({ number, beat }) => ({
+        number,
+        beat,
+      })),
+    ).toEqual([{ number: 2, beat: true }]);
+  });
+});
+
 describe("beating the previous Workout", () => {
   test("marks each Working set ahead of the same-numbered one last time: load, then reps, then effort", async () => {
     const { db, gymId } = await libraryDatabase();
@@ -343,6 +372,31 @@ describe("Rep records", () => {
       heaviestByReps: [
         { reps: 8, load: 20 },
         { reps: 10, load: 40 },
+      ],
+    });
+  });
+
+  test("Bodyweight: added load is heavier than bodyweight only", async () => {
+    const { db, gymId } = await libraryDatabase();
+    logWorkout(db, {
+      gymId,
+      exerciseId: pullUp.id,
+      at: 1_000,
+      sets: [
+        { load: 0, reps: 8 },
+        { load: 10, reps: 8 },
+        { load: 0, reps: 12 },
+      ],
+    });
+
+    expect(progress(db, pullUp.id).selected?.repRecords).toEqual({
+      mostRepsByLoad: [
+        { load: 10, reps: 8 },
+        { load: 0, reps: 12 },
+      ],
+      heaviestByReps: [
+        { reps: 8, load: 10 },
+        { reps: 12, load: 0 },
       ],
     });
   });

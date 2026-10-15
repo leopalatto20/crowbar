@@ -4,7 +4,7 @@ import { startTransition, useState } from "react";
 import { Pressable, ScrollView, Text, type TextStyle, View } from "react-native";
 
 import { EmptyState } from "@/components/empty-state";
-import type { RepRecords, StationWorkout } from "@/db/progress";
+import type { ProgressOpening, RepRecords, StationWorkout } from "@/db/progress";
 import { useExerciseProgress } from "@/lib/exercise/use-progress";
 import { useI18n } from "@/lib/i18n";
 import { radii, spacing, type, useColors } from "@/lib/theme";
@@ -19,11 +19,7 @@ export function ExerciseDetail({
   exerciseId,
   stationId: initialStationId,
   gymId,
-}: {
-  exerciseId: string;
-  stationId?: string;
-  gymId?: string;
-}) {
+}: ProgressOpening & { exerciseId: string }) {
   const p = useColors();
   const i18n = useI18n();
   const { t } = i18n;
@@ -65,8 +61,12 @@ export function ExerciseDetail({
           ) : (
             <>
               <RepRecordsCard records={selected.repRecords} format={selected.format} />
-              {selected.workouts.map((found) => (
-                <WorkoutSets key={found.id} workout={found} format={selected.format} />
+              {selected.workouts.map((stationWorkout) => (
+                <WorkoutSets
+                  key={stationWorkout.id}
+                  workout={stationWorkout}
+                  format={selected.format}
+                />
               ))}
             </>
           )}

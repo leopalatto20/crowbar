@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, max, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, max, sql } from "drizzle-orm";
 
 import type { Language } from "@/lib/i18n/locale";
 import type { LoadType } from "@/lib/exercise/model";
@@ -7,7 +7,6 @@ import { type LoadFormat, type Performance, readLoad } from "@/lib/workout/model
 import type { Database } from "./database";
 import { lastUsedGym } from "./gyms";
 import { exercise, gym, station, workout, workoutExercise, workoutSet } from "./schema";
-import { currentWorkout } from "./workouts";
 
 export type ProgressStation = {
   id: string;
@@ -38,6 +37,9 @@ export type RepRecords = {
   heaviestByReps: { reps: number; load: number }[];
 };
 
+// Where Exercise detail opens: the Station asked for, else the one last used at the Gym.
+export type ProgressOpening = { stationId?: string; gymId?: string };
+
 export type ExerciseProgress = {
   name: string;
   // Every Station of the Exercise, at every Gym, Retired ones included.
@@ -58,9 +60,9 @@ export function getExerciseProgress(
   db: Database,
   exerciseId: string,
   language: Language,
-  { stationId, gymId }: { stationId?: string; gymId?: string } = {},
+  { stationId, gymId }: ProgressOpening = {},
 ): ExerciseProgress | undefined {
-  const found = db
+  const movement = db
     .select({
       name: exercise.name,
       nameEs: exercise.nameEs,
@@ -70,7 +72,7 @@ export function getExerciseProgress(
     .from(exercise)
     .where(eq(exercise.id, exerciseId))
     .get();
-  if (!found) return undefined;
+  if (!movement) return undefined;
 
   const stations = db
     .select({
@@ -90,32 +92,33 @@ export function getExerciseProgress(
     stations.find(({ option }) => option.id === stationId)?.option.id ??
     defaultStation(db, exerciseId, gymId ?? currentGym(db));
   const chosen = stations.find(({ option }) => option.id === selectedId);
-  const workouts = chosen ? stationWorkouts(db, chosen.option.id, found.loadType) : [];
+  const workouts = chosen ? stationWorkouts(db, chosen.option.id, movement.loadType) : [];
 
   return {
-    name: language === "es" ? (found.nameEs ?? found.name) : found.name,
+    name: language === "es" ? (movement.nameEs ?? movement.name) : movement.name,
     stations: stations.map(({ option }) => option),
     selected: chosen
       ? {
           station: chosen.option,
-          format: { unit: chosen.unit, loadType: found.loadType, unilateral: found.unilateral },
+          format: {
+            unit: chosen.unit,
+            loadType: movement.loadType,
+            unilateral: movement.unilateral,
+          },
           workouts,
-          repRecords: repRecords(workouts, found.loadType),
+          repRecords: repRecords(workouts, movement.loadType),
         }
       : null,
   };
 }
 
 function currentGym(db: Database) {
-  const inProgress = currentWorkout(db);
-  if (inProgress) {
-    return db
-      .select({ gymId: workout.gymId })
-      .from(workout)
-      .where(eq(workout.id, inProgress.id))
-      .get()?.gymId;
-  }
-  return lastUsedGym(db)?.id;
+  const inProgress = db
+    .select({ gymId: workout.gymId })
+    .from(workout)
+    .where(isNull(workout.finishedAt))
+    .get();
+  return inProgress?.gymId ?? lastUsedGym(db)?.id;
 }
 
 // Another Gym's Station still beats an empty screen, and a Retired one is a last resort.
@@ -137,6 +140,8 @@ function defaultStation(db: Database, exerciseId: string, gymId: string | undefi
     .get()?.id;
 }
 
+// Numbered over every Working set, confirmed or not, as the Ledger numbers them; only confirmed
+// ones are listed. So mid-Workout, a set confirmed ahead of an earlier one keeps its number.
 function stationWorkouts(db: Database, stationId: string, loadType: LoadType): StationWorkout[] {
   const sets = db
     .select({
@@ -146,17 +151,12 @@ function stationWorkouts(db: Database, stationId: string, loadType: LoadType): S
       load: workoutSet.load,
       reps: workoutSet.reps,
       rir: workoutSet.rir,
+      done: workoutSet.done,
     })
     .from(workoutSet)
     .innerJoin(workoutExercise, eq(workoutExercise.id, workoutSet.workoutExerciseId))
     .innerJoin(workout, eq(workout.id, workoutExercise.workoutId))
-    .where(
-      and(
-        eq(workoutExercise.stationId, stationId),
-        eq(workoutSet.kind, "working"),
-        eq(workoutSet.done, true),
-      ),
-    )
+    .where(and(eq(workoutExercise.stationId, stationId), eq(workoutSet.kind, "working")))
     .orderBy(
       desc(workout.startedAt),
       desc(workout.id),
@@ -166,29 +166,27 @@ function stationWorkouts(db: Database, stationId: string, loadType: LoadType): S
     .all();
 
   const workouts: StationWorkout[] = [];
-  for (const { workoutId, startedAt, timeZone, load, reps, rir } of sets) {
-    let current = workouts.at(-1);
+  let current: StationWorkout | undefined;
+  let number = 0;
+  for (const { workoutId, startedAt, timeZone, load, reps, rir, done } of sets) {
     if (current?.id !== workoutId) {
       current = { id: workoutId, startedAt, timeZone, sets: [] };
       workouts.push(current);
+      number = 0;
     }
+    number += 1;
     // The set_logged check guarantees a confirmed set has its load and reps.
-    current.sets.push({
-      number: current.sets.length + 1,
-      load: load!,
-      reps: reps!,
-      rir,
-      beat: false,
-    });
+    if (done) current.sets.push({ number, load: load!, reps: reps!, rir, beat: false });
   }
-  workouts.forEach(({ sets: latest }, index) => {
-    const previous = workouts[index + 1]?.sets ?? [];
+  const listed = workouts.filter((stationWorkout) => stationWorkout.sets.length > 0);
+  listed.forEach(({ sets: latest }, index) => {
+    const previous = listed[index + 1]?.sets ?? [];
     for (const set of latest) {
-      const match = previous[set.number - 1];
+      const match = previous.find((earlier) => earlier.number === set.number);
       set.beat = match !== undefined && beats(set, match, loadType);
     }
   });
-  return workouts;
+  return listed;
 }
 
 // Load decides first, then reps, then effort, so more load counts even on fewer reps, and the same
@@ -205,7 +203,7 @@ function beats(set: Performance, previous: Performance, loadType: LoadType) {
 function repRecords(workouts: StationWorkout[], loadType: LoadType): RepRecords {
   const mostReps = new Map<number, number>();
   const heaviest = new Map<number, number>();
-  for (const { load, reps } of workouts.flatMap((found) => found.sets)) {
+  for (const { load, reps } of workouts.flatMap((stationWorkout) => stationWorkout.sets)) {
     mostReps.set(load, Math.max(reps, mostReps.get(load) ?? reps));
     const best = heaviest.get(reps);
     if (best === undefined || readLoad(load, loadType) > readLoad(best, loadType)) {
