@@ -71,6 +71,13 @@
       "when": 1792102708047,
       "tag": "0009_rest",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1792104162243,
+      "tag": "0010_notifications_asked",
+      "breakpoints": true
     }
   ]
 }

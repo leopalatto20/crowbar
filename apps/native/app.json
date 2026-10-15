@@ -46,7 +46,8 @@
           "allowDynamicLocaleChangesAndroid": true
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      "./plugins/with-android-notification-icon"
     ],
     "experiments": {
       "typedRoutes": true,

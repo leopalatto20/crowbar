@@ -29,6 +29,11 @@ export const settings = sqliteTable(
     defaultWeightUnit: text("default_weight_unit", { enum: UNITS }).notNull(),
     restTimerEnabled: integer("rest_timer_enabled", { mode: "boolean" }).notNull().default(true),
     defaultRestSeconds: integer("default_rest_seconds").notNull().default(120),
+    // Android reports notifications as denied before it has ever asked, so only this tells a
+    // first Rest apart from a lifter who already declined.
+    notificationsAsked: integer("notifications_asked", { mode: "boolean" })
+      .notNull()
+      .default(false),
     lastExportedAt: integer("last_exported_at"),
     undoRestorePath: text("undo_restore_path"),
     undoRestoreReplacedAt: integer("undo_restore_replaced_at"),

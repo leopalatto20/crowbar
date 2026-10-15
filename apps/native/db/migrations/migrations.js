@@ -11,6 +11,7 @@ import m0006 from './0006_station_label_notes.sql';
 import m0007 from './0007_workout_edit.sql';
 import m0008 from './0008_station_retired.sql';
 import m0009 from './0009_rest.sql';
+import m0010 from './0010_notifications_asked.sql';
 
   export default {
     journal,
@@ -24,7 +25,8 @@ m0005,
 m0006,
 m0007,
 m0008,
-m0009
+m0009,
+m0010
     }
   }
   

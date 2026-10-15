@@ -22,6 +22,10 @@ type SettingsChange = Partial<
   Pick<Settings, "effortScale" | "defaultWeightUnit" | "restTimerEnabled" | "defaultRestSeconds">
 >;
 
+export function markNotificationsAsked(db: Database) {
+  db.update(settings).set({ notificationsAsked: true }).where(eq(settings.id, SETTINGS_ID)).run();
+}
+
 // Turning the Rest timer off ends the Rest running, so no card is left counting.
 export function updateSettings(db: Database, change: SettingsChange) {
   db.transaction((tx) => {

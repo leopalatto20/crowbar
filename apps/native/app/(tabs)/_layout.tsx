@@ -1,5 +1,5 @@
 import * as Notifications from "expo-notifications";
-import { useRouter } from "expo-router";
+import { useNavigationContainerRef, useRouter } from "expo-router";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { useEffect } from "react";
 import { Platform } from "react-native";
@@ -9,13 +9,14 @@ import { WorkoutBar } from "@/components/workout/workout-bar";
 import { useDb } from "@/db/context";
 import { currentWorkout } from "@/db/workouts";
 import { useI18n } from "@/lib/i18n";
-import { restExerciseOf, useRestNotification } from "@/lib/workout/rest-notification";
+import { restWorkoutExerciseOf, useRestNotification } from "@/lib/workout/rest-notification";
 import { useRestOverHaptic, useWorkoutInProgress } from "@/lib/workout/use-workout";
 
 export default function TabsLayout() {
   const { t } = useI18n();
   const db = useDb();
   const router = useRouter();
+  const navigation = useNavigationContainerRef();
   const workout = useWorkoutInProgress();
   // Here rather than on the Rest card: the tabs stay mounted under the Ledger, so the haptic fires
   // once whether the Ledger is open or minimized.
@@ -26,19 +27,25 @@ export default function TabsLayout() {
   // progress by a killed app reopens in the Ledger over them, scrolled to the Rest's Exercise when
   // its notification is what launched the app.
   useEffect(() => {
-    function openLedger(exercise: string | null) {
+    function openLedger(workoutExerciseId: string | null) {
       if (!currentWorkout(db)) return;
-      // navigate, not push: a Ledger already on the stack is never stacked twice.
-      router.navigate({ pathname: "/workout", params: exercise ? { exercise } : {} });
+      const ledger = {
+        pathname: "/workout",
+        params: workoutExerciseId ? { workoutExerciseId } : {},
+      } as const;
+      // A Ledger already on the stack is never stacked twice: navigate only reuses it while it's
+      // on top, so one under a modal, such as Exercise history, is unwound to instead.
+      if (hasRoute(navigation.getRootState(), "workout")) router.dismissTo(ledger);
+      else router.navigate(ledger);
     }
-    openLedger(restExerciseOf(Notifications.getLastNotificationResponse()));
+    openLedger(restWorkoutExerciseOf(Notifications.getLastNotificationResponse()));
     Notifications.clearLastNotificationResponse();
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      const exercise = restExerciseOf(response);
-      if (exercise) openLedger(exercise);
+      const workoutExerciseId = restWorkoutExerciseOf(response);
+      if (workoutExerciseId) openLedger(workoutExerciseId);
     });
     return () => subscription.remove();
-  }, [db, router]);
+  }, [db, router, navigation]);
 
   return (
     <>
@@ -69,4 +76,11 @@ export default function TabsLayout() {
       </NativeTabs>
     </>
   );
+}
+
+type NavigationState = { routes: { name: string; state?: NavigationState }[] };
+
+// Expo Router nests the root layout's Stack under its own root route, so the search goes down.
+function hasRoute(state: NavigationState | undefined, name: string): boolean {
+  return state?.routes.some((route) => route.name === name || hasRoute(route.state, name)) ?? false;
 }

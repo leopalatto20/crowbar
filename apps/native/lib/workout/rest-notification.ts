@@ -1,10 +1,15 @@
 import { applicationId } from "expo-application";
 import { startActivityAsync } from "expo-intent-launcher";
 import * as Notifications from "expo-notifications";
-import { useEffect, useState } from "react";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import { AppState, Platform } from "react-native";
 
+import { useDb } from "@/db/context";
+import type { Database } from "@/db/database";
+import { getSettings, markNotificationsAsked } from "@/db/settings";
 import { useI18n } from "@/lib/i18n";
+import { useSettings } from "@/lib/settings";
 import { useRest } from "@/lib/workout/use-workout";
 
 // One fixed identifier: scheduling under it replaces the Rest before, so the OS never holds two.
@@ -30,21 +35,22 @@ async function clearRestNotification() {
   await Notifications.dismissNotificationAsync(REST_NOTIFICATION_ID);
 }
 
-// Asked only while undetermined, so a lifter who declined is never asked again. Expo reports
-// Android as undetermined until the app first asks, like iOS.
-async function askForNotifications() {
-  const { status } = await Notifications.getPermissionsAsync();
-  if (status !== "undetermined") return false;
+// Marked before the prompt shows, so even a kill mid-prompt never leads to asking twice. Resolves
+// whether notifications are allowed, for the exact alarms asked at the same moment.
+async function askForNotificationsOnce(db: Database) {
+  if (getSettings(db).notificationsAsked) return false;
+  markNotificationsAsked(db);
+  if ((await Notifications.getPermissionsAsync()).granted) return true;
   const { granted } = await Notifications.requestPermissionsAsync({
     ios: { allowAlert: true, allowSound: true },
   });
   return granted;
 }
 
-// Keeps the OS notification in step with the Rest row: it schedules, reschedules and cancels as
-// the Rest starts, is replaced, adjusted or ends, and reconciles on launch and on foreground.
-// Lives under the tabs, which stay mounted for the whole launch.
+// Lives under the tabs, which stay mounted for the whole launch, so the OS notification follows
+// the Rest row whether the Ledger is open, minimized, or not yet shown after a cold start.
 export function useRestNotification() {
+  const db = useDb();
   const rest = useRest();
   const { t } = useI18n();
   const [mountedAt] = useState(Date.now);
@@ -81,7 +87,7 @@ export function useRestNotification() {
     enqueue(async () => {
       await clearRestNotification();
       if (endsAt === undefined || workoutExerciseId === undefined || !title) return;
-      if (startedThisLaunch && (await askForNotifications())) {
+      if (startedThisLaunch && (await askForNotificationsOnce(db))) {
         if (Platform.OS === "android" && Platform.Version >= EXACT_ALARMS_DENIED_BY_DEFAULT_SINCE) {
           setAskingExactAlarms(true);
         }
@@ -104,7 +110,7 @@ export function useRestNotification() {
         },
       });
     });
-  }, [endsAt, workoutExerciseId, title, startedThisLaunch, foregrounded]);
+  }, [db, endsAt, workoutExerciseId, title, startedThisLaunch, foregrounded]);
 
   return {
     askingExactAlarms,
@@ -120,27 +126,32 @@ export function useRestNotification() {
   };
 }
 
-// The Workout Exercise whose Rest a tapped notification announced; null for any other tap.
-export function restExerciseOf(response: Notifications.NotificationResponse | null) {
+export function restWorkoutExerciseOf(response: Notifications.NotificationResponse | null) {
   const data = response?.notification.request.content.data as
     | Partial<RestNotificationData>
     | undefined;
   return typeof data?.workoutExerciseId === "string" ? data.workoutExerciseId : null;
 }
 
-export type NotificationStatus = Notifications.PermissionStatus;
-
-// Read fresh on every return to the app: the lifter may have flipped it in system settings.
+// Read on focus, which follows the prompt at a first Rest, and on every return to the app, which
+// follows a change in system settings. Not asked yet comes from Crowbar's own flag, as Android
+// reports denied before it has ever asked.
 export function useNotificationStatus() {
-  const [status, setStatus] = useState<NotificationStatus | null>(null);
-  useEffect(() => {
-    const read = () =>
-      void Notifications.getPermissionsAsync().then((permissions) => setStatus(permissions.status));
-    read();
-    const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") read();
-    });
-    return () => subscription.remove();
-  }, []);
-  return status;
+  const { notificationsAsked } = useSettings();
+  const [granted, setGranted] = useState<boolean | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      const read = () =>
+        void Notifications.getPermissionsAsync().then((permissions) =>
+          setGranted(permissions.granted),
+        );
+      read();
+      const subscription = AppState.addEventListener("change", (state) => {
+        if (state === "active") read();
+      });
+      return () => subscription.remove();
+    }, []),
+  );
+  if (granted === null) return null;
+  return granted ? "granted" : notificationsAsked ? "denied" : "undetermined";
 }

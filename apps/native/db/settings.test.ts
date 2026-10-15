@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { getSettings, seedSettings, updateSettings } from "./settings";
+import { getSettings, markNotificationsAsked, seedSettings, updateSettings } from "./settings";
 import { createTestDatabase } from "./test-database";
 
 describe("seedSettings", () => {
@@ -54,5 +54,15 @@ describe("updateSettings", () => {
     updateSettings(db, { effortScale: "RPE", defaultWeightUnit: "kg" });
     seedSettings(db, "US");
     expect(getSettings(db)).toMatchObject({ effortScale: "RPE", defaultWeightUnit: "kg" });
+  });
+});
+
+describe("notification permission", () => {
+  test("is asked about once, ever", async () => {
+    const db = await createTestDatabase();
+    seedSettings(db, "US");
+    expect(getSettings(db).notificationsAsked).toBe(false);
+    markNotificationsAsked(db);
+    expect(getSettings(db).notificationsAsked).toBe(true);
   });
 });

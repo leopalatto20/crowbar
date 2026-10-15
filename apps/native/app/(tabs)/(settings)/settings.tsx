@@ -18,7 +18,7 @@ export default function SettingsTab() {
   const { t } = useI18n();
   const { effortScale, defaultWeightUnit, restTimerEnabled, defaultRestSeconds } = useSettings();
   const notificationStatus = useNotificationStatus();
-  // Once declined, only system settings can turn notifications back on; Crowbar never asks again.
+  // Once asked, only system settings can turn notifications back on; Crowbar never asks again.
   const denied = notificationStatus === "denied";
 
   return (
