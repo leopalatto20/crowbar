@@ -1,4 +1,10 @@
-import { type NativeStackNavigationProp, Stack, useNavigation, useRouter } from "expo-router";
+import {
+  type NativeStackNavigationProp,
+  Stack,
+  useLocalSearchParams,
+  useNavigation,
+  useRouter,
+} from "expo-router";
 import { Suspense, useEffect, useState } from "react";
 import { Keyboard } from "react-native";
 
@@ -44,6 +50,8 @@ function LedgerScreen({ ledger }: { ledger: Ledger }) {
   const i18n = useI18n();
   const { t } = i18n;
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+  // Set by a tapped Rest notification.
+  const { workoutExerciseId } = useLocalSearchParams<{ workoutExerciseId?: string }>();
   const confirmed = ledger.exercises.some((entry) => entry.sets.some((set) => set.done));
 
   // Minimizing, by chevron or swipe, unmounts the Ledger; blurring first saves a value typed but
@@ -94,7 +102,13 @@ function LedgerScreen({ ledger }: { ledger: Ledger }) {
           {t.ledger.finish}
         </Stack.Toolbar.Button>
       </Stack.Toolbar>
-      <WorkoutLog ledger={ledger} mode="live" />
+      <WorkoutLog
+        ledger={ledger}
+        mode="live"
+        scrollTo={workoutExerciseId}
+        // Cleared once shown, so the Ledger stays where the lifter scrolls it afterwards.
+        onScrolledTo={() => router.setParams({ workoutExerciseId: undefined })}
+      />
       <ConfirmDialog
         visible={confirmingDiscard}
         title={t.ledger.discardTitle}

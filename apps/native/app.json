@@ -9,7 +9,10 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.crowbar"
+      "bundleIdentifier": "com.anonymous.crowbar",
+      "entitlements": {
+        "com.apple.developer.usernotifications.time-sensitive": true
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +22,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.crowbar"
+      "package": "com.anonymous.crowbar",
+      "permissions": ["android.permission.SCHEDULE_EXACT_ALARM"]
     },
     "plugins": [
       "expo-router",
@@ -42,7 +46,8 @@
           "allowDynamicLocaleChangesAndroid": true
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      "./plugins/with-android-notification-icon"
     ],
     "experiments": {
       "typedRoutes": true,

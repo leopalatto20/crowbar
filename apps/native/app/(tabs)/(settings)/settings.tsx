@@ -1,6 +1,6 @@
 import { FieldGroup, Host, Icon, ListItem, Picker, Row, Spacer, Switch, Text } from "@expo/ui";
 import { Stack, useRouter } from "expo-router";
-import { Platform } from "react-native";
+import { Linking, Platform } from "react-native";
 
 import { restOptions } from "@/components/routine/rest-options";
 import { useDb } from "@/db/context";
@@ -8,6 +8,7 @@ import { updateSettings } from "@/db/settings";
 import { useI18n } from "@/lib/i18n";
 import { useSettings } from "@/lib/settings";
 import { useColors } from "@/lib/theme";
+import { useNotificationStatus } from "@/lib/workout/rest-notification";
 import { EFFORTS, UNITS, formatClock } from "@/lib/workout/model";
 
 export default function SettingsTab() {
@@ -16,6 +17,9 @@ export default function SettingsTab() {
   const p = useColors();
   const { t } = useI18n();
   const { effortScale, defaultWeightUnit, restTimerEnabled, defaultRestSeconds } = useSettings();
+  const notificationStatus = useNotificationStatus();
+  // Once asked, only system settings can turn notifications back on; Crowbar never asks again.
+  const denied = notificationStatus === "denied";
 
   return (
     <>
@@ -66,6 +70,23 @@ export default function SettingsTab() {
                 ))}
               </Picker>
             </Row>
+            {notificationStatus && (
+              <ListItem
+                onPress={denied ? () => void Linking.openSettings() : undefined}
+                trailing={
+                  <Row alignment="center" spacing={6}>
+                    <Text textStyle={{ color: p.secondary }}>
+                      {t.settings.notificationStatus[notificationStatus]}
+                    </Text>
+                    {denied && Platform.OS === "ios" && (
+                      <Icon name="chevron.right" size={13} color={p.tertiary} />
+                    )}
+                  </Row>
+                }
+              >
+                <Text>{t.settings.notifications}</Text>
+              </ListItem>
+            )}
           </FieldGroup.Section>
           <FieldGroup.Section title={t.settings.training}>
             <ListItem

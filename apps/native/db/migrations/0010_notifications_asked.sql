@@ -1,0 +1,1 @@
+ALTER TABLE `settings` ADD `notifications_asked` integer DEFAULT false NOT NULL;

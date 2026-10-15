@@ -15,7 +15,7 @@ import { LedgerText } from "./ledger-text";
 
 // Once the countdown is over it stays as "Rest over", counting overtime, until the next confirm or
 // Dismiss.
-export function RestBar({ rest, exerciseName }: { rest: Rest; exerciseName: string }) {
+export function RestBar({ rest }: { rest: Rest }) {
   const db = useDb();
   const p = useColors();
   const { t } = useI18n();
@@ -43,7 +43,9 @@ export function RestBar({ rest, exerciseName }: { rest: Rest; exerciseName: stri
       <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.lg }}>
         <View style={{ flex: 1 }}>
           <LedgerText style={{ color: p.secondary, ...type.caption, fontWeight: "600" }}>
-            {clock.over ? t.restCard.overTitle(exerciseName) : t.restCard.title(exerciseName)}
+            {clock.over
+              ? t.restCard.overTitle(rest.exerciseName)
+              : t.restCard.title(rest.exerciseName)}
           </LedgerText>
           <LedgerText
             style={{
