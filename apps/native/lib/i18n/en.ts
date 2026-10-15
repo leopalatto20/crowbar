@@ -88,6 +88,10 @@ export const en = {
     },
     data: "Data",
     exportBackup: "Export backup",
+    exportFailedTitle: "Couldn’t export a backup",
+    exportFailedMessage:
+      "Nothing was changed. Check that your device has free space, then try again.",
+    exportFailedDismiss: "OK",
     lastExported: (ago: string) => `Last exported ${ago}`,
   },
   gyms: {

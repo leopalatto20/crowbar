@@ -88,6 +88,10 @@ export const es: Messages = {
     },
     data: "Datos",
     exportBackup: "Exportar copia de seguridad",
+    exportFailedTitle: "No se pudo exportar la copia de seguridad",
+    exportFailedMessage:
+      "No se cambió nada. Comprueba que tu dispositivo tenga espacio libre e inténtalo de nuevo.",
+    exportFailedDismiss: "Aceptar",
     lastExported: (ago) => `Última exportación: ${ago}`,
   },
   gyms: {

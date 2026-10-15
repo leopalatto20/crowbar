@@ -14,6 +14,7 @@ import { Stack, useRouter } from "expo-router";
 import { useState } from "react";
 import { Linking, Platform } from "react-native";
 
+import { NoticeDialog } from "@/components/notice-dialog";
 import { restOptions } from "@/components/routine/rest-options";
 import { useDb } from "@/db/context";
 import { updateSettings } from "@/db/settings";
@@ -36,11 +37,14 @@ export default function SettingsTab() {
   // Once asked, only system settings can turn notifications back on; Crowbar never asks again.
   const denied = notificationStatus === "denied";
   const [exporting, setExporting] = useState(false);
+  const [exportFailed, setExportFailed] = useState(false);
 
-  async function exportData() {
+  async function shareBackup() {
     setExporting(true);
     try {
       await exportBackup(db);
+    } catch {
+      setExportFailed(true);
     } finally {
       setExporting(false);
     }
@@ -131,7 +135,7 @@ export default function SettingsTab() {
               variant="text"
               label={t.settings.exportBackup}
               disabled={exporting}
-              onPress={() => void exportData()}
+              onPress={() => void shareBackup()}
             />
             {lastExportedAt !== null && (
               <FieldGroup.SectionFooter>
@@ -141,6 +145,13 @@ export default function SettingsTab() {
           </FieldGroup.Section>
         </FieldGroup>
       </Host>
+      <NoticeDialog
+        visible={exportFailed}
+        title={t.settings.exportFailedTitle}
+        message={t.settings.exportFailedMessage}
+        dismissLabel={t.settings.exportFailedDismiss}
+        onDismiss={() => setExportFailed(false)}
+      />
     </>
   );
 }

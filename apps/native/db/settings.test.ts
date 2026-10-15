@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test";
 
-import { getSettings, markNotificationsAsked, seedSettings, updateSettings } from "./settings";
+import {
+  getSettings,
+  markExported,
+  markNotificationsAsked,
+  seedSettings,
+  updateSettings,
+} from "./settings";
 import { createTestDatabase } from "./test-database";
 
 describe("seedSettings", () => {
@@ -64,5 +70,17 @@ describe("notification permission", () => {
     expect(getSettings(db).notificationsAsked).toBe(false);
     markNotificationsAsked(db);
     expect(getSettings(db).notificationsAsked).toBe(true);
+  });
+});
+
+describe("markExported", () => {
+  test("records when the lifter last shared a Backup", async () => {
+    const db = await createTestDatabase();
+    seedSettings(db, "MX");
+    expect(getSettings(db).lastExportedAt).toBeNull();
+
+    markExported(db, 1_760_000_000_000);
+
+    expect(getSettings(db).lastExportedAt).toBe(1_760_000_000_000);
   });
 });

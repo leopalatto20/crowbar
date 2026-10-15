@@ -4,12 +4,12 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { backupFileName, markExported, writeBackup } from "./backups";
+import { backupFileName, writeBackup } from "./backups";
 import type { BuiltInExercise } from "./built-in-exercises";
 import { seedBuiltInExercises } from "./exercises";
 import { createGym } from "./gyms";
 import { addRoutineExercise, createRoutine, updateRoutineExercise } from "./routines";
-import { getSettings, seedSettings, updateSettings } from "./settings";
+import { seedSettings, updateSettings } from "./settings";
 import { createTestDatabase } from "./test-database";
 import { confirmSet, currentWorkout, getLedger, startWorkout } from "./workouts";
 
@@ -93,19 +93,16 @@ describe("writeBackup", () => {
 });
 
 describe("backupFileName", () => {
-  test("dates the Backup by the lifter's local day", () => {
-    expect(backupFileName(new Date(2026, 0, 5, 23, 30))).toBe("Crowbar backup 2026-01-05.crowbar");
+  const zone = process.env.TZ;
+  afterEach(() => {
+    process.env.TZ = zone;
   });
-});
 
-describe("markExported", () => {
-  test("records when the lifter last shared a Backup", async () => {
-    const db = await createTestDatabase();
-    seedSettings(db, "MX");
-    expect(getSettings(db).lastExportedAt).toBeNull();
-
-    markExported(db, 1_760_000_000_000);
-
-    expect(getSettings(db).lastExportedAt).toBe(1_760_000_000_000);
+  test("dates a late-night export by the lifter's day, not UTC's", () => {
+    process.env.TZ = "America/Mexico_City";
+    // 23:30 on Jan 5 in Mexico City, already Jan 6 in UTC.
+    expect(backupFileName(new Date(Date.UTC(2026, 0, 6, 5, 30)))).toBe(
+      "Crowbar backup 2026-01-05.crowbar",
+    );
   });
 });

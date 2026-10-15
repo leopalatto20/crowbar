@@ -1,7 +1,6 @@
-import { eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
 import type { Database } from "./database";
-import { SETTINGS_ID, settings } from "./schema";
 
 // VACUUM INTO reads one consistent snapshot through this connection, WAL included, so a Backup
 // taken mid-Workout holds every committed set without pausing the Workout.
@@ -9,7 +8,7 @@ export function writeBackup(db: Database, path: string) {
   db.run(sql`VACUUM INTO ${path}`);
 }
 
-// The lifter's own calendar day, so a Backup exported late at night isn't dated tomorrow.
+// The lifter's own calendar day, so a Backup exported late at night isn't dated by UTC's tomorrow.
 export function backupFileName(now: Date) {
   const day = [
     now.getFullYear(),
@@ -17,8 +16,4 @@ export function backupFileName(now: Date) {
     String(now.getDate()).padStart(2, "0"),
   ].join("-");
   return `Crowbar backup ${day}.crowbar`;
-}
-
-export function markExported(db: Database, at: number) {
-  db.update(settings).set({ lastExportedAt: at }).where(eq(settings.id, SETTINGS_ID)).run();
 }

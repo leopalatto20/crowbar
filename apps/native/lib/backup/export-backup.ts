@@ -1,7 +1,8 @@
 import { Directory, File, Paths } from "expo-file-system";
 
-import { backupFileName, markExported, writeBackup } from "@/db/backups";
+import { backupFileName, writeBackup } from "@/db/backups";
 import type { Database } from "@/db/database";
+import { markExported } from "@/db/settings";
 
 import { shareFile } from "./share-file";
 
