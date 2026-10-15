@@ -9,10 +9,9 @@
   },
   "type": "module",
   "scripts": {
-    "dev": "bun run --filter '*' dev",
+    "dev": "bun run --cwd apps/native dev",
     "build": "bun run --filter '*' build",
     "check-types": "bun run --filter '*' check-types && tsc --noEmit -p scripts",
-    "dev:native": "bun run --filter native dev",
     "check": "oxlint && oxfmt --write && bun run check-raw-sql",
     "check-raw-sql": "bun scripts/check-raw-sql.ts",
     "test": "bun test",
