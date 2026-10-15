@@ -10,6 +10,7 @@ import { createRoutine, deleteRoutine, duplicateRoutine, reorderRoutines } from 
 import { currentWorkout, discardAndStartWorkout, startWorkout } from "@/db/workouts";
 import { useI18n } from "@/lib/i18n";
 import { useRoutines } from "@/lib/routine/use-routine";
+import { currentTimeZone } from "@/lib/workout/time";
 
 export default function WorkoutTab() {
   const { t } = useI18n();
@@ -133,7 +134,3 @@ function Routines() {
 // A start held up by the Gym prompt or the in-progress alert: a Routine's, or an empty
 // Workout's when routineId is absent.
 type PendingStart = { routineId?: string };
-
-function currentTimeZone() {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone;
-}
