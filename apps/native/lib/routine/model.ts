@@ -1,5 +1,6 @@
 import type { LastRun } from "@/db/routines";
 import type { I18n } from "@/lib/i18n";
+import { ageOf } from "@/lib/i18n/locale";
 import {
   type Effort,
   type Target,
@@ -69,28 +70,9 @@ export function formatTarget(target: Target, effort: Effort, i18n: I18n) {
   return i18n.t.ledger.target(parts.join(" · "));
 }
 
-export type Age = { unit: "day" | "week" | "month" | "year"; count: number };
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-function startOfDay(epochMs: number) {
-  const date = new Date(epochMs);
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-}
-
-// Calendar days in the device's zone, so last night's Workout reads "yesterday" this morning.
-// Rounding absorbs the 23- and 25-hour days around a daylight saving change.
-export function ageOf(epochMs: number, now: number): Age {
-  const days = Math.max(0, Math.round((startOfDay(now) - startOfDay(epochMs)) / DAY_MS));
-  if (days < 7) return { unit: "day", count: days };
-  if (days < 30) return { unit: "week", count: Math.floor(days / 7) };
-  if (days < 365) return { unit: "month", count: Math.floor(days / 30) };
-  return { unit: "year", count: Math.floor(days / 365) };
-}
-
 export function formatLastRun({ startedAt, gymName }: LastRun, i18n: I18n) {
-  const { workoutTab } = i18n.t;
-  return workoutTab.lastRun(workoutTab.ago(ageOf(startedAt, Date.now())), gymName);
+  const { t } = i18n;
+  return t.workoutTab.lastRun(t.ago(ageOf(startedAt, Date.now())), gymName);
 }
 
 // SwiftUI's onMove semantics: the destination is an offset in the list before the move.

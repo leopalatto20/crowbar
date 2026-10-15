@@ -11,6 +11,17 @@ export const es: Messages = {
     history: "Aún no hay entrenamientos.",
     exercises: "Aún no hay ejercicios.",
   },
+  ago: ({ unit, count }) => {
+    if (unit === "day" && count === 0) return "hoy";
+    if (unit === "day" && count === 1) return "ayer";
+    const units = {
+      day: ["día", "días"],
+      week: ["semana", "semanas"],
+      month: ["mes", "meses"],
+      year: ["año", "años"],
+    }[unit];
+    return `hace ${count} ${units[count === 1 ? 0 : 1]}`;
+  },
   workoutTab: {
     startEmptyWorkout: "Empezar entrenamiento vacío",
     routines: "Rutinas",
@@ -22,17 +33,6 @@ export const es: Messages = {
     delete: "Eliminar",
     copyName: (name) => `${name} (copia)`,
     lastRun: (ago, gym) => `Último: ${ago} · ${gym}`,
-    ago: ({ unit, count }) => {
-      if (unit === "day" && count === 0) return "hoy";
-      if (unit === "day" && count === 1) return "ayer";
-      const units = {
-        day: ["día", "días"],
-        week: ["semana", "semanas"],
-        month: ["mes", "meses"],
-        year: ["año", "años"],
-      }[unit];
-      return `hace ${count} ${units[count === 1 ? 0 : 1]}`;
-    },
   },
   exercises: {
     search: "Buscar",
@@ -86,6 +86,13 @@ export const es: Messages = {
       denied: "Desactivadas",
       undetermined: "Sin configurar",
     },
+    data: "Datos",
+    exportBackup: "Exportar copia de seguridad",
+    exportFailedTitle: "No se pudo exportar la copia de seguridad",
+    exportFailedMessage:
+      "No se cambió nada. Comprueba que tu dispositivo tenga espacio libre e inténtalo de nuevo.",
+    exportFailedDismiss: "Aceptar",
+    lastExported: (ago) => `Última exportación: ${ago}`,
   },
   gyms: {
     title: "Gimnasios",
