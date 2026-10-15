@@ -12,7 +12,7 @@ import {
   workoutExercise,
   workoutSet,
 } from "@/db/schema";
-import { currentWorkout, getLedger } from "@/db/workouts";
+import { currentWorkout, getLedger, listHistory } from "@/db/workouts";
 import { haptics } from "@/lib/haptics";
 import { useI18n } from "@/lib/i18n";
 
@@ -29,6 +29,30 @@ export function useCurrentWorkout() {
         const id = currentWorkout(db)?.id;
         return (id && getLedger(db, id, language)) || null;
       },
+    }),
+  ).data;
+}
+
+export function useHistory() {
+  const db = useDb();
+  return useSuspenseQuery(
+    dbQuery(db, {
+      tables: [workout, gym, workoutExercise],
+      key: ["workout", "history"],
+      fn: listHistory,
+    }),
+  ).data;
+}
+
+// Null once the Workout is deleted, so its detail screen can step aside.
+export function useWorkout(id: string) {
+  const db = useDb();
+  const { language } = useI18n();
+  return useSuspenseQuery(
+    dbQuery(db, {
+      tables: [workout, gym, workoutExercise, exercise, station, workoutSet, settings],
+      key: ["workout", id, language],
+      fn: (db) => getLedger(db, id, language) ?? null,
     }),
   ).data;
 }

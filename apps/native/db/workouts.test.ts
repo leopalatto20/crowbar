@@ -11,6 +11,7 @@ import {
   createRoutine,
   deleteRoutine,
   getRoutine,
+  listRoutines,
   removeRoutineExercise,
   renameRoutine,
   updateRoutineExercise,
@@ -31,9 +32,12 @@ import {
   confirmSet,
   currentWorkout,
   discardAndStartWorkout,
-  discardWorkout,
   finishWorkout,
   getLedger,
+  saveWorkoutAsRoutine,
+  deleteWorkout,
+  workoutSetCount,
+  listHistory,
   listWorkoutEdits,
   removeWorkoutExercise,
   moveWorkoutExercise,
@@ -122,6 +126,7 @@ describe("startWorkout", () => {
       routineName: null,
       startedAt: 1_000,
       finishedAt: null,
+      timeZone: TIME_ZONE,
       exercises: [],
     });
   });
@@ -574,11 +579,11 @@ describe("finishWorkout", () => {
   });
 });
 
-describe("discardWorkout", () => {
+describe("discarding the Workout in progress", () => {
   test("removes the Workout and everything logged in it", async () => {
     const { db, workoutId, workoutExerciseId } = await benchInWorkout();
     confirmSet(db, setsOf(db, workoutId, workoutExerciseId)[0]!.id, { load: 100, reps: 5 });
-    discardWorkout(db, workoutId);
+    deleteWorkout(db, workoutId);
     expect(getLedger(db, workoutId, "en")).toBeUndefined();
     expect(currentWorkout(db)).toBeUndefined();
   });
@@ -594,7 +599,7 @@ describe("discardWorkout", () => {
     const raise = addWorkoutExercise(db, discarded, lateralRaise.id);
     confirmSet(db, setsOf(db, discarded, bench)[0]!.id, { load: 225, reps: 5 });
     confirmSet(db, setsOf(db, discarded, raise)[0]!.id, { load: 25, reps: 12 });
-    discardWorkout(db, discarded);
+    deleteWorkout(db, discarded);
     updateSettings(db, { defaultWeightUnit: "kg" });
 
     const next = startWorkout(db, { gymId, timeZone: TIME_ZONE });
@@ -670,7 +675,7 @@ describe("prefill from last time at the same Station", () => {
     const atDowntown = startWorkout(db, { gymId: downtown, timeZone: TIME_ZONE, now: 3_000 });
     const bench = addWorkoutExercise(db, atDowntown, benchPress.id);
     expect(lastHereOf(db, atDowntown, bench)).toEqual([{ load: 100, reps: 5, rir: null }]);
-    discardWorkout(db, atDowntown);
+    deleteWorkout(db, atDowntown);
 
     const atNewGym = startWorkout(db, {
       gymId: createGym(db, "Hotel"),
@@ -921,7 +926,7 @@ describe("changeWorkoutGym", () => {
     const lastHereAt = (gymId: string, now: number) => {
       const next = startWorkout(db, { gymId, timeZone: TIME_ZONE, now });
       const lastHere = setsOf(db, next, addWorkoutExercise(db, next, benchPress.id))[0]!.lastHere;
-      discardWorkout(db, next);
+      deleteWorkout(db, next);
       return lastHere;
     };
     expect(lastHereAt(garage, 3_000)).toEqual({ load: 100, reps: 5, rir: null });
@@ -1052,7 +1057,7 @@ describe("several Stations per Exercise", () => {
       existingLabel: "Hammer Strength",
     });
 
-    discardWorkout(db, workoutId);
+    deleteWorkout(db, workoutId);
 
     const next = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 3_000 });
     addWorkoutExercise(db, next, benchPress.id);
@@ -1085,7 +1090,7 @@ describe("machine notes", () => {
   test("written before any set at the Gym are kept for the next Workout there", async () => {
     const { db, gymId, workoutId } = await startedWorkout();
     setMachineNotes(db, addWorkoutExercise(db, workoutId, benchPress.id), "Seat 4");
-    discardWorkout(db, workoutId);
+    deleteWorkout(db, workoutId);
 
     const next = startWorkout(db, { gymId, timeZone: TIME_ZONE });
     const bench = addWorkoutExercise(db, next, benchPress.id);
@@ -1103,7 +1108,7 @@ describe("machine notes", () => {
     setMachineNotes(db, bench, "  ");
     expect(ledger(db, workoutId).exercises[0]?.station?.notes).toBeNull();
 
-    discardWorkout(db, workoutId);
+    deleteWorkout(db, workoutId);
 
     expect(db.select().from(station).all()).toEqual([]);
   });
@@ -1345,5 +1350,203 @@ describe("mid-Workout changes", () => {
 
       expect(listWorkoutEdits(db, workoutId)).toEqual([]);
     });
+  });
+});
+
+// One finished Workout at the Gym, with one confirmed set per Exercise, a Routine's included.
+function logWorkout(
+  db: Database,
+  {
+    gymId,
+    startedAt,
+    timeZone = TIME_ZONE,
+    routineId,
+    exerciseIds = [benchPress.id],
+  }: {
+    gymId: string;
+    startedAt: number;
+    timeZone?: string;
+    routineId?: string;
+    exerciseIds?: string[];
+  },
+) {
+  const workoutId = startWorkout(db, { gymId, timeZone, routineId, now: startedAt });
+  for (const exerciseId of exerciseIds) addWorkoutExercise(db, workoutId, exerciseId);
+  for (const entry of ledger(db, workoutId).exercises) {
+    confirmSet(db, entry.sets[0]!.id, { load: 20, reps: 10 });
+  }
+  finishWorkout(db, workoutId, startedAt + 3_600_000);
+  return workoutId;
+}
+
+describe("listHistory", () => {
+  test("groups finished Workouts by month, newest first, leaving out the one in progress", async () => {
+    const db = await libraryDatabase();
+    const downtown = createGym(db, "Downtown Iron");
+    const garage = createGym(db, "Garage");
+    const routineId = createRoutine(db, "Upper A");
+    addRoutineExercise(db, routineId, benchPress.id);
+    const september = logWorkout(db, { gymId: garage, startedAt: Date.UTC(2026, 8, 12, 15) });
+    const early = logWorkout(db, {
+      gymId: downtown,
+      startedAt: Date.UTC(2026, 9, 2, 15),
+      exerciseIds: [benchPress.id, pullUp.id],
+    });
+    const late = logWorkout(db, {
+      gymId: downtown,
+      startedAt: Date.UTC(2026, 9, 9, 15),
+      routineId,
+      exerciseIds: [],
+    });
+    startWorkout(db, { gymId: downtown, timeZone: TIME_ZONE, now: Date.UTC(2026, 9, 14, 15) });
+
+    expect(listHistory(db)).toEqual([
+      {
+        year: 2026,
+        month: 10,
+        workouts: [
+          {
+            id: late,
+            startedAt: Date.UTC(2026, 9, 9, 15),
+            timeZone: TIME_ZONE,
+            routineName: "Upper A",
+            gymName: "Downtown Iron",
+            exerciseCount: 1,
+          },
+          {
+            id: early,
+            startedAt: Date.UTC(2026, 9, 2, 15),
+            timeZone: TIME_ZONE,
+            routineName: null,
+            gymName: "Downtown Iron",
+            exerciseCount: 2,
+          },
+        ],
+      },
+      {
+        year: 2026,
+        month: 9,
+        workouts: [
+          {
+            id: september,
+            startedAt: Date.UTC(2026, 8, 12, 15),
+            timeZone: TIME_ZONE,
+            routineName: null,
+            gymName: "Garage",
+            exerciseCount: 1,
+          },
+        ],
+      },
+    ]);
+  });
+
+  test("puts each Workout in its month as its own time zone read the start", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    // Still the evening of September 30 in Mexico City.
+    const mexicoCity = logWorkout(db, { gymId, startedAt: Date.UTC(2026, 9, 1, 3) });
+    // Already the morning of October 1 in Tokyo, though it started earlier.
+    const tokyo = logWorkout(db, {
+      gymId,
+      startedAt: Date.UTC(2026, 8, 30, 20),
+      timeZone: "Asia/Tokyo",
+    });
+
+    expect(
+      listHistory(db).map(({ year, month, workouts }) => ({
+        year,
+        month,
+        ids: workouts.map((found) => found.id),
+      })),
+    ).toEqual([
+      { year: 2026, month: 10, ids: [tokyo] },
+      { year: 2026, month: 9, ids: [mexicoCity] },
+    ]);
+  });
+});
+
+describe("deleting a finished Workout", () => {
+  test("counts the logged sets it takes, warm-ups included", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    const workoutId = logBench(db, gymId, 1_000, [
+      { load: 60, reps: 8, warmup: true },
+      { load: 100, reps: 5 },
+      { load: 100, reps: 5 },
+    ]);
+    expect(workoutSetCount(db, workoutId)).toBe(3);
+  });
+
+  test("removes it from History, and the next Workout prefills from the one before", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    const kept = logBench(db, gymId, 1_000, [{ load: 100, reps: 5 }]);
+    const deleted = logBench(db, gymId, 2_000, [{ load: 110, reps: 5 }]);
+
+    deleteWorkout(db, deleted);
+
+    expect(getLedger(db, deleted, "en")).toBeUndefined();
+    expect(listHistory(db).flatMap((month) => month.workouts.map((found) => found.id))).toEqual([
+      kept,
+    ]);
+    const next = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 3_000 });
+    const entry = addWorkoutExercise(db, next, benchPress.id);
+    expect(setsOf(db, next, entry)[0]!.lastHere).toEqual({ load: 100, reps: 5, rir: null });
+  });
+});
+
+describe("saveWorkoutAsRoutine", () => {
+  test("copies the Exercises, their order and Working-set counts, with other Targets blank", async () => {
+    const { db, workoutId } = await startedWorkout();
+    createRoutine(db, "Lower");
+    const bench = addWorkoutExercise(db, workoutId, benchPress.id);
+    addSet(db, bench);
+    addSet(db, bench);
+    const raise = addWorkoutExercise(db, workoutId, lateralRaise.id);
+    const pull = addWorkoutExercise(db, workoutId, pullUp.id);
+    addSet(db, pull);
+    moveWorkoutExercise(db, pull, 0);
+    const [warmup, ...working] = setsOf(db, workoutId, bench);
+    toggleSetKind(db, warmup!.id);
+    for (const set of [warmup!, ...working]) confirmSet(db, set.id, { load: 100, reps: 5 });
+    const [raiseWarmup] = setsOf(db, workoutId, raise);
+    toggleSetKind(db, raiseWarmup!.id);
+    confirmSet(db, raiseWarmup!.id, { load: 5, reps: 15 });
+    for (const set of setsOf(db, workoutId, pull)) confirmSet(db, set.id, { reps: 8 });
+    finishWorkout(db, workoutId);
+
+    const routineId = saveWorkoutAsRoutine(db, workoutId, " Improvised push ");
+
+    const blank = { warmups: 0, repMin: null, repMax: null, rirMin: null, rirMax: null };
+    expect(getRoutine(db, routineId, "en")).toEqual({
+      id: routineId,
+      name: "Improvised push",
+      exercises: [
+        {
+          id: expect.any(String),
+          exercise: { id: pullUp.id, name: "Pull-Up" },
+          ...blank,
+          sets: 2,
+          restSeconds: null,
+        },
+        {
+          id: expect.any(String),
+          exercise: { id: benchPress.id, name: "Barbell Bench Press" },
+          ...blank,
+          sets: 2,
+          restSeconds: null,
+        },
+        {
+          id: expect.any(String),
+          exercise: { id: lateralRaise.id, name: "Dumbbell Lateral Raise" },
+          ...blank,
+          // Only warm-ups were logged, so no set count is planned.
+          sets: null,
+          restSeconds: null,
+        },
+      ],
+    });
+    // It joins the Workout tab after the Routines already there.
+    expect(listRoutines(db).map((routine) => routine.name)).toEqual(["Lower", "Improvised push"]);
   });
 });

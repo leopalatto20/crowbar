@@ -1,6 +1,7 @@
 import {
   and,
   asc,
+  count,
   desc,
   eq,
   inArray,
@@ -18,6 +19,7 @@ import type { Performance, SetKind, Target, Unit } from "@/lib/workout/model";
 
 import type { Database } from "./database";
 import { newId } from "./id";
+import { createRoutine } from "./routines";
 import {
   exercise,
   gym,
@@ -119,7 +121,7 @@ function snapshotRoutine(db: Database, workoutId: string, gymId: string, routine
 // One transaction, so a failed start never leaves the lifter with the old Workout gone.
 export function discardAndStartWorkout(db: Database, discardedId: string, start: WorkoutStart) {
   return db.transaction((tx) => {
-    deleteWorkout(tx, discardedId);
+    removeWorkout(tx, discardedId);
     return insertWorkout(tx, start);
   });
 }
@@ -130,6 +132,58 @@ export function currentWorkout(db: Database) {
     .from(workout)
     .where(isNull(workout.finishedAt))
     .get();
+}
+
+export type HistoryWorkout = {
+  id: string;
+  startedAt: number;
+  timeZone: string;
+  // As the Routine was named when the Workout started; null for an empty Workout.
+  routineName: string | null;
+  gymName: string;
+  exerciseCount: number;
+};
+
+// `month` runs 1-12, as the Workouts' own time zones read their start.
+export type HistoryMonth = { year: number; month: number; workouts: HistoryWorkout[] };
+
+export function listHistory(db: Database): HistoryMonth[] {
+  const workouts = db
+    .select({
+      id: workout.id,
+      startedAt: workout.startedAt,
+      timeZone: workout.timeZone,
+      routineName: workout.routineName,
+      gymName: gym.name,
+      exerciseCount: count(workoutExercise.id),
+    })
+    .from(workout)
+    .innerJoin(gym, eq(gym.id, workout.gymId))
+    .leftJoin(workoutExercise, eq(workoutExercise.workoutId, workout.id))
+    .where(isNotNull(workout.finishedAt))
+    .groupBy(workout.id)
+    .orderBy(desc(workout.startedAt))
+    .all();
+  const months = new Map<string, HistoryMonth>();
+  for (const found of workouts) {
+    const { year, month } = monthOf(found.startedAt, found.timeZone);
+    const key = `${year}-${month}`;
+    const group = months.get(key) ?? { year, month, workouts: [] };
+    group.workouts.push(found);
+    months.set(key, group);
+  }
+  // Time zones can interleave months in start order, so the months sort on their own.
+  return [...months.values()].sort((a, b) => b.year - a.year || b.month - a.month);
+}
+
+function monthOf(epochMs: number, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "numeric",
+  }).formatToParts(epochMs);
+  const part = (type: "year" | "month") => Number(parts.find((p) => p.type === type)!.value);
+  return { year: part("year"), month: part("month") };
 }
 
 export type LedgerSet = {
@@ -172,6 +226,7 @@ export type Ledger = {
   routineName: string | null;
   startedAt: number;
   finishedAt: number | null;
+  timeZone: string;
   exercises: LedgerExercise[];
 };
 
@@ -181,6 +236,7 @@ export function getLedger(db: Database, id: string, language: Language): Ledger 
       id: workout.id,
       startedAt: workout.startedAt,
       finishedAt: workout.finishedAt,
+      timeZone: workout.timeZone,
       gymId: workout.gymId,
       gymName: gym.name,
       routineName: workout.routineName,
@@ -763,11 +819,62 @@ export function finishWorkout(db: Database, id: string, now = Date.now()) {
   });
 }
 
-export function discardWorkout(db: Database, id: string) {
-  db.transaction((tx) => deleteWorkout(tx, id));
+// Only what the Workout shows for certain carries over: rep range, effort and rest are left for
+// the lifter to plan, and an Exercise with no Working set logged plans no set count.
+export function saveWorkoutAsRoutine(db: Database, workoutId: string, name: string) {
+  return db.transaction((tx) => {
+    const routineId = createRoutine(tx, name);
+    const entries = tx
+      .select({
+        exerciseId: workoutExercise.exerciseId,
+        workingSets: count(workoutSet.id),
+      })
+      .from(workoutExercise)
+      .leftJoin(
+        workoutSet,
+        and(
+          eq(workoutSet.workoutExerciseId, workoutExercise.id),
+          eq(workoutSet.kind, "working"),
+          eq(workoutSet.done, true),
+        ),
+      )
+      .where(eq(workoutExercise.workoutId, workoutId))
+      .groupBy(workoutExercise.id)
+      .orderBy(asc(workoutExercise.position))
+      .all();
+    entries.forEach(({ exerciseId, workingSets }, position) => {
+      tx.insert(routineExercise)
+        .values({
+          id: newId(tx),
+          routineId,
+          exerciseId,
+          position,
+          sets: workingSets > 0 ? workingSets : null,
+        })
+        .run();
+    });
+    return routineId;
+  });
 }
 
-function deleteWorkout(db: Database, id: string) {
+// What deleting the Workout takes with it. Only logged sets count: the unconfirmed ones of a
+// Workout in progress were never part of any history.
+export function workoutSetCount(db: Database, id: string) {
+  const [sets] = db
+    .select({ count: count() })
+    .from(workoutSet)
+    .innerJoin(workoutExercise, eq(workoutExercise.id, workoutSet.workoutExerciseId))
+    .where(and(eq(workoutExercise.workoutId, id), eq(workoutSet.done, true)))
+    .all();
+  return sets!.count;
+}
+
+// A hard delete, for a finished Workout as for discarding the one in progress: there's no undo.
+export function deleteWorkout(db: Database, id: string) {
+  db.transaction((tx) => removeWorkout(tx, id));
+}
+
+function removeWorkout(db: Database, id: string) {
   const stationIds = stationsOf(db, id);
   db.delete(workout).where(eq(workout.id, id)).run();
   deleteEmptyStations(db, stationIds);

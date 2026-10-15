@@ -3,7 +3,7 @@ import { Suspense, useState } from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { GymList } from "@/components/gym-list";
-import { GymNamePrompt } from "@/components/gym-name-prompt";
+import { NamePrompt } from "@/components/name-prompt";
 import { useDb } from "@/db/context";
 import { type Gym, type GymHistoryCounts, deleteGym, gymHistoryCounts, renameGym } from "@/db/gyms";
 import { useGyms } from "@/lib/gym/use-gyms";
@@ -36,11 +36,12 @@ function Gyms() {
         onRename={setRenaming}
         onDelete={(gym) => setDeleting({ gym, counts: gymHistoryCounts(db, gym.id) })}
       />
-      <GymNamePrompt
+      <NamePrompt
         // Remounted per Gym, so the field starts at that Gym's name.
         key={renaming?.id}
         visible={renaming !== null}
         title={t.gyms.renameTitle}
+        placeholder={t.gymPrompt.placeholder}
         confirmLabel={t.gyms.save}
         initialName={renaming?.name}
         onSave={(name) => {

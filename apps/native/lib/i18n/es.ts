@@ -51,6 +51,18 @@ export const es: Messages = {
       `Se eliminarán ${stations} ${stations === 1 ? "estación" : "estaciones"} y ${sets} ${sets === 1 ? "serie" : "series"} de ${workouts} ${workouts === 1 ? "entrenamiento" : "entrenamientos"}.`,
     hideKeepsHistory: "Si lo ocultas, conservas su historial.",
   },
+  history: {
+    exercises: (count) => `${count} ${count === 1 ? "ejercicio" : "ejercicios"}`,
+    started: (date, time) => `${date} · ${time}`,
+    more: "Más",
+    saveAsRoutine: "Guardar como rutina",
+    save: "Guardar",
+    delete: "Borrar entrenamiento",
+    deleteTitle: "¿Borrar este entrenamiento?",
+    deleteMessage: (sets) =>
+      `Se borrarán ${sets} ${sets === 1 ? "serie" : "series"}. No se puede deshacer.`,
+    cancel: "Cancelar",
+  },
   settings: {
     logging: "Registro",
     effortScale: "Escala de esfuerzo",
@@ -137,10 +149,12 @@ export const es: Messages = {
     title: "¿Dónde entrenas?",
     message: "El progreso se registra por separado en cada gimnasio.",
     placeholder: "Nombre del gimnasio",
-    cancel: "Cancelar",
     start: "Empezar",
     newGymTitle: "Nuevo gimnasio",
     add: "Añadir",
+  },
+  namePrompt: {
+    cancel: "Cancelar",
   },
   gymPicker: {
     title: "Gimnasio",

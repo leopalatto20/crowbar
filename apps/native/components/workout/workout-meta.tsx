@@ -9,50 +9,57 @@ import { LedgerText } from "./ledger-text";
 
 export function WorkoutMeta({
   gym,
-  startedAt,
+  started,
   onChangeGym,
 }: {
   gym: string;
-  startedAt: number;
-  onChangeGym: () => void;
+  started: string;
+  onChangeGym?: () => void;
 }) {
   const p = useColors();
-  const { t, formatTime } = useI18n();
+  const { t } = useI18n();
+  const chipStyle = {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: radii.pill,
+    backgroundColor: p.fill,
+  } as const;
+  const gymLabel = (
+    <>
+      <SymbolView
+        name={{ ios: "mappin.and.ellipse", android: "location_on" }}
+        size={13}
+        tintColor={p.label}
+      />
+      <LedgerText numberOfLines={1} style={{ color: p.label, ...type.footnote, fontWeight: "600" }}>
+        {gym}
+      </LedgerText>
+    </>
+  );
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
-      <PressableScale
-        onPress={onChangeGym}
-        accessibilityLabel={t.ledger.changeGym(gym)}
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: spacing.xs,
-          paddingHorizontal: spacing.sm,
-          paddingVertical: spacing.xs,
-          borderRadius: radii.pill,
-          backgroundColor: p.fill,
-        }}
-      >
-        <SymbolView
-          name={{ ios: "mappin.and.ellipse", android: "location_on" }}
-          size={13}
-          tintColor={p.label}
-        />
-        <LedgerText
-          numberOfLines={1}
-          style={{ color: p.label, ...type.footnote, fontWeight: "600" }}
+      {onChangeGym ? (
+        <PressableScale
+          onPress={onChangeGym}
+          accessibilityLabel={t.ledger.changeGym(gym)}
+          style={chipStyle}
         >
-          {gym}
-        </LedgerText>
-        <SymbolView
-          name={{ ios: "chevron.down", android: "keyboard_arrow_down" }}
-          size={10}
-          weight="semibold"
-          tintColor={p.secondary}
-        />
-      </PressableScale>
+          {gymLabel}
+          <SymbolView
+            name={{ ios: "chevron.down", android: "keyboard_arrow_down" }}
+            size={10}
+            weight="semibold"
+            tintColor={p.secondary}
+          />
+        </PressableScale>
+      ) : (
+        <View style={chipStyle}>{gymLabel}</View>
+      )}
       <LedgerText style={{ color: p.secondary, ...type.footnote, fontWeight: "500" }}>
-        {t.ledger.started(formatTime(startedAt))}
+        {started}
       </LedgerText>
     </View>
   );

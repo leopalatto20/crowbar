@@ -34,10 +34,35 @@ export function parseDecimal(text: string) {
 }
 
 // The device's 12/24-hour switch overrides the locale's default clock, which Intl can't see.
-export function formatTime(epochMs: number, languageTag: string, uses24HourClock: boolean) {
+// A Workout passes the zone it was logged in, so its times read the same wherever it's viewed.
+export function formatTime(
+  epochMs: number,
+  languageTag: string,
+  uses24HourClock: boolean,
+  timeZone?: string,
+) {
   return new Intl.DateTimeFormat(languageTag, {
     hour: "numeric",
     minute: "2-digit",
     hourCycle: uses24HourClock ? "h23" : "h12",
+    timeZone,
   }).format(epochMs);
+}
+
+export function formatDate(epochMs: number, languageTag: string, timeZone: string) {
+  return new Intl.DateTimeFormat(languageTag, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone,
+  }).format(epochMs);
+}
+
+// `month` runs 1-12. Read in UTC, so no zone can shift the first of the month into another.
+export function formatMonth(year: number, month: number, languageTag: string) {
+  return new Intl.DateTimeFormat(languageTag, {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(Date.UTC(year, month - 1, 1));
 }

@@ -6,7 +6,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { LEDGER_MENU_ICON, LEDGER_MINIMIZE_ICON } from "@/components/workout/ledger-icons";
 import { WorkoutLog } from "@/components/workout/workout-log";
 import { useDb } from "@/db/context";
-import { type Ledger, discardWorkout } from "@/db/workouts";
+import { type Ledger, deleteWorkout } from "@/db/workouts";
 import { useI18n } from "@/lib/i18n";
 import { useColors } from "@/lib/theme";
 import { workoutTitle } from "@/lib/workout/model";
@@ -58,7 +58,7 @@ function LedgerScreen({ ledger }: { ledger: Ledger }) {
 
   function discard() {
     setConfirmingDiscard(false);
-    discardWorkout(db, ledger.id);
+    deleteWorkout(db, ledger.id);
     router.back();
   }
 

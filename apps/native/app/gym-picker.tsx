@@ -3,7 +3,7 @@ import { SymbolView } from "expo-symbols";
 import { Suspense, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 
-import { GymNamePrompt } from "@/components/gym-name-prompt";
+import { NamePrompt } from "@/components/name-prompt";
 import { useDb } from "@/db/context";
 import { createGym } from "@/db/gyms";
 import { changeWorkoutGym } from "@/db/workouts";
@@ -79,9 +79,10 @@ function GymPicker() {
         />
         <Text style={{ flex: 1, color: p.blue, ...type.body }}>{t.gymPicker.newGym}</Text>
       </Row>
-      <GymNamePrompt
+      <NamePrompt
         visible={naming}
         title={t.gymPrompt.newGymTitle}
+        placeholder={t.gymPrompt.placeholder}
         message={t.gymPrompt.message}
         confirmLabel={t.gymPrompt.add}
         onSave={(name) => {

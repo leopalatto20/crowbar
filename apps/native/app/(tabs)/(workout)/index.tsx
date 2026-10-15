@@ -1,7 +1,7 @@
 import { Stack, useRouter } from "expo-router";
 import { Suspense, useState } from "react";
 
-import { GymNamePrompt } from "@/components/gym-name-prompt";
+import { NamePrompt } from "@/components/name-prompt";
 import { RoutineList } from "@/components/routine/routine-list";
 import { WorkoutInProgressAlert } from "@/components/workout-in-progress-alert";
 import { useDb } from "@/db/context";
@@ -105,9 +105,10 @@ function Routines() {
         onDelete={remove}
         onReorder={(ids) => reorderRoutines(db, ids)}
       />
-      <GymNamePrompt
+      <NamePrompt
         visible={namingGymFor !== null}
         title={t.gymPrompt.title}
+        placeholder={t.gymPrompt.placeholder}
         message={t.gymPrompt.message}
         confirmLabel={t.gymPrompt.start}
         onSave={(name) => {

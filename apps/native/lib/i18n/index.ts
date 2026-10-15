@@ -5,7 +5,9 @@ import { es } from "./es";
 import {
   type Language,
   formatDecimal,
+  formatDate,
   formatEditableDecimal,
+  formatMonth,
   formatTime,
   resolveLanguage,
 } from "./locale";
@@ -27,7 +29,10 @@ export function useI18n() {
     t: CATALOGS[language],
     formatDecimal: (value: number) => formatDecimal(value, languageTag),
     formatEditableDecimal: (value: number) => formatEditableDecimal(value, languageTag),
-    formatTime: (epochMs: number) => formatTime(epochMs, languageTag, uses24HourClock),
+    formatTime: (epochMs: number, timeZone?: string) =>
+      formatTime(epochMs, languageTag, uses24HourClock, timeZone),
+    formatDate: (epochMs: number, timeZone: string) => formatDate(epochMs, languageTag, timeZone),
+    formatMonth: (year: number, month: number) => formatMonth(year, month, languageTag),
   };
 }
 
