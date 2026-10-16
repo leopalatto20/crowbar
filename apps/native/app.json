@@ -47,7 +47,8 @@
         }
       ],
       "expo-sqlite",
-      "./plugins/with-android-notification-icon"
+      "./plugins/with-android-notification-icon",
+      "expo-widgets"
     ],
     "experiments": {
       "typedRoutes": true,

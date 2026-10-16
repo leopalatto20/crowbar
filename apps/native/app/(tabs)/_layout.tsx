@@ -1,3 +1,4 @@
+import * as Linking from "expo-linking";
 import * as Notifications from "expo-notifications";
 import { useNavigationContainerRef, useRouter } from "expo-router";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
@@ -9,6 +10,8 @@ import { WorkoutBar } from "@/components/workout/workout-bar";
 import { useDb } from "@/db/context";
 import { currentWorkout } from "@/db/workouts";
 import { useI18n } from "@/lib/i18n";
+import { restWorkoutExerciseOfLink } from "@/lib/workout/rest-activity";
+import { useRestLiveActivity } from "@/lib/workout/rest-live-activity";
 import { restWorkoutExerciseOf, useRestNotification } from "@/lib/workout/rest-notification";
 import { useRestOverHaptic, useWorkoutInProgress } from "@/lib/workout/use-workout";
 
@@ -22,10 +25,11 @@ export default function TabsLayout() {
   // once whether the Ledger is open or minimized.
   useRestOverHaptic();
   const { askingExactAlarms, answerExactAlarms } = useRestNotification();
+  useRestLiveActivity();
 
   // The tabs mount once per launch, once the root Stack can navigate, so a Workout left in
   // progress by a killed app reopens in the Ledger over them, scrolled to the Rest's Exercise when
-  // its notification is what launched the app.
+  // its notification or Live Activity is what launched the app.
   useEffect(() => {
     function openLedger(workoutExerciseId: string | null) {
       if (!currentWorkout(db)) return;
@@ -38,13 +42,27 @@ export default function TabsLayout() {
       if (hasRoute(navigation.getRootState(), "workout")) router.dismissTo(ledger);
       else router.navigate(ledger);
     }
-    openLedger(restWorkoutExerciseOf(Notifications.getLastNotificationResponse()));
+    const launchedBy = restWorkoutExerciseOf(Notifications.getLastNotificationResponse());
     Notifications.clearLastNotificationResponse();
-    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      const workoutExerciseId = restWorkoutExerciseOf(response);
+    let unmounted = false;
+    void Linking.getInitialURL().then((url) => {
+      if (!unmounted) openLedger(restWorkoutExerciseOfLink(url) ?? launchedBy);
+    });
+    const notificationSubscription = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const workoutExerciseId = restWorkoutExerciseOf(response);
+        if (workoutExerciseId) openLedger(workoutExerciseId);
+      },
+    );
+    const linkSubscription = Linking.addEventListener("url", ({ url }) => {
+      const workoutExerciseId = restWorkoutExerciseOfLink(url);
       if (workoutExerciseId) openLedger(workoutExerciseId);
     });
-    return () => subscription.remove();
+    return () => {
+      unmounted = true;
+      notificationSubscription.remove();
+      linkSubscription.remove();
+    };
   }, [db, router, navigation]);
 
   return (
