@@ -15,8 +15,7 @@ export function restWorkoutExerciseOfLink(url: string | null) {
 }
 
 // An activity's link is fixed at start, so only a Rest on the Exercise already shown can update
-// it; any other is started over. Nothing ends it at zero while the app is suspended, so it sits at
-// 0:00 until the app runs again.
+// it; any other is started over.
 export function restActivityStep(
   shownFor: string | null,
   rest: Pick<Rest, "workoutExerciseId" | "endsAt"> | null,

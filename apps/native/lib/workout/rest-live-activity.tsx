@@ -97,13 +97,13 @@ async function endRestActivities() {
 export function useRestLiveActivity() {
   const rest = useRest();
   const { t } = useI18n();
-  // Bumped at zero and on every return to the app: a timer held back in the background fires on
-  // return, and either way the next foreground after zero ends the activity.
-  const [checks, setChecks] = useState(0);
+  // Bumped at zero and on every return to the app. Nothing ends the activity while iOS holds the
+  // app suspended, so it sits at 0:00 until the next foreground resyncs it.
+  const [resyncs, setResyncs] = useState(0);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") setChecks((count) => count + 1);
+      if (state === "active") setResyncs((count) => count + 1);
     });
     return () => subscription.remove();
   }, []);
@@ -112,7 +112,7 @@ export function useRestLiveActivity() {
   useEffect(() => {
     if (endsAt === undefined) return;
     const timeout = setTimeout(
-      () => setChecks((count) => count + 1),
+      () => setResyncs((count) => count + 1),
       Math.max(0, endsAt - Date.now()),
     );
     return () => clearTimeout(timeout);
@@ -135,5 +135,5 @@ export function useRestLiveActivity() {
         activity: RestActivity.start(props, restLink(rest.workoutExerciseId)),
       };
     });
-  }, [rest, t, checks]);
+  }, [rest, t, resyncs]);
 }
