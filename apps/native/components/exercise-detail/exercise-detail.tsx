@@ -68,15 +68,15 @@ export function ExerciseDetail({
         onRename={() => setRenaming(true)}
         // Pinned first: the default would otherwise move off the Station once it's retired,
         // taking Return to Service out of reach.
-        onRetire={() => {
-          setStationId(selected!.station.id);
-          retireStation(db, selected!.station.id);
+        onRetire={(station) => {
+          setStationId(station.id);
+          retireStation(db, station.id);
         }}
         onEditNotes={() => setEditingNotes(true)}
-        onMerge={(target) =>
-          setMerging({ target, sets: stationHistoryCounts(db, selected!.station.id).sets })
+        onMerge={(station, target) =>
+          setMerging({ target, sets: stationHistoryCounts(db, station.id).sets })
         }
-        onDeleteStation={() => setDeletingStation(stationHistoryCounts(db, selected!.station.id))}
+        onDeleteStation={(station) => setDeletingStation(stationHistoryCounts(db, station.id))}
         onEditExercise={() => setEditingExercise(true)}
         onDeleteExercise={() =>
           exerciseDeletion.request({ id: exerciseId, name: progress.name, hidden: progress.hidden })

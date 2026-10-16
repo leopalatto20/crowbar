@@ -14,10 +14,10 @@ import { stationName } from "./station-name";
 // act at once.
 export type ExerciseDetailActions = {
   onRename: () => void;
-  onRetire: () => void;
+  onRetire: (station: ProgressStation) => void;
   onEditNotes: () => void;
-  onMerge: (target: ProgressStation) => void;
-  onDeleteStation: () => void;
+  onMerge: (station: ProgressStation, target: ProgressStation) => void;
+  onDeleteStation: (station: ProgressStation) => void;
   onEditExercise: () => void;
   onDeleteExercise: () => void;
 };
@@ -79,7 +79,7 @@ export function ExerciseDetailToolbar({
                 {t.stationActions.returnToService}
               </Stack.Toolbar.MenuAction>
             ) : (
-              <Stack.Toolbar.MenuAction icon="archivebox" onPress={actions.onRetire}>
+              <Stack.Toolbar.MenuAction icon="archivebox" onPress={() => actions.onRetire(current)}>
                 {t.stationActions.retire}
               </Stack.Toolbar.MenuAction>
             )}
@@ -89,12 +89,19 @@ export function ExerciseDetailToolbar({
               hidden={mergeTargets.length === 0}
             >
               {mergeTargets.map((target) => (
-                <Stack.Toolbar.MenuAction key={target.id} onPress={() => actions.onMerge(target)}>
+                <Stack.Toolbar.MenuAction
+                  key={target.id}
+                  onPress={() => actions.onMerge(current, target)}
+                >
                   {stationName(target, i18n)}
                 </Stack.Toolbar.MenuAction>
               ))}
             </Stack.Toolbar.Menu>
-            <Stack.Toolbar.MenuAction icon="trash" destructive onPress={actions.onDeleteStation}>
+            <Stack.Toolbar.MenuAction
+              icon="trash"
+              destructive
+              onPress={() => actions.onDeleteStation(current)}
+            >
               {t.stationActions.delete}
             </Stack.Toolbar.MenuAction>
           </Stack.Toolbar.Menu>
