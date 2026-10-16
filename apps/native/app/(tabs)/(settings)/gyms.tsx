@@ -5,15 +5,46 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { GymList } from "@/components/gym-list";
 import { NamePrompt } from "@/components/name-prompt";
 import { useDb } from "@/db/context";
-import { type Gym, type GymHistoryCounts, deleteGym, gymHistoryCounts, renameGym } from "@/db/gyms";
+import {
+  type Gym,
+  type GymHistoryCounts,
+  createGym,
+  deleteGym,
+  gymHistoryCounts,
+  renameGym,
+} from "@/db/gyms";
 import { useGyms } from "@/lib/gym/use-gyms";
 import { useI18n } from "@/lib/i18n";
 
 export default function GymsScreen() {
+  const db = useDb();
   const { t } = useI18n();
+  const [adding, setAdding] = useState(false);
   return (
     <>
       <Stack.Screen options={{ title: t.gyms.title, headerLargeTitle: false }} />
+      <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Button
+          icon="plus"
+          accessibilityLabel={t.gymPrompt.newGymTitle}
+          onPress={() => setAdding(true)}
+        />
+      </Stack.Toolbar>
+      {/* Mounted per open, so the field never starts with the last Gym's name. */}
+      {adding && (
+        <NamePrompt
+          visible
+          title={t.gymPrompt.newGymTitle}
+          placeholder={t.gymPrompt.placeholder}
+          message={t.gymPrompt.message}
+          confirmLabel={t.gymPrompt.add}
+          onSave={(name) => {
+            setAdding(false);
+            createGym(db, name);
+          }}
+          onDismiss={() => setAdding(false)}
+        />
+      )}
       <Suspense fallback={null}>
         <Gyms />
       </Suspense>
