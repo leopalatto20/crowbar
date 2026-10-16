@@ -9,7 +9,7 @@ import { Suspense, useEffect, useState } from "react";
 import { Keyboard } from "react-native";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { LEDGER_MENU_ICON, LEDGER_MINIMIZE_ICON } from "@/components/workout/ledger-icons";
+import { LEDGER_DISCARD_ICON, LEDGER_MINIMIZE_ICON } from "@/components/workout/ledger-icons";
 import { WorkoutLog } from "@/components/workout/workout-log";
 import { useDb } from "@/db/context";
 import { type Ledger, deleteWorkout } from "@/db/workouts";
@@ -44,6 +44,7 @@ function CurrentWorkout() {
 }
 
 function LedgerScreen({ ledger }: { ledger: Ledger }) {
+  const p = useColors();
   const db = useDb();
   const router = useRouter();
   const navigation = useNavigation<NativeStackNavigationProp<Record<string, undefined>>>();
@@ -81,16 +82,13 @@ function LedgerScreen({ ledger }: { ledger: Ledger }) {
         />
       </Stack.Toolbar>
       <Stack.Toolbar placement="right">
-        <Stack.Toolbar.Menu icon={LEDGER_MENU_ICON} accessibilityLabel={t.ledger.more}>
-          <Stack.Toolbar.MenuAction
-            icon="trash"
-            destructive
-            // A false start with nothing confirmed is cheap to undo, so it needs no confirm.
-            onPress={() => (confirmed ? setConfirmingDiscard(true) : discard())}
-          >
-            {t.ledger.discard}
-          </Stack.Toolbar.MenuAction>
-        </Stack.Toolbar.Menu>
+        <Stack.Toolbar.Button
+          icon={LEDGER_DISCARD_ICON}
+          accessibilityLabel={t.ledger.discard}
+          tintColor={p.red}
+          // A false start with nothing confirmed is cheap to undo, so it needs no confirm.
+          onPress={() => (confirmed ? setConfirmingDiscard(true) : discard())}
+        />
         <Stack.Toolbar.Button
           variant="done"
           onPress={() => {

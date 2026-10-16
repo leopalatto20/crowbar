@@ -243,7 +243,6 @@ export const en = {
     title: "Workout",
     started: (startedAt: string) => `started ${startedAt}`,
     changeGym: (gym: string) => `Gym: ${gym}. Tap to change`,
-    more: "More",
     minimize: "Minimize",
     finish: "Finish",
     discard: "Discard Workout",
