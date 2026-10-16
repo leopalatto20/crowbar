@@ -16,6 +16,10 @@ _Avoid_: Program, template, plan
 One training session, logged at exactly one Gym. It may start from a Routine, as a snapshot of that Routine's Exercises and Targets that later Routine edits never touch.
 _Avoid_: Session, training, log
 
+**Ledger**:
+The screen where the lifter logs a Workout's sets as they train.
+_Avoid_: Logger, workout screen
+
 **Exercise**:
 A movement performed on a type of equipment, such as Barbell Bench Press or Machine Chest Press; gym-agnostic, and what a Routine lists.
 _Avoid_: Lift, movement, move
