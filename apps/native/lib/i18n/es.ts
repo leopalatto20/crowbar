@@ -243,7 +243,6 @@ export const es: Messages = {
     title: "Entrenamiento",
     started: (startedAt) => `inicio ${startedAt}`,
     changeGym: (gym) => `Gimnasio: ${gym}. Toca para cambiarlo`,
-    more: "Más",
     minimize: "Minimizar",
     finish: "Terminar",
     discard: "Descartar entrenamiento",

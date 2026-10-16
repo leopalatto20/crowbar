@@ -16,8 +16,8 @@ export function ConfirmDialog({
   return (
     <Host matchContents>
       {/* An Alert, not a ConfirmationDialog: on iOS 26 a ConfirmationDialog is a popover whose
-          tail points at its trigger, and the trigger can't sit on a toolbar menu like the
-          Ledger's More button, so the tail pointed at empty space (#69). */}
+          tail points at its trigger, and the trigger can't sit on a toolbar item like the
+          Ledger's Discard button, so the tail pointed at empty space (#69). */}
       <Alert
         title={title}
         isPresented={visible}
