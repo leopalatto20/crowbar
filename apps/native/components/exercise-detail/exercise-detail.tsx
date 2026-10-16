@@ -49,8 +49,15 @@ export function ExerciseDetail({
   const [renaming, setRenaming] = useState(false);
   const [editingExercise, setEditingExercise] = useState(false);
   // Counted when the confirm opens, so it states exactly what the action will take.
-  const [merging, setMerging] = useState<{ target: ProgressStation; sets: number } | null>(null);
-  const [deletingStation, setDeletingStation] = useState<StationHistoryCounts | null>(null);
+  const [merging, setMerging] = useState<{
+    source: ProgressStation;
+    target: ProgressStation;
+    sets: number;
+  } | null>(null);
+  const [deletingStation, setDeletingStation] = useState<{
+    station: ProgressStation;
+    counts: StationHistoryCounts;
+  } | null>(null);
   const exerciseDeletion = useDeleteExercise(() => router.back());
   const progress = useExerciseProgress(exerciseId, { stationId, gymId });
   if (!progress) return null;
@@ -73,10 +80,12 @@ export function ExerciseDetail({
           retireStation(db, station.id);
         }}
         onEditNotes={() => setEditingNotes(true)}
-        onMerge={(station, target) =>
-          setMerging({ target, sets: stationHistoryCounts(db, station.id).sets })
+        onMerge={(source, target) =>
+          setMerging({ source, target, sets: stationHistoryCounts(db, source.id).sets })
         }
-        onDeleteStation={(station) => setDeletingStation(stationHistoryCounts(db, station.id))}
+        onDeleteStation={(station) =>
+          setDeletingStation({ station, counts: stationHistoryCounts(db, station.id) })
+        }
         onEditExercise={() => setEditingExercise(true)}
         onDeleteExercise={() =>
           exerciseDeletion.request({ id: exerciseId, name: progress.name, hidden: progress.hidden })
@@ -140,59 +149,62 @@ export function ExerciseDetail({
         </ScrollView>
       )}
       {selected && (
-        <>
-          <NamePrompt
-            // Remounted per Station, so the field starts from the label it has now.
-            key={`${selected.station.id}:${selected.station.label}`}
-            visible={renaming}
-            title={t.stationActions.rename}
-            placeholder={t.stationActions.renamePlaceholder}
-            confirmLabel={t.stationActions.save}
-            initialName={selected.station.label ?? ""}
-            onSave={(label) => {
-              setRenaming(false);
-              renameStation(db, selected.station.id, label);
-            }}
-            onDismiss={() => setRenaming(false)}
-          />
-          <ConfirmDialog
-            visible={merging !== null}
-            title={merging ? t.stationActions.mergeTitle(stationName(merging.target, i18n)) : ""}
-            message={
-              merging
-                ? [
-                    t.stationActions.mergeMessage(merging.sets, stationName(merging.target, i18n)),
-                    ...(merging.target.unit === selected.station.unit
-                      ? []
-                      : [t.stationActions.mergeUnit(t.unitName[merging.target.unit])]),
-                  ].join(" ")
-                : ""
-            }
-            confirmLabel={t.stationActions.merge}
-            cancelLabel={t.stationActions.cancel}
-            onConfirm={() => {
-              setMerging(null);
-              if (!merging) return;
-              mergeStation(db, selected.station.id, merging.target.id);
-              switchTo(merging.target.id);
-            }}
-            onDismiss={() => setMerging(null)}
-          />
-          <ConfirmDialog
-            visible={deletingStation !== null}
-            title={t.stationActions.deleteTitle(stationName(selected.station, i18n))}
-            message={deletingStation ? t.stationActions.deleteMessage(deletingStation) : ""}
-            confirmLabel={t.stationActions.delete}
-            cancelLabel={t.stationActions.cancel}
-            onConfirm={() => {
-              setDeletingStation(null);
-              deleteStation(db, selected.station.id);
-              switchTo(undefined);
-            }}
-            onDismiss={() => setDeletingStation(null)}
-          />
-        </>
+        <NamePrompt
+          // Remounted per Station, so the field starts from the label it has now.
+          key={`${selected.station.id}:${selected.station.label}`}
+          visible={renaming}
+          title={t.stationActions.rename}
+          placeholder={t.stationActions.renamePlaceholder}
+          confirmLabel={t.stationActions.save}
+          initialName={selected.station.label ?? ""}
+          onSave={(label) => {
+            setRenaming(false);
+            renameStation(db, selected.station.id, label);
+          }}
+          onDismiss={() => setRenaming(false)}
+        />
       )}
+      <ConfirmDialog
+        visible={merging !== null}
+        title={merging ? t.stationActions.mergeTitle(stationName(merging.target, i18n)) : ""}
+        message={
+          merging
+            ? [
+                t.stationActions.mergeMessage(merging.sets, stationName(merging.target, i18n)),
+                ...(merging.target.unit === merging.source.unit
+                  ? []
+                  : [t.stationActions.mergeUnit(t.unitName[merging.target.unit])]),
+              ].join(" ")
+            : ""
+        }
+        confirmLabel={t.stationActions.merge}
+        cancelLabel={t.stationActions.cancel}
+        onConfirm={() => {
+          setMerging(null);
+          if (!merging) return;
+          mergeStation(db, merging.source.id, merging.target.id);
+          switchTo(merging.target.id);
+        }}
+        onDismiss={() => setMerging(null)}
+      />
+      <ConfirmDialog
+        visible={deletingStation !== null}
+        title={
+          deletingStation
+            ? t.stationActions.deleteTitle(stationName(deletingStation.station, i18n))
+            : ""
+        }
+        message={deletingStation ? t.stationActions.deleteMessage(deletingStation.counts) : ""}
+        confirmLabel={t.stationActions.delete}
+        cancelLabel={t.stationActions.cancel}
+        onConfirm={() => {
+          setDeletingStation(null);
+          if (!deletingStation) return;
+          deleteStation(db, deletingStation.station.id);
+          switchTo(undefined);
+        }}
+        onDismiss={() => setDeletingStation(null)}
+      />
       <EditExerciseSheet
         exerciseId={editingExercise ? exerciseId : null}
         onClose={() => setEditingExercise(false)}
