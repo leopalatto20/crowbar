@@ -39,6 +39,7 @@ cv launch        # kill and relaunch the app, keeping its data
 - The first `up` builds the native app: several minutes, logged to `~/.cache/crowbar-verify/build.log`. Later runs reuse the cached `.app` until `apps/native/package.json`, `app.json` or `bun.lock` changes, then rebuild automatically.
 - **Ready** means `up` printed `ready: crowbar-verify (...)`. It waits for the tab bar, which renders only after the database opens and settings load.
 - Metro runs in watch mode, so JS edits hot-reload into the running app. Native changes (new native packages, `app.json` plugins) need `cv up` to pick up the rebuild.
+- `expo run:ios` only runs prebuild when `apps/native/ios/` is missing, so a new config plugin (one that adds Info.plist keys or a target) never reaches an existing `ios/`. Run `bunx expo prebuild -p ios` in `apps/native` first, then `cv up --rebuild`.
 
 ## Doctor
 
