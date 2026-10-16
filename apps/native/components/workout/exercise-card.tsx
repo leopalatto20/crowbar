@@ -88,6 +88,9 @@ export function ExerciseCard({
   const notes = entry.station?.notes ?? null;
   // The chip only tells Stations apart, so a lone Station shows none.
   const chipLabel = entry.stations.length > 1 ? entry.station?.label : null;
+  // The live Ledger's ghosts already show the previous Workout's set. A finished Workout's
+  // confirmed sets show none, so edit and read keep the column.
+  const showsLastHere = mode !== "live";
 
   return (
     <View
@@ -158,7 +161,9 @@ export function ExerciseCard({
 
       <View style={{ flexDirection: "row", paddingHorizontal: 10, paddingVertical: 4, gap: 6 }}>
         <HeaderCell width={COLUMNS.set}>{t.ledger.setColumn}</HeaderCell>
-        <HeaderCell flex={COLUMNS.lastHere}>{t.ledger.lastHereColumn}</HeaderCell>
+        {showsLastHere && (
+          <HeaderCell flex={COLUMNS.lastHere}>{t.ledger.lastHereColumn}</HeaderCell>
+        )}
         <HeaderCell flex={COLUMNS.field}>{`${loadSign}${t.unit[entry.unit]}`}</HeaderCell>
         <HeaderCell flex={COLUMNS.field}>
           {unilateral ? t.load.perSide(t.ledger.repsColumn) : t.ledger.repsColumn}
@@ -182,6 +187,7 @@ export function ExerciseCard({
             format={format}
             workingNumber={workingIndex(entry.sets, index)}
             editing={mode === "edit"}
+            showsLastHere={showsLastHere}
           />
         ),
       )}
@@ -280,19 +286,22 @@ function HeaderCell({
 
 // Typed text stays a draft until it's committed (blur or confirm), so nothing is written per
 // keystroke. Confirming commits the drafts too, since tapping ✓ doesn't blur the field. An empty
-// field shows its ghost value from "Last here", which confirming commits. A Bodyweight load left
-// empty with nothing to show means bodyweight only. While `editing` a finished Workout, a logged
-// set is deleted rather than reopened: nothing there is waiting to be done.
+// field shows its ghost value from the previous Workout at the Station, which confirming commits.
+// A Bodyweight load left empty with nothing to show means bodyweight only. While `editing` a
+// finished Workout, a logged set is deleted rather than reopened: nothing there is waiting to be
+// done.
 function SetRow({
   set,
   format,
   workingNumber,
   editing,
+  showsLastHere,
 }: {
   set: LedgerSet;
   format: LoadFormat;
   workingNumber: number;
   editing: boolean;
+  showsLastHere: boolean;
 }) {
   const db = useDb();
   const p = useColors();
@@ -390,7 +399,7 @@ function SetRow({
         <SetNumber warmup={warmup} workingNumber={workingNumber} />
       </PressableScale>
 
-      <LastHere lastHere={set.lastHere} format={format} />
+      {showsLastHere && <LastHere lastHere={set.lastHere} format={format} />}
 
       {input("load")}
       {input("reps")}

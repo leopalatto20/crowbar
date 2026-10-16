@@ -8,18 +8,18 @@ Starting a Workout opens the Ledger, the logging screen, as a modal over the tab
 - Later starts: go straight to the Ledger at the last-used Gym.
 - Workout in progress: "Start empty Workout" asks "A Workout is in progress" ("Discarding it deletes its logged sets.") with "Resume current", "Discard and start new", "Cancel".
 - Ledger: titled "Workout" (or the Routine name), first row the Gym chip (`Button` "Gym: <Gym>. Tap to change", see [gyms.md](gyms.md)) and `started <time>`, "Add Exercise" (picker marks "In Workout"), "Add set", per-set "Complete set"/"Reopen set", warm-up toggle ("Working set, tap to make warm-up" / "Warm-up set, tap to make working").
-- Last here: the column shows the previous Workout's set at the same Station (`60 × 5`, or "–"), and the load and reps fields show it as grey placeholder ghosts. "Complete set" on untouched fields logs the ghosts.
-- Load types (#38): the load column header and "Last here" follow the Exercise's Load type and the Station's unit.
-  - External: header `KG`/`LB`/`LVL`; "Last here" `60 × 5`, or `L7 × 5` on a Stack-level Station.
-  - Bodyweight (Pull-Up): header `+KG`; an empty or 0 load reads "BW" (placeholder), and "Complete set" with it empty logs 0. "Last here" `BW × 8` / `BW +20 × 6`. A new Bodyweight Station is kg when the default unit is Stack level.
-  - Assisted (Machine Assisted Pull-Up/Dip): header `−KG`/`−LVL`, assistance typed as a positive number; "Last here" `BW −30 × 8` / `BW −L3 × 8`.
-  - Unilateral (Dumbbell Bulgarian Split Squat): reps header `REPS/SIDE`, "Last here" `L5 × 10/side`.
+- Ghosts: the load, reps and effort fields show the previous Workout's set at the same Station as grey placeholder ghosts (`60`, `5`, `2`). "Complete set" on untouched fields logs the ghosts. Set rows are set number, load, reps, effort and the confirm button: the live Ledger has no "Last here" column (#89). Edit mode (History's Edit, Log a past Workout) and read mode still show it, between the set number and the load.
+- Load types (#38): the load column header and ghosts follow the Exercise's Load type and the Station's unit.
+  - External: header `KG`/`LB`/`LVL`; a Stack-level Station's ghost is the level (`7`).
+  - Bodyweight (Pull-Up): header `+KG`; an empty or 0 load reads "BW" (placeholder), and "Complete set" with it empty logs 0. A new Bodyweight Station is kg when the default unit is Stack level. History's "Last here" reads `BW × 8` / `BW +20 × 6`.
+  - Assisted (Machine Assisted Pull-Up/Dip): header `−KG`/`−LVL`, assistance typed as a positive number; History's "Last here" reads `BW −30 × 8` / `BW −L3 × 8`.
+  - Unilateral (Dumbbell Bulgarian Split Squat): reps header `REPS/SIDE`; History's "Last here" reads `L5 × 10/side`.
   - A quiet hint line under the name for barbell ("total incl. bar"), dumbbell ("per dumbbell") and kettlebell ("per kettlebell") Exercises only.
 - Exercise menu (#39): the Exercise name is a `PopUpButton` "<Exercise>. Opens its menu" with "Switch Station" (a submenu, only once the Exercise has a Station at this Gym, so after its first logged set or note) and "Add machine notes" / "Edit machine notes".
   - Switch Station lists the Gym's labelled Stations for the Exercise (checkmark on the current one) and "New Station…". A lone Station is unnamed, so the first "New Station…" opens the "New Station" alert ("Name both so you can tell them apart.") with fields "The one you've used" and "The new one"; later ones show only "The new one". Adding moves the Exercise and its sets onto the new Station.
   - Station chip: a pill with the label (`Station: <label>`) under the name, only while the Gym holds more than one Station for the Exercise.
-  - Switching moves the Exercise's sets and changes "Last here" to the other Station's last Workout; the next Workout at the Gym starts on the Station last used.
-  - Mid-Workout changes (#40): "Swap Exercise" (between Switch Station and the notes item) opens the picker titled "Swap Exercise"; the slot keeps its Target line and set rows, and "Last here" follows the new Exercise's Station. It's disabled while any set of the Exercise is confirmed. "Move Up" / "Move Down" (disabled at the ends) reorder the Ledger, and "Remove from Workout" (destructive) drops the Exercise at once, or asks "Remove <Exercise>?" ("Its logged sets will be deleted.", "Remove from Workout" / "Keep logging") when a set is confirmed. None of these touch the Routine. In a Workout started from a Routine, each one is logged in `workout_edit` (`kind`, `routine_exercise_id`, `exercise_id` for a Swap, `workout_exercise_id` for a Swap, Add or Move). An Exercise left unlogged at finish takes its Swap, Add and Move rows with it; a Remove stays.
+  - Switching moves the Exercise's sets and changes the ghosts to the other Station's last Workout; the next Workout at the Gym starts on the Station last used.
+  - Mid-Workout changes (#40): "Swap Exercise" (between Switch Station and the notes item) opens the picker titled "Swap Exercise"; the slot keeps its Target line and set rows, and the ghosts follow the new Exercise's Station. It's disabled while any set of the Exercise is confirmed. "Move Up" / "Move Down" (disabled at the ends) reorder the Ledger, and "Remove from Workout" (destructive) drops the Exercise at once, or asks "Remove <Exercise>?" ("Its logged sets will be deleted.", "Remove from Workout" / "Keep logging") when a set is confirmed. None of these touch the Routine. In a Workout started from a Routine, each one is logged in `workout_edit` (`kind`, `routine_exercise_id`, `exercise_id` for a Swap, `workout_exercise_id` for a Swap, Add or Move). An Exercise left unlogged at finish takes its Swap, Add and Move rows with it; a Remove stays.
   - Machine notes: a pin line under the name (`Button` labelled with the notes), tap to edit in place; Return or blur saves to the Station (`station.notes`), and blank clears. Notes follow the Station, so switching shows the other Station's notes.
 - Rest card (#50): confirming a Working set in the Workout in progress shows `Rest · <exercise>`, a countdown (the slot's rest Target, else Settings' Default rest), a progress bar, and "−15", "+15", "Skip". It's one `rest` row (`set_id`, `started_at`, `ends_at`), never part of history.
   - −15 / +15 move `ends_at` only; the Target is untouched. "Skip" deletes the row.
@@ -97,18 +97,18 @@ cv tap Add --element-type Button                     # chip "Station: Cybex"
 cv save-db "select label, notes from station order by label"   # Cybex | ; Hammer | Seat 4, pin 7
 ```
 
-Then switch back to Hammer, finish, and start again: the new Ledger shows the Hammer chip, its notes, and "Last here" from it.
+Then switch back to Hammer, finish, and start again: the new Ledger shows the Hammer chip, its notes, and ghosts from it.
 
 ## Gotchas
 
 - Swiping down on the Ledger to scroll back up minimizes it instead (reopen with the Workout bar). Scroll up with short swipes that start mid-screen, or reopen. Cards past the third push "Add Exercise" under the bottom edge; swipe up first.
-- The "Last here" column and the load field's placeholder are separate: placeholders stay bare numbers ("20", "3") under the signed header; only "Last here" reads `BW +20`.
+- Ghost placeholders stay bare numbers ("20", "3") under the signed header; only History's "Last here" column reads `BW +20`.
 
 - To swipe the Ledger down, start the drag at the sheet's top edge and go slowly: `axe swipe --start-x 200 --start-y 120 --end-x 200 --end-y 700 --duration 1.0 --delta 10 --udid <udid>`. Faster swipes, or ones starting lower on the content, leave it open on the simulator.
 - "Workout" labels the tab (`RadioButton`), the Workout tab's heading, and the Workout bar (`Button`, value the elapsed time). Pass `--element-type`.
 
 - Do not create the Gym through SQL to skip the prompt: that's not the user path, and it would hide a regression of #65 (a SwiftUI dialog without a trigger never presents).
-- Ledger set fields are React Native `TextInput`s whose placeholder is the "Last here" ghost value or "–". Find them by frame in `cv tree` and tap the centre with `cv tap --pre-delay 0 -x <x> -y <y>` (a leading flag stops `cv` from treating `-x` as a label). The coordinates above hold only for the first card of an empty Workout; a Routine's Target line or earlier cards push rows down.
+- Ledger set fields are React Native `TextInput`s whose placeholder is the ghost value or "–". Find them by frame in `cv tree` and tap the centre with `cv tap --pre-delay 0 -x <x> -y <y>` (a leading flag stops `cv` from treating `-x` as a label). The coordinates above hold only for the first card of an empty Workout; a Routine's Target line or earlier cards push rows down.
 - `cv tree` shows a ghost placeholder exactly like a typed value (`TextField  60`). Only the `shot` tells them apart: ghosts are grey.
 - Number pads have no Return key; tap elsewhere or use the toolbar Finish (it dismisses the keyboard first, so typed values are committed).
 - "Discard Workout" labels both the More menu action and the confirmation's destructive button. Wait for "Discard this Workout?" before tapping it a second time, or one `cv tap` can land on the alert and discard.
