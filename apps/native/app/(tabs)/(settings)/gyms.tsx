@@ -30,18 +30,21 @@ export default function GymsScreen() {
           onPress={() => setAdding(true)}
         />
       </Stack.Toolbar>
-      <NamePrompt
-        visible={adding}
-        title={t.gymPrompt.newGymTitle}
-        placeholder={t.gymPrompt.placeholder}
-        message={t.gymPrompt.message}
-        confirmLabel={t.gymPrompt.add}
-        onSave={(name) => {
-          setAdding(false);
-          createGym(db, name);
-        }}
-        onDismiss={() => setAdding(false)}
-      />
+      {/* Mounted per open, so the field never starts with the last Gym's name. */}
+      {adding && (
+        <NamePrompt
+          visible
+          title={t.gymPrompt.newGymTitle}
+          placeholder={t.gymPrompt.placeholder}
+          message={t.gymPrompt.message}
+          confirmLabel={t.gymPrompt.add}
+          onSave={(name) => {
+            setAdding(false);
+            createGym(db, name);
+          }}
+          onDismiss={() => setAdding(false)}
+        />
+      )}
       <Suspense fallback={null}>
         <Gyms />
       </Suspense>
