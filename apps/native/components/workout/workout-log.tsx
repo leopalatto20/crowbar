@@ -181,6 +181,7 @@ export function WorkoutLog({
             ids: ledger.exercises.map((entry) => entry.exercise.id),
             label: t.exercisePicker.inWorkout,
           }}
+          doneAt={{ id: ledger.gymId, name: ledger.gymName }}
           onClose={() => setPicking(null)}
           onPick={(exercise) =>
             picking?.purpose === "swap"
