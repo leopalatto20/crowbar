@@ -109,6 +109,9 @@ export const en = {
     deleteTitle: (gym: string) => `Delete “${gym}”?`,
     deleteMessage: ({ stations, workouts, sets }: GymHistoryCounts) =>
       `Deletes ${stations} ${stations === 1 ? "Station" : "Stations"} and ${sets} ${sets === 1 ? "set" : "sets"} across ${workouts} ${workouts === 1 ? "Workout" : "Workouts"}.`,
+    // Never trained at, so its Stations hold only what the lifter named or noted.
+    deleteStationsMessage: (stations: number) =>
+      `Deletes ${stations} ${stations === 1 ? "Station" : "Stations"} with their labels and machine notes.`,
     cancel: "Cancel",
   },
   restore: {
@@ -316,13 +319,22 @@ export const en = {
     mergeInto: "Merge Into",
     merge: "Merge",
     mergeTitle: (target: string) => `Merge into “${target}”?`,
-    mergeMessage: (sets: number, target: string) =>
-      `Moves ${sets} ${sets === 1 ? "set" : "sets"} to ${target} and deletes this Station. Its machine notes are added to ${target}'s.`,
+    mergeMoves: (sets: number, target: string) =>
+      `Moves ${sets} ${sets === 1 ? "set" : "sets"} to ${target} and deletes this Station.`,
+    mergeDeletes: "Deletes this Station.",
+    mergeNotes: (target: string) => `Its machine notes are added to ${target}'s.`,
+    mergeDropsLabel: (label: string) => `Its label “${label}” is dropped.`,
     mergeUnit: (unit: string) => `Moved loads will read in ${unit}.`,
     delete: "Delete Station",
     deleteTitle: (station: string) => `Delete “${station}”?`,
     deleteMessage: ({ sets, workouts }: StationHistoryCounts) =>
       `Deletes ${sets} ${sets === 1 ? "set" : "sets"} across ${workouts} ${workouts === 1 ? "Workout" : "Workouts"}.`,
+    deletesDetails: ({ label, notes }: { label: boolean; notes: boolean }): string =>
+      label && notes
+        ? "Its label and machine notes go with it."
+        : label
+          ? "Its label goes with it."
+          : "Its machine notes go with it.",
     cancel: "Cancel",
   },
   stationPrompt: {

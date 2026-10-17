@@ -87,7 +87,13 @@ function Gyms() {
       <ConfirmDialog
         visible={deleting !== null}
         title={deleting ? t.gyms.deleteTitle(deleting.gym.name) : ""}
-        message={deleting ? t.gyms.deleteMessage(deleting.counts) : ""}
+        message={
+          !deleting
+            ? ""
+            : deleting.counts.workouts === 0
+              ? t.gyms.deleteStationsMessage(deleting.counts.stations)
+              : t.gyms.deleteMessage(deleting.counts)
+        }
         confirmLabel={t.gyms.delete}
         cancelLabel={t.gyms.cancel}
         onConfirm={() => {
