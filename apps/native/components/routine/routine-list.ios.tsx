@@ -108,7 +108,7 @@ export function RoutineList({
                         label={t.workoutTab.delete}
                         systemImage="trash"
                         role="destructive"
-                        onPress={() => onDelete(routine.id)}
+                        onPress={() => onDelete(routine)}
                       />
                     </ContextMenu.Items>
                   </ContextMenu>

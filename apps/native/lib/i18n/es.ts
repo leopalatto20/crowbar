@@ -31,6 +31,10 @@ export const es: Messages = {
     done: "Listo",
     duplicate: "Duplicar",
     delete: "Eliminar",
+    deleteTitle: (routine) => `¿Eliminar «${routine}»?`,
+    deleteMessage: (exercises) =>
+      `Se borrará su lista de ${exercises} ${exercises === 1 ? "ejercicio" : "ejercicios"} con sus objetivos. Los entrenamientos pasados se quedan en el historial.`,
+    cancel: "Cancelar",
     copyName: (name) => `${name} (copia)`,
     lastRun: (ago, gym) => `Último: ${ago} · ${gym}`,
   },
@@ -105,6 +109,8 @@ export const es: Messages = {
     deleteTitle: (gym) => `¿Eliminar «${gym}»?`,
     deleteMessage: ({ stations, workouts, sets }) =>
       `Se eliminarán ${stations} ${stations === 1 ? "estación" : "estaciones"} y ${sets} ${sets === 1 ? "serie" : "series"} de ${workouts} ${workouts === 1 ? "entrenamiento" : "entrenamientos"}.`,
+    deleteStationsMessage: (stations) =>
+      `Se eliminarán ${stations} ${stations === 1 ? "estación" : "estaciones"} con sus etiquetas y notas de la máquina.`,
     cancel: "Cancelar",
   },
   restore: {
@@ -312,13 +318,22 @@ export const es: Messages = {
     mergeInto: "Fusionar con",
     merge: "Fusionar",
     mergeTitle: (target) => `¿Fusionar con «${target}»?`,
-    mergeMessage: (sets, target) =>
-      `Mueve ${sets} ${sets === 1 ? "serie" : "series"} a ${target} y elimina esta estación. Sus notas de la máquina se añaden a las de ${target}.`,
+    mergeMoves: (sets, target) =>
+      `Mueve ${sets} ${sets === 1 ? "serie" : "series"} a ${target} y elimina esta estación.`,
+    mergeDeletes: "Elimina esta estación.",
+    mergeNotes: (target) => `Sus notas de la máquina se añaden a las de ${target}.`,
+    mergeDropsLabel: (label) => `Su etiqueta «${label}» se descarta.`,
     mergeUnit: (unit) => `Las cargas movidas se leerán en ${unit}.`,
     delete: "Eliminar estación",
     deleteTitle: (station) => `¿Eliminar «${station}»?`,
     deleteMessage: ({ sets, workouts }) =>
       `Se eliminarán ${sets} ${sets === 1 ? "serie" : "series"} de ${workouts} ${workouts === 1 ? "entrenamiento" : "entrenamientos"}.`,
+    deletesDetails: ({ label, notes }) =>
+      label && notes
+        ? "Su etiqueta y sus notas de la máquina se eliminan con ella."
+        : label
+          ? "Su etiqueta se elimina con ella."
+          : "Sus notas de la máquina se eliminan con ella.",
     cancel: "Cancelar",
   },
   stationPrompt: {

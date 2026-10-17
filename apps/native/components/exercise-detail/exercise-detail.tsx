@@ -53,10 +53,12 @@ export function ExerciseDetail({
     source: ProgressStation;
     target: ProgressStation;
     sets: number;
+    hasNotes: boolean;
   } | null>(null);
   const [deletingStation, setDeletingStation] = useState<{
     station: ProgressStation;
     counts: StationHistoryCounts;
+    hasNotes: boolean;
   } | null>(null);
   const exerciseDeletion = useDeleteExercise(() => router.back());
   const progress = useExerciseProgress(exerciseId, { stationId, gymId });
@@ -64,6 +66,32 @@ export function ExerciseDetail({
   const { selected } = progress;
   // Keeps the current Station on screen while the next one reads, instead of blanking.
   const switchTo = (id: string | undefined) => startTransition(() => setStationId(id));
+
+  function merge(source: ProgressStation, target: ProgressStation) {
+    mergeStation(db, source.id, target.id);
+    switchTo(target.id);
+  }
+
+  // The toolbar acts on the selected Station, so its notes are the ones on screen.
+  const hasNotes = Boolean(selected?.notes);
+
+  // The source's notes carry over to the target, so only its sets and label can be lost.
+  function requestMerge(source: ProgressStation, target: ProgressStation) {
+    const { sets } = stationHistoryCounts(db, source.id);
+    if (sets === 0 && source.label === null) merge(source, target);
+    else setMerging({ source, target, sets, hasNotes });
+  }
+
+  function removeStation(id: string) {
+    deleteStation(db, id);
+    switchTo(undefined);
+  }
+
+  function requestRemoveStation(station: ProgressStation) {
+    const counts = stationHistoryCounts(db, station.id);
+    if (counts.sets === 0 && station.label === null && !hasNotes) removeStation(station.id);
+    else setDeletingStation({ station, counts, hasNotes });
+  }
 
   return (
     <>
@@ -80,12 +108,8 @@ export function ExerciseDetail({
           retireStation(db, station.id);
         }}
         onEditNotes={() => setEditingNotes(true)}
-        onMerge={(source, target) =>
-          setMerging({ source, target, sets: stationHistoryCounts(db, source.id).sets })
-        }
-        onDeleteStation={(station) =>
-          setDeletingStation({ station, counts: stationHistoryCounts(db, station.id) })
-        }
+        onMerge={requestMerge}
+        onDeleteStation={requestRemoveStation}
         onEditExercise={() => setEditingExercise(true)}
         onDeleteExercise={() =>
           exerciseDeletion.request({ id: exerciseId, name: progress.name, hidden: progress.hidden })
@@ -170,7 +194,15 @@ export function ExerciseDetail({
         message={
           merging
             ? [
-                t.stationActions.mergeMessage(merging.sets, stationName(merging.target, i18n)),
+                merging.sets === 0
+                  ? t.stationActions.mergeDeletes
+                  : t.stationActions.mergeMoves(merging.sets, stationName(merging.target, i18n)),
+                ...(merging.hasNotes
+                  ? [t.stationActions.mergeNotes(stationName(merging.target, i18n))]
+                  : []),
+                ...(merging.source.label === null
+                  ? []
+                  : [t.stationActions.mergeDropsLabel(merging.source.label)]),
                 ...(merging.target.unit === merging.source.unit
                   ? []
                   : [t.stationActions.mergeUnit(t.unitName[merging.target.unit])]),
@@ -181,9 +213,7 @@ export function ExerciseDetail({
         cancelLabel={t.stationActions.cancel}
         onConfirm={() => {
           setMerging(null);
-          if (!merging) return;
-          mergeStation(db, merging.source.id, merging.target.id);
-          switchTo(merging.target.id);
+          if (merging) merge(merging.source, merging.target);
         }}
         onDismiss={() => setMerging(null)}
       />
@@ -194,14 +224,28 @@ export function ExerciseDetail({
             ? t.stationActions.deleteTitle(stationName(deletingStation.station, i18n))
             : ""
         }
-        message={deletingStation ? t.stationActions.deleteMessage(deletingStation.counts) : ""}
+        message={
+          deletingStation
+            ? [
+                ...(deletingStation.counts.sets === 0
+                  ? []
+                  : [t.stationActions.deleteMessage(deletingStation.counts)]),
+                ...(deletingStation.station.label === null && !deletingStation.hasNotes
+                  ? []
+                  : [
+                      t.stationActions.deletesDetails({
+                        label: deletingStation.station.label !== null,
+                        notes: deletingStation.hasNotes,
+                      }),
+                    ]),
+              ].join(" ")
+            : ""
+        }
         confirmLabel={t.stationActions.delete}
         cancelLabel={t.stationActions.cancel}
         onConfirm={() => {
           setDeletingStation(null);
-          if (!deletingStation) return;
-          deleteStation(db, deletingStation.station.id);
-          switchTo(undefined);
+          if (deletingStation) removeStation(deletingStation.station.id);
         }}
         onDismiss={() => setDeletingStation(null)}
       />

@@ -9,6 +9,6 @@ export type RoutineListProps = {
   onCreate: () => void;
   onEdit: (id: string) => void;
   onDuplicate: (routine: RoutineListing) => void;
-  onDelete: (id: string) => void;
+  onDelete: (routine: RoutineListing) => void;
   onReorder: (ids: string[]) => void;
 };

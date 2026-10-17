@@ -60,13 +60,16 @@ function Gyms() {
   // Counted when the confirm opens, so it states exactly what the delete will take.
   const [deleting, setDeleting] = useState<{ gym: Gym; counts: GymHistoryCounts } | null>(null);
 
+  // A Gym with no Workout or Station holds nothing but its name.
+  function requestDelete(gym: Gym) {
+    const counts = gymHistoryCounts(db, gym.id);
+    if (counts.workouts === 0 && counts.stations === 0) deleteGym(db, gym.id);
+    else setDeleting({ gym, counts });
+  }
+
   return (
     <>
-      <GymList
-        gyms={gyms}
-        onRename={setRenaming}
-        onDelete={(gym) => setDeleting({ gym, counts: gymHistoryCounts(db, gym.id) })}
-      />
+      <GymList gyms={gyms} onRename={setRenaming} onDelete={requestDelete} />
       <NamePrompt
         // Remounted per Gym, so the field starts at that Gym's name.
         key={renaming?.id}
@@ -84,7 +87,13 @@ function Gyms() {
       <ConfirmDialog
         visible={deleting !== null}
         title={deleting ? t.gyms.deleteTitle(deleting.gym.name) : ""}
-        message={deleting ? t.gyms.deleteMessage(deleting.counts) : ""}
+        message={
+          !deleting
+            ? ""
+            : deleting.counts.workouts === 0
+              ? t.gyms.deleteStationsMessage(deleting.counts.stations)
+              : t.gyms.deleteMessage(deleting.counts)
+        }
         confirmLabel={t.gyms.delete}
         cancelLabel={t.gyms.cancel}
         onConfirm={() => {

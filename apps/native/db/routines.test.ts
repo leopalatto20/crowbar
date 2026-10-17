@@ -15,6 +15,7 @@ import {
   renameRoutine,
   reorderRoutineExercises,
   reorderRoutines,
+  routineExerciseCount,
   updateRoutineExercise,
 } from "./routines";
 import { createGym } from "./gyms";
@@ -246,6 +247,18 @@ describe("deleteRoutine", () => {
     expect(listRoutines(db)).toEqual([{ id: lower, name: "Lower A", lastRun: null }]);
     expect(getRoutine(db, upper, "en")).toBeUndefined();
     expect(exerciseIds(db, lower)).toEqual(["pull-up"]);
+  });
+});
+
+describe("routineExerciseCount", () => {
+  test("counts the Exercises deleting the Routine takes with it, none for an empty one", async () => {
+    const db = await libraryDatabase();
+    const upper = createRoutine(db, "Upper A");
+    const lower = createRoutine(db, "Lower A");
+    addRoutineExercise(db, lower, "pull-up");
+
+    expect(routineExerciseCount(db, upper)).toBe(0);
+    expect(routineExerciseCount(db, lower)).toBe(1);
   });
 });
 

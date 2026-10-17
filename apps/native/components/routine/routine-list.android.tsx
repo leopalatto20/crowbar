@@ -83,7 +83,7 @@ function RoutineRow({
   onStart: (id: string) => void;
   onEdit: (id: string) => void;
   onDuplicate: (routine: RoutineListing) => void;
-  onDelete: (id: string) => void;
+  onDelete: (routine: RoutineListing) => void;
 }) {
   const i18n = useI18n();
   const { t } = i18n;
@@ -125,7 +125,7 @@ function RoutineRow({
       <DropdownMenu.Items>
         {item(t.workoutTab.edit, () => onEdit(routine.id))}
         {item(t.workoutTab.duplicate, () => onDuplicate(routine))}
-        {item(t.workoutTab.delete, () => onDelete(routine.id))}
+        {item(t.workoutTab.delete, () => onDelete(routine))}
       </DropdownMenu.Items>
     </DropdownMenu>
   );
