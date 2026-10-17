@@ -314,6 +314,10 @@ export const en = {
     renamePlaceholder: "Label",
     save: "Save",
     changeUnit: "Change Unit",
+    change: "Change",
+    changeUnitTitle: (unit: string) => `Change this Station to ${unit}?`,
+    relabelMessage: (sets: number, unit: string) =>
+      `Logged numbers stay as they are, so ${sets} ${sets === 1 ? "set" : "sets"} will read in ${unit}.`,
     retire: "Retire Station",
     returnToService: "Return to Service",
     mergeInto: "Merge Into",
