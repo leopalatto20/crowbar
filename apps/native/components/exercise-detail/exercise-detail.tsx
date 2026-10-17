@@ -209,10 +209,10 @@ export function ExerciseDetail({
         title={changingUnit ? t.stationActions.changeUnitTitle(t.unitName[changingUnit.unit]) : ""}
         message={
           changingUnit
-            ? t.stationActions.relabelMessage(changingUnit.sets, t.unitName[changingUnit.unit])
+            ? t.stationActions.unitRelabelMessage(changingUnit.sets, t.unitName[changingUnit.unit])
             : ""
         }
-        confirmLabel={t.stationActions.change}
+        confirmLabel={t.stationActions.changeUnitConfirm}
         cancelLabel={t.stationActions.cancel}
         onConfirm={() => {
           setChangingUnit(null);
