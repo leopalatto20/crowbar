@@ -67,6 +67,8 @@ export const en = {
     start: "Start",
     duration: "Duration",
     deleteSet: "Delete set",
+    deleteArmed: "Delete",
+    confirmDeleteSet: "Confirm delete set",
     logWorkout: "Log a past Workout",
     emptyWorkout: "Empty Workout",
     routines: "From a Routine",
