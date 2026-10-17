@@ -313,6 +313,10 @@ export const es: Messages = {
     renamePlaceholder: "Nombre",
     save: "Guardar",
     changeUnit: "Cambiar unidad",
+    changeUnitConfirm: "Cambiar",
+    changeUnitTitle: (unit) => `¿Cambiar esta estación a ${unit}?`,
+    unitRelabelMessage: (sets, unit) =>
+      `Los números registrados no cambian, así que ${sets} ${sets === 1 ? "serie se leerá" : "series se leerán"} en ${unit}.`,
     retire: "Retirar estación",
     returnToService: "Volver a usar",
     mergeInto: "Fusionar con",

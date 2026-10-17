@@ -5,6 +5,7 @@ One Exercise's progress at one Station: the Station switcher, the progress chart
 ## Sub-features
 
 - Station switcher: the Gym (and label) of the shown Station, opening a list of every Station of the Exercise at every Gym; "Loads in <unit>" under it.
+- Change Unit (#117): "More", "Change Unit", then a unit (checkmark on the current one). With logged sets it asks "Change this Station to <unit>?" ("Logged numbers stay as they are, so <n> sets will read in <unit>.", "Cancel" / "Change"); Cancel keeps `station.unit`. With no logged sets (a Station made by machine notes alone) it applies at once, and re-picking the current unit does nothing. "Loads in <unit>" follows.
 - Progress chart (#48): one point per Workout at the Station, oldest on the left, the Working-set count under each point.
   - Title and value by Load type and unit: External in kg/lb "Volume (kg)" with `1,515 kg`; Stack level "Level × reps" with a bare number and no y-axis labels; Bodyweight and Assisted "Working-set reps" with `23 reps` (`23 reps/side` when Unilateral).
   - Readout above the plot: the latest point's value, then `<date> · <n> sets`. Press and hold on the plot to scrub: the readout follows the nearest point, with a vertical line and a dot on it.

@@ -18,13 +18,14 @@ import {
   renameStation,
   retireStation,
   setStationNotes,
+  setStationUnit,
   stationHistoryCounts,
 } from "@/db/stations";
 import { useExerciseProgress } from "@/lib/exercise/use-progress";
 import { useI18n } from "@/lib/i18n";
 import { radii, spacing, type, useColors } from "@/lib/theme";
 import { useEffort } from "@/lib/workout/effort";
-import { type LoadFormat, formatLoad, formatPerformance } from "@/lib/workout/model";
+import { type LoadFormat, type Unit, formatLoad, formatPerformance } from "@/lib/workout/model";
 
 import { ExerciseDetailToolbar } from "./exercise-detail-toolbar";
 import { ProgressChart } from "./progress-chart";
@@ -60,6 +61,11 @@ export function ExerciseDetail({
     counts: StationHistoryCounts;
     hasNotes: boolean;
   } | null>(null);
+  const [changingUnit, setChangingUnit] = useState<{
+    station: ProgressStation;
+    unit: Unit;
+    sets: number;
+  } | null>(null);
   const exerciseDeletion = useDeleteExercise(() => router.back());
   const progress = useExerciseProgress(exerciseId, { stationId, gymId });
   if (!progress) return null;
@@ -93,6 +99,15 @@ export function ExerciseDetail({
     else setDeletingStation({ station, counts, hasNotes });
   }
 
+  // Logged numbers stay as they are, so a new unit relabels them: 100 kg would silently read as
+  // 100 lb. That needs the lifter to agree first, as when changing a Workout's Gym.
+  function requestUnitChange(station: ProgressStation, unit: Unit) {
+    if (unit === station.unit) return;
+    const { sets } = stationHistoryCounts(db, station.id);
+    if (sets === 0) setStationUnit(db, station.id, unit);
+    else setChangingUnit({ station, unit, sets });
+  }
+
   return (
     <>
       <Stack.Screen options={{ title: progress.name }} />
@@ -108,6 +123,7 @@ export function ExerciseDetail({
           retireStation(db, station.id);
         }}
         onEditNotes={() => setEditingNotes(true)}
+        onChangeUnit={requestUnitChange}
         onMerge={requestMerge}
         onDeleteStation={requestRemoveStation}
         onEditExercise={() => setEditingExercise(true)}
@@ -188,6 +204,22 @@ export function ExerciseDetail({
           onDismiss={() => setRenaming(false)}
         />
       )}
+      <ConfirmDialog
+        visible={changingUnit !== null}
+        title={changingUnit ? t.stationActions.changeUnitTitle(t.unitName[changingUnit.unit]) : ""}
+        message={
+          changingUnit
+            ? t.stationActions.unitRelabelMessage(changingUnit.sets, t.unitName[changingUnit.unit])
+            : ""
+        }
+        confirmLabel={t.stationActions.changeUnitConfirm}
+        cancelLabel={t.stationActions.cancel}
+        onConfirm={() => {
+          setChangingUnit(null);
+          if (changingUnit) setStationUnit(db, changingUnit.station.id, changingUnit.unit);
+        }}
+        onDismiss={() => setChangingUnit(null)}
+      />
       <ConfirmDialog
         visible={merging !== null}
         title={merging ? t.stationActions.mergeTitle(stationName(merging.target, i18n)) : ""}

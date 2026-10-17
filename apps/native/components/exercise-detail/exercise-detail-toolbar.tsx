@@ -4,9 +4,9 @@ import { LEDGER_MENU_ICON } from "@/components/workout/ledger-icons";
 import { useDb } from "@/db/context";
 import { hideExercise, unhideExercise } from "@/db/exercises";
 import type { ExerciseProgress, ProgressStation } from "@/db/progress";
-import { returnStationToService, setStationUnit } from "@/db/stations";
+import { returnStationToService } from "@/db/stations";
 import { useI18n } from "@/lib/i18n";
-import { stationUnits } from "@/lib/workout/model";
+import { type Unit, stationUnits } from "@/lib/workout/model";
 
 import { stationName } from "./station-name";
 
@@ -16,6 +16,7 @@ export type ExerciseDetailActions = {
   onRename: () => void;
   onRetire: (station: ProgressStation) => void;
   onEditNotes: () => void;
+  onChangeUnit: (station: ProgressStation, unit: Unit) => void;
   onMerge: (source: ProgressStation, target: ProgressStation) => void;
   onDeleteStation: (station: ProgressStation) => void;
   onEditExercise: () => void;
@@ -65,7 +66,7 @@ export function ExerciseDetailToolbar({
                 <Stack.Toolbar.MenuAction
                   key={unit}
                   isOn={unit === current.unit}
-                  onPress={() => setStationUnit(db, current.id, unit)}
+                  onPress={() => actions.onChangeUnit(current, unit)}
                 >
                   {t.unitName[unit]}
                 </Stack.Toolbar.MenuAction>
