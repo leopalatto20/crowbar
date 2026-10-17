@@ -8,6 +8,10 @@ A workout tracker for advanced lifters that tracks exercise progress separately 
 A physical place where the lifter trains. Progress is always read in the context of a Gym.
 _Avoid_: Location, venue, facility
 
+**Current Gym**:
+The Gym of the Workout in progress, or else of the most recent Workout; where progress is read when no Gym has been chosen.
+_Avoid_: Active gym, home gym, default gym
+
 **Routine**:
 A gym-agnostic plan of exercises with Targets, defined once and run at any Gym.
 _Avoid_: Program, template, plan
