@@ -38,3 +38,25 @@ export const MUSCLE_GROUPS = [
   "other",
 ] as const;
 export type MuscleGroup = (typeof MUSCLE_GROUPS)[number];
+
+// Single-select within a facet (null is Any), combined with AND across facets. Done reads
+// history at the Current Gym, or at any Gym where there is none to read at.
+export type ExerciseFilters = {
+  equipmentType: EquipmentType | null;
+  muscleGroup: MuscleGroup | null;
+  done: boolean;
+  custom: boolean;
+};
+
+export const NO_FILTERS: ExerciseFilters = {
+  equipmentType: null,
+  muscleGroup: null,
+  done: false,
+  custom: false,
+};
+
+export function anyFilterOn(filters: ExerciseFilters) {
+  return (
+    filters.equipmentType !== null || filters.muscleGroup !== null || filters.done || filters.custom
+  );
+}

@@ -1,11 +1,11 @@
-import { and, asc, desc, eq, isNull, max, sql } from "drizzle-orm";
+import { and, asc, desc, eq, max, sql } from "drizzle-orm";
 
 import type { Language } from "@/lib/i18n/locale";
 import type { LoadType } from "@/lib/exercise/model";
 import { type LoadFormat, type Performance, type Unit, readLoad } from "@/lib/workout/model";
 
 import type { Database } from "./database";
-import { lastUsedGym } from "./gyms";
+import { currentGym } from "./gyms";
 import { exercise, gym, station, workout, workoutExercise, workoutSet } from "./schema";
 
 export type ProgressStation = {
@@ -114,7 +114,7 @@ export function getExerciseProgress(
     .all();
   const selectedId =
     stations.find(({ option }) => option.id === stationId)?.option.id ??
-    defaultStation(db, exerciseId, gymId ?? currentGym(db));
+    defaultStation(db, exerciseId, gymId ?? currentGym(db)?.id);
   const chosen = stations.find(({ option }) => option.id === selectedId);
   const workouts = chosen ? stationWorkouts(db, chosen.option.id, movement.loadType) : [];
 
@@ -138,15 +138,6 @@ export function getExerciseProgress(
         }
       : null,
   };
-}
-
-function currentGym(db: Database) {
-  const inProgress = db
-    .select({ gymId: workout.gymId })
-    .from(workout)
-    .where(isNull(workout.finishedAt))
-    .get();
-  return inProgress?.gymId ?? lastUsedGym(db)?.id;
 }
 
 // Another Gym's Station still beats an empty screen, and a Retired one is a last resort.
