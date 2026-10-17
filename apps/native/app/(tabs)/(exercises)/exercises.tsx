@@ -35,11 +35,7 @@ export default function ExercisesTab() {
           },
         }}
       />
-      <CustomExerciseSheet
-        name={creating ? "" : null}
-        onClose={() => setCreating(false)}
-        onSave={() => setCreating(false)}
-      />
+      <CustomExerciseSheet name={creating ? "" : null} onClose={() => setCreating(false)} />
       {/* Here rather than the app-wide boundary, so the first read blanks only this tab. */}
       <Suspense fallback={null}>
         <ExerciseLibrary

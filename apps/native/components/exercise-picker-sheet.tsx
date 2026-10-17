@@ -227,14 +227,7 @@ function ExercisePicker({
           </Row>
         )}
       />
-      <CustomExerciseSheet
-        name={creating}
-        onClose={() => setCreating(null)}
-        onSave={(exercise) => {
-          setCreating(null);
-          pick(exercise);
-        }}
-      />
+      <CustomExerciseSheet name={creating} onClose={() => setCreating(null)} onSave={pick} />
     </>
   );
 }

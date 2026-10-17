@@ -1,6 +1,6 @@
 import { Button, FieldGroup, Host, Picker, Row, Spacer, Switch, Text, TextInput } from "@expo/ui";
-import { Suspense, useState } from "react";
-import { Modal, Text as RNText, View } from "react-native";
+import { Suspense, useRef, useState } from "react";
+import { Modal, Platform, Text as RNText, View } from "react-native";
 
 import { useDb } from "@/db/context";
 import {
@@ -21,6 +21,7 @@ import { spacing, type, useColors } from "@/lib/theme";
 
 // The only way a Custom Exercise is created, from the picker's "Create" row or the library's "+".
 // `name` is null while the sheet is closed, and the name the form opens prefilled with otherwise.
+// Saving closes the sheet through `onClose`, then hands the Exercise to `onSave` once it's gone.
 export function CustomExerciseSheet({
   name,
   onClose,
@@ -28,11 +29,29 @@ export function CustomExerciseSheet({
 }: {
   name: string | null;
   onClose: () => void;
-  onSave: (exercise: ExerciseListing) => void;
+  onSave?: (exercise: ExerciseListing) => void;
 }) {
+  const saved = useRef<ExerciseListing | null>(null);
+
+  function handOver() {
+    const exercise = saved.current;
+    saved.current = null;
+    if (exercise) onSave?.(exercise);
+  }
+
+  // The picker closes itself on receiving the Exercise. iOS can't dismiss a sheet while the sheet
+  // it presented is still on screen, and leaves a blank one behind (#126), so on iOS the hand-over
+  // waits for this sheet's dismissal. Android's dialogs close independently, and `onDismiss` is
+  // iOS-only.
+  function save(exercise: ExerciseListing) {
+    saved.current = exercise;
+    onClose();
+    if (Platform.OS !== "ios") handOver();
+  }
+
   return (
-    <FormSheet visible={name !== null} onClose={onClose}>
-      <CustomExerciseForm initialName={name ?? ""} onClose={onClose} onSave={onSave} />
+    <FormSheet visible={name !== null} onClose={onClose} onDismiss={handOver}>
+      <CustomExerciseForm initialName={name ?? ""} onClose={onClose} onSave={save} />
     </FormSheet>
   );
 }
@@ -55,10 +74,12 @@ export function EditExerciseSheet({
 function FormSheet({
   visible,
   onClose,
+  onDismiss,
   children,
 }: {
   visible: boolean;
   onClose: () => void;
+  onDismiss?: () => void;
   children: React.ReactNode;
 }) {
   const p = useColors();
@@ -68,6 +89,7 @@ function FormSheet({
       animationType="slide"
       presentationStyle="formSheet"
       onRequestClose={onClose}
+      onDismiss={onDismiss}
     >
       <View style={{ flex: 1, backgroundColor: p.background }}>
         {/* Modal renders nothing while closed, so every opening starts a fresh form. */}
