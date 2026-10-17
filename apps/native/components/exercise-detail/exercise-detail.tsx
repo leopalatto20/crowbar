@@ -65,6 +65,31 @@ export function ExerciseDetail({
   // Keeps the current Station on screen while the next one reads, instead of blanking.
   const switchTo = (id: string | undefined) => startTransition(() => setStationId(id));
 
+  function merge(source: ProgressStation, target: ProgressStation) {
+    mergeStation(db, source.id, target.id);
+    switchTo(target.id);
+  }
+
+  // The source's notes carry over to the target, so only its sets and label can be lost.
+  function requestMerge(source: ProgressStation, target: ProgressStation) {
+    const { sets } = stationHistoryCounts(db, source.id);
+    if (sets === 0 && source.label === null) merge(source, target);
+    else setMerging({ source, target, sets });
+  }
+
+  function removeStation(id: string) {
+    deleteStation(db, id);
+    switchTo(undefined);
+  }
+
+  // The toolbar acts on the selected Station, so its notes are the ones on screen.
+  function requestRemoveStation(station: ProgressStation) {
+    const counts = stationHistoryCounts(db, station.id);
+    if (counts.sets === 0 && station.label === null && !selected?.notes) {
+      removeStation(station.id);
+    } else setDeletingStation({ station, counts });
+  }
+
   return (
     <>
       <Stack.Screen options={{ title: progress.name }} />
@@ -80,12 +105,8 @@ export function ExerciseDetail({
           retireStation(db, station.id);
         }}
         onEditNotes={() => setEditingNotes(true)}
-        onMerge={(source, target) =>
-          setMerging({ source, target, sets: stationHistoryCounts(db, source.id).sets })
-        }
-        onDeleteStation={(station) =>
-          setDeletingStation({ station, counts: stationHistoryCounts(db, station.id) })
-        }
+        onMerge={requestMerge}
+        onDeleteStation={requestRemoveStation}
         onEditExercise={() => setEditingExercise(true)}
         onDeleteExercise={() =>
           exerciseDeletion.request({ id: exerciseId, name: progress.name, hidden: progress.hidden })
@@ -181,9 +202,7 @@ export function ExerciseDetail({
         cancelLabel={t.stationActions.cancel}
         onConfirm={() => {
           setMerging(null);
-          if (!merging) return;
-          mergeStation(db, merging.source.id, merging.target.id);
-          switchTo(merging.target.id);
+          if (merging) merge(merging.source, merging.target);
         }}
         onDismiss={() => setMerging(null)}
       />
@@ -199,9 +218,7 @@ export function ExerciseDetail({
         cancelLabel={t.stationActions.cancel}
         onConfirm={() => {
           setDeletingStation(null);
-          if (!deletingStation) return;
-          deleteStation(db, deletingStation.station.id);
-          switchTo(undefined);
+          if (deletingStation) removeStation(deletingStation.station.id);
         }}
         onDismiss={() => setDeletingStation(null)}
       />

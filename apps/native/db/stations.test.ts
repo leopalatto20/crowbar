@@ -323,6 +323,18 @@ describe("deleting a Station", () => {
     expect(stationHistoryCounts(db, station.id)).toEqual({ sets: 3, workouts: 2 });
   });
 
+  test("counts nothing until a set is logged on it", async () => {
+    const { db, gymId } = await libraryDatabase();
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 1_000 });
+    const entryId = addWorkoutExercise(db, workoutId, chestPress.id);
+    addStation(db, entryId, { label: "Hammer Strength" });
+    const entry = getLedger(db, workoutId, "en")!.exercises[0]!;
+
+    expect(stationHistoryCounts(db, entry.station!.id)).toEqual({ sets: 0, workouts: 0 });
+    confirmSet(db, entry.sets[0]!.id, { load: 70, reps: 8 });
+    expect(stationHistoryCounts(db, entry.station!.id)).toEqual({ sets: 1, workouts: 1 });
+  });
+
   test("drops the Exercises logged on it from their Workouts, and Workouts left empty", async () => {
     const { db, gymId } = await libraryDatabase();
     const alone = logWorkout(db, { gymId, exerciseId: chestPress.id, at: 1_000, loads: [50] });

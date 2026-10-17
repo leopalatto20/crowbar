@@ -54,6 +54,17 @@ function PastWorkoutLedger({ ledger }: { ledger: Ledger }) {
   // Counted when the confirm opens, so it states exactly what the delete will take.
   const [deletingSets, setDeletingSets] = useState<number | null>(null);
 
+  function remove() {
+    deleteWorkout(db, ledger.id);
+    router.back();
+  }
+
+  function requestRemove() {
+    const sets = workoutSetCount(db, ledger.id);
+    if (sets === 0) remove();
+    else setDeletingSets(sets);
+  }
+
   // Leaving edit mode, by Done or by going back, drops the sets added but never confirmed.
   useEffect(() => {
     if (!editing) return;
@@ -80,11 +91,7 @@ function PastWorkoutLedger({ ledger }: { ledger: Ledger }) {
           <Stack.Toolbar.MenuAction icon="plus.square.on.square" onPress={() => setNaming(true)}>
             {t.history.saveAsRoutine}
           </Stack.Toolbar.MenuAction>
-          <Stack.Toolbar.MenuAction
-            icon="trash"
-            destructive
-            onPress={() => setDeletingSets(workoutSetCount(db, ledger.id))}
-          >
+          <Stack.Toolbar.MenuAction icon="trash" destructive onPress={requestRemove}>
             {t.history.delete}
           </Stack.Toolbar.MenuAction>
         </Stack.Toolbar.Menu>
@@ -110,8 +117,7 @@ function PastWorkoutLedger({ ledger }: { ledger: Ledger }) {
         cancelLabel={t.history.cancel}
         onConfirm={() => {
           setDeletingSets(null);
-          deleteWorkout(db, ledger.id);
-          router.back();
+          remove();
         }}
         onDismiss={() => setDeletingSets(null)}
       />

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, isNotNull, max, notExists, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, isNotNull, max, notExists, sql } from "drizzle-orm";
 
 import type { Language } from "@/lib/i18n/locale";
 import type { Target } from "@/lib/workout/model";
@@ -56,6 +56,16 @@ export function reorderRoutines(db: Database, ids: string[]) {
       tx.update(routine).set({ position }).where(eq(routine.id, id)).run();
     });
   });
+}
+
+// What deleting the Routine takes with it: its design, one slot per Exercise.
+export function routineExerciseCount(db: Database, id: string) {
+  const [exercises] = db
+    .select({ count: count() })
+    .from(routineExercise)
+    .where(eq(routineExercise.routineId, id))
+    .all();
+  return exercises!.count;
 }
 
 export function deleteRoutine(db: Database, id: string) {

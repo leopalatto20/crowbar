@@ -31,6 +31,10 @@ export const en = {
     done: "Done",
     duplicate: "Duplicate",
     delete: "Delete",
+    deleteTitle: (routine: string) => `Delete “${routine}”?`,
+    deleteMessage: (exercises: number) =>
+      `Deletes its list of ${exercises} ${exercises === 1 ? "Exercise" : "Exercises"} with their Targets. Past Workouts stay in History.`,
+    cancel: "Cancel",
     copyName: (name: string) => `${name} copy`,
     lastRun: (ago: string, gym: string) => `Last: ${ago} · ${gym}`,
   },

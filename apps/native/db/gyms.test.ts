@@ -89,6 +89,13 @@ describe("deleteGym", () => {
     expect(gymHistoryCounts(db, garage)).toEqual({ stations: 1, workouts: 1, sets: 1 });
   });
 
+  test("counts nothing for a Gym never trained at", async () => {
+    const { db } = await twoGyms();
+    const empty = createGym(db, "Hotel Gym");
+
+    expect(gymHistoryCounts(db, empty)).toEqual({ stations: 0, workouts: 0, sets: 0 });
+  });
+
   test("removes the Gym with its Stations, Workouts and sets, and nothing at other Gyms", async () => {
     const { db, downtown, garage, first, atGarage, inProgress } = await twoGyms();
 

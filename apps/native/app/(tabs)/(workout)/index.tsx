@@ -1,11 +1,19 @@
 import { Stack, useRouter } from "expo-router";
 import { Suspense, useState } from "react";
 
+import { ConfirmDialog } from "@/components/confirm-dialog";
 import { RoutineList } from "@/components/routine/routine-list";
 import { WorkoutInProgressAlert } from "@/components/workout-in-progress-alert";
 import { useDb } from "@/db/context";
 import { lastUsedGym } from "@/db/gyms";
-import { createRoutine, deleteRoutine, duplicateRoutine, reorderRoutines } from "@/db/routines";
+import {
+  type RoutineListing,
+  createRoutine,
+  deleteRoutine,
+  duplicateRoutine,
+  reorderRoutines,
+  routineExerciseCount,
+} from "@/db/routines";
 import { currentWorkout, discardAndStartWorkout, startWorkout } from "@/db/workouts";
 import { useLastGym } from "@/lib/gym/use-last-gym";
 import { useI18n } from "@/lib/i18n";
@@ -35,6 +43,10 @@ function Routines() {
   }));
   const [editing, setEditing] = useState(false);
   const [replacingWith, setReplacingWith] = useState<PendingStart | null>(null);
+  // Counted when the confirm opens, so it states exactly what the delete will take.
+  const [deleting, setDeleting] = useState<{ routine: RoutineListing; exercises: number } | null>(
+    null,
+  );
 
   function openLedger(gymId: string, { routineId }: PendingStart) {
     startWorkout(db, { gymId, timeZone: currentTimeZone(), routineId });
@@ -77,6 +89,13 @@ function Routines() {
     deleteRoutine(db, id);
   }
 
+  // An empty Routine holds no design to lose, so it goes at once.
+  function requestRemove(routine: RoutineListing) {
+    const exercises = routineExerciseCount(db, routine.id);
+    if (exercises === 0) remove(routine.id);
+    else setDeleting({ routine, exercises });
+  }
+
   return (
     <>
       <Stack.Toolbar placement="left">
@@ -101,10 +120,22 @@ function Routines() {
         onDuplicate={(routine) =>
           duplicateRoutine(db, routine.id, t.workoutTab.copyName(routine.name))
         }
-        onDelete={remove}
+        onDelete={requestRemove}
         onReorder={(ids) => reorderRoutines(db, ids)}
       />
       {gymPrompt}
+      <ConfirmDialog
+        visible={deleting !== null}
+        title={deleting ? t.workoutTab.deleteTitle(deleting.routine.name) : ""}
+        message={deleting ? t.workoutTab.deleteMessage(deleting.exercises) : ""}
+        confirmLabel={t.workoutTab.delete}
+        cancelLabel={t.workoutTab.cancel}
+        onConfirm={() => {
+          setDeleting(null);
+          if (deleting) remove(deleting.routine.id);
+        }}
+        onDismiss={() => setDeleting(null)}
+      />
       <WorkoutInProgressAlert
         visible={replacingWith !== null}
         onResume={() => {

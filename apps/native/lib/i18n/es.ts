@@ -31,6 +31,10 @@ export const es: Messages = {
     done: "Listo",
     duplicate: "Duplicar",
     delete: "Eliminar",
+    deleteTitle: (routine) => `¿Eliminar «${routine}»?`,
+    deleteMessage: (exercises) =>
+      `Se borrará su lista de ${exercises} ${exercises === 1 ? "ejercicio" : "ejercicios"} con sus objetivos. Los entrenamientos pasados se quedan en el historial.`,
+    cancel: "Cancelar",
     copyName: (name) => `${name} (copia)`,
     lastRun: (ago, gym) => `Último: ${ago} · ${gym}`,
   },

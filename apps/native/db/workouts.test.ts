@@ -1703,6 +1703,18 @@ describe("deleting a finished Workout", () => {
     expect(workoutSetCount(db, workoutId)).toBe(3);
   });
 
+  test("counts none until a set is logged", async () => {
+    const db = await libraryDatabase();
+    const gymId = createGym(db, "Downtown Iron");
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 1_000 });
+    addWorkoutExercise(db, workoutId, benchPress.id);
+    const [prefilled] = getLedger(db, workoutId, "en")!.exercises[0]!.sets;
+
+    expect(workoutSetCount(db, workoutId)).toBe(0);
+    confirmSet(db, prefilled!.id, { load: 100, reps: 5 });
+    expect(workoutSetCount(db, workoutId)).toBe(1);
+  });
+
   test("removes it from History, and the next Workout prefills from the one before", async () => {
     const db = await libraryDatabase();
     const gymId = createGym(db, "Downtown Iron");
