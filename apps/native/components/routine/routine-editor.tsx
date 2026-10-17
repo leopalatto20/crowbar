@@ -137,6 +137,7 @@ function Editor({ routine }: { routine: RoutineDetail }) {
           ids: routine.exercises.map((e) => e.exercise.id),
           label: t.exercisePicker.inRoutine,
         }}
+        doneAt="anyGym"
         onClose={() => setPicking(false)}
         onPick={(exercise) => {
           const added = addRoutineExercise(db, routine.id, exercise.id);

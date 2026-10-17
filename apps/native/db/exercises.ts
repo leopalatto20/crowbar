@@ -1,6 +1,6 @@
 import { and, count, countDistinct, eq, exists, isNotNull } from "drizzle-orm";
 
-import type { EquipmentType, LoadType, MuscleGroup } from "@/lib/exercise/model";
+import type { EquipmentType, ExerciseFilters, LoadType, MuscleGroup } from "@/lib/exercise/model";
 import type { Language } from "@/lib/i18n/locale";
 
 import type { BuiltInExercise } from "./built-in-exercises";
@@ -26,7 +26,7 @@ export function seedBuiltInExercises(db: Database, builtIns: readonly BuiltInExe
 
 export type ExerciseListing = Pick<
   typeof exercise.$inferSelect,
-  "id" | "name" | "muscleGroup" | "hidden" | "builtIn"
+  "id" | "name" | "equipmentType" | "muscleGroup" | "hidden" | "builtIn"
 > & {
   // Every name the Exercise has in any language, which is what names are unique across.
   names: string[];
@@ -39,6 +39,7 @@ export function listExercises(db: Database, language: Language): ExerciseListing
       id: exercise.id,
       name: exercise.name,
       nameEs: exercise.nameEs,
+      equipmentType: exercise.equipmentType,
       muscleGroup: exercise.muscleGroup,
       hidden: exercise.hidden,
       builtIn: exercise.builtIn,
@@ -65,6 +66,21 @@ export function searchExercises(exercises: ExerciseListing[], query: string) {
   const folded = foldCaseAndAccents(query.trim());
   return exercises.filter(
     (listing) => !listing.hidden && foldCaseAndAccents(listing.name).includes(folded),
+  );
+}
+
+// `doneIds` holds the Exercises with history where the Done filter reads it.
+export function filterExercises(
+  exercises: ExerciseListing[],
+  filters: ExerciseFilters,
+  doneIds: ReadonlySet<string>,
+) {
+  return exercises.filter(
+    (listing) =>
+      (filters.equipmentType === null || listing.equipmentType === filters.equipmentType) &&
+      (filters.muscleGroup === null || listing.muscleGroup === filters.muscleGroup) &&
+      (!filters.custom || !listing.builtIn) &&
+      (!filters.done || doneIds.has(listing.id)),
   );
 }
 
@@ -104,6 +120,7 @@ export function createCustomExercise(db: Database, fields: NewCustomExercise): E
   return {
     id,
     name,
+    equipmentType: fields.equipmentType ?? "other",
     muscleGroup: fields.muscleGroup ?? null,
     hidden: false,
     builtIn: false,
@@ -138,6 +155,21 @@ function loggedSetsOf(db: Database, id: string | typeof exercise.id) {
     .from(workoutSet)
     .innerJoin(workoutExercise, eq(workoutExercise.id, workoutSet.workoutExerciseId))
     .where(and(eq(workoutExercise.exerciseId, id), eq(workoutSet.done, true)));
+}
+
+// The Exercises with a logged set, Warm-ups included, on any Station at the Gym, Retired ones
+// included; without a Gym, at any Gym.
+export function exercisesDone(db: Database, gymId?: string): Set<string> {
+  const done = db
+    .selectDistinct({ id: station.exerciseId })
+    .from(workoutSet)
+    .innerJoin(workoutExercise, eq(workoutExercise.id, workoutSet.workoutExerciseId))
+    .innerJoin(station, eq(station.id, workoutExercise.stationId))
+    .where(
+      and(eq(workoutSet.done, true), gymId === undefined ? undefined : eq(station.gymId, gymId)),
+    )
+    .all();
+  return new Set(done.map(({ id }) => id));
 }
 
 export function getCustomExercise(db: Database, id: string): CustomExercise | undefined {

@@ -419,6 +419,17 @@ export const en = {
     inRoutine: "In Routine",
     inWorkout: "In Workout",
   },
+  exerciseFilters: {
+    filter: "Filter",
+    any: "Any",
+    equipmentType: "Equipment type",
+    muscleGroup: "Muscle group",
+    doneAt: (gym: string) => `Done at ${gym}`,
+    doneBefore: "Done before",
+    custom: "Custom",
+    noMatches: "No Exercises match these filters.",
+    clear: "Clear Filters",
+  },
   customExercise: {
     title: "New Exercise",
     editTitle: "Edit Exercise",

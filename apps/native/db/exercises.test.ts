@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { NO_FILTERS } from "@/lib/exercise/model";
+
 import { BUILT_IN_EXERCISES, type BuiltInExercise } from "./built-in-exercises";
 import {
   createCustomExercise,
@@ -6,6 +8,8 @@ import {
   editCustomExercise,
   exerciseHistoryCounts,
   exerciseNamed,
+  exercisesDone,
+  filterExercises,
   getCustomExercise,
   hideExercise,
   listExercises,
@@ -14,6 +18,7 @@ import {
   unhideExercise,
 } from "./exercises";
 import { createGym } from "./gyms";
+import { retireStation } from "./stations";
 import { addRoutineExercise, createRoutine, getRoutine } from "./routines";
 import type { Database } from "./database";
 import { seedSettings } from "./settings";
@@ -28,6 +33,7 @@ import {
   getLedger,
   setMachineNotes,
   startWorkout,
+  toggleSetKind,
 } from "./workouts";
 
 const benchPress: BuiltInExercise = {
@@ -108,6 +114,7 @@ describe("listExercises", () => {
       {
         id: "barbell-bench-press",
         name: "Barbell Bench Press",
+        equipmentType: "barbell",
         muscleGroup: "chest",
         hidden: false,
         builtIn: true,
@@ -116,6 +123,7 @@ describe("listExercises", () => {
       {
         id: "pull-up",
         name: "Pull-Up",
+        equipmentType: "bodyweight",
         muscleGroup: "lats",
         hidden: false,
         builtIn: true,
@@ -143,6 +151,144 @@ describe("listExercises", () => {
       ["barbell-bench-press", false],
       ["pull-up", true],
     ]);
+  });
+});
+
+describe("filterExercises", () => {
+  async function library() {
+    const db = await createTestDatabase();
+    seedBuiltInExercises(db, [benchPress, pullUp, legExtension]);
+    createCustomExercise(db, { name: "Landmine Press", equipmentType: "barbell" });
+    return listExercises(db, "en");
+  }
+
+  function ids(listings: { id: string }[]) {
+    return listings.map((listing) => listing.id);
+  }
+
+  test("with no filter on, keeps every Exercise", async () => {
+    const listings = await library();
+
+    expect(filterExercises(listings, NO_FILTERS, new Set())).toEqual(listings);
+  });
+
+  test("keeps only the chosen Equipment type", async () => {
+    const listings = await library();
+
+    const barbell = filterExercises(
+      listings,
+      { ...NO_FILTERS, equipmentType: "barbell" },
+      new Set(),
+    );
+
+    expect(barbell.map((listing) => listing.name)).toEqual([
+      "Barbell Bench Press",
+      "Landmine Press",
+    ]);
+  });
+
+  test("keeps only the chosen Muscle group", async () => {
+    const listings = await library();
+
+    expect(
+      ids(filterExercises(listings, { ...NO_FILTERS, muscleGroup: "quads" }, new Set())),
+    ).toEqual(["machine-leg-extension"]);
+  });
+
+  test("keeps only Custom Exercises", async () => {
+    const listings = await library();
+
+    const custom = filterExercises(listings, { ...NO_FILTERS, custom: true }, new Set());
+
+    expect(custom.map((listing) => listing.name)).toEqual(["Landmine Press"]);
+  });
+
+  test("keeps only the Exercises done", async () => {
+    const listings = await library();
+
+    const done = filterExercises(
+      listings,
+      { ...NO_FILTERS, done: true },
+      new Set(["pull-up", "machine-leg-extension"]),
+    );
+
+    expect(ids(done)).toEqual(["machine-leg-extension", "pull-up"]);
+  });
+
+  test("combines filters, keeping only what matches all of them", async () => {
+    const listings = await library();
+
+    const doneBarbell = filterExercises(
+      listings,
+      { ...NO_FILTERS, equipmentType: "barbell", done: true },
+      new Set(["pull-up", "barbell-bench-press"]),
+    );
+
+    expect(ids(doneBarbell)).toEqual(["barbell-bench-press"]);
+  });
+
+  test("narrows search results", async () => {
+    const listings = await library();
+
+    const found = filterExercises(
+      searchExercises(listings, "press"),
+      { ...NO_FILTERS, custom: true },
+      new Set(),
+    );
+
+    expect(found.map((listing) => listing.name)).toEqual(["Landmine Press"]);
+  });
+});
+
+describe("exercisesDone", () => {
+  test("holds the Exercises with a set logged at the Gym, not at other Gyms", async () => {
+    const { db, gymId } = await trainingDatabase();
+    const garage = createGym(db, "Garage");
+    logFinishedWorkout(db, gymId, 1_000, [{ exerciseId: "barbell-bench-press", sets: 1 }]);
+    logFinishedWorkout(db, garage, 2_000, [{ exerciseId: "pull-up", sets: 1 }]);
+
+    expect(exercisesDone(db, gymId)).toEqual(new Set(["barbell-bench-press"]));
+  });
+
+  test("leaves out an Exercise whose sets in the Workout in progress aren't confirmed", async () => {
+    const { db, gymId } = await trainingDatabase();
+    logWorkout(db, gymId, 1_000, [
+      { exerciseId: "barbell-bench-press", sets: 2, logged: 1 },
+      { exerciseId: "pull-up", sets: 2, logged: 0 },
+    ]);
+
+    expect(exercisesDone(db, gymId)).toEqual(new Set(["barbell-bench-press"]));
+  });
+
+  test("counts a logged Warm-up set", async () => {
+    const { db, gymId } = await trainingDatabase();
+    const workoutId = startWorkout(db, { gymId, timeZone: TIME_ZONE, now: 1_000 });
+    const entry = addWorkoutExercise(db, workoutId, "pull-up");
+    const [set] = getLedger(db, workoutId, "en")!.exercises[0]!.sets;
+    toggleSetKind(db, set!.id);
+    confirmSet(db, set!.id, { load: 0, reps: 8 });
+
+    expect(
+      getLedger(db, workoutId, "en")!.exercises.find(({ id }) => id === entry)!.sets,
+    ).toMatchObject([{ kind: "warmup", done: true }]);
+    expect(exercisesDone(db, gymId)).toEqual(new Set(["pull-up"]));
+  });
+
+  test("counts sets logged on a Retired Station", async () => {
+    const { db, gymId } = await trainingDatabase();
+    const workoutId = logFinishedWorkout(db, gymId, 1_000, [{ exerciseId: "pull-up", sets: 1 }]);
+    retireStation(db, getLedger(db, workoutId, "en")!.exercises[0]!.station!.id);
+
+    expect(exercisesDone(db, gymId)).toEqual(new Set(["pull-up"]));
+  });
+
+  test("without a Gym, holds the Exercises logged at any Gym", async () => {
+    const { db, gymId } = await trainingDatabase();
+    const garage = createGym(db, "Garage");
+    logFinishedWorkout(db, gymId, 1_000, [{ exerciseId: "barbell-bench-press", sets: 1 }]);
+    logFinishedWorkout(db, garage, 2_000, [{ exerciseId: "pull-up", sets: 1 }]);
+
+    expect(exercisesDone(db)).toEqual(new Set(["barbell-bench-press", "pull-up"]));
   });
 });
 

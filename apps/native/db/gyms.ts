@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNull, sql } from "drizzle-orm";
 
 import type { Database } from "./database";
 import { newId } from "./id";
@@ -24,18 +24,22 @@ export function listGyms(db: Database): Gym[] {
     .all();
 }
 
-// Derived rather than stored, so it can never point at a deleted Gym: the Gym of the latest
-// Workout, else the newest Gym (ids are time-ordered), which covers a first Workout discarded.
+// Derived rather than stored, so it can never point at a deleted Gym: the Current Gym, else the
+// newest Gym (ids are time-ordered), which covers a first Workout discarded.
 export function lastUsedGym(db: Database): Gym | undefined {
-  return (
-    db
-      .select({ id: gym.id, name: gym.name })
-      .from(workout)
-      .innerJoin(gym, eq(gym.id, workout.gymId))
-      .orderBy(desc(workout.startedAt))
-      .limit(1)
-      .get() ?? db.select().from(gym).orderBy(desc(gym.id)).limit(1).get()
-  );
+  return currentGym(db) ?? db.select().from(gym).orderBy(desc(gym.id)).limit(1).get();
+}
+
+// Where progress is read when no Gym has been chosen: the Gym of the Workout in progress, else of
+// the most recent Workout. In progress comes first, since a past Workout can start later.
+export function currentGym(db: Database): Gym | undefined {
+  return db
+    .select({ id: gym.id, name: gym.name })
+    .from(workout)
+    .innerJoin(gym, eq(gym.id, workout.gymId))
+    .orderBy(desc(isNull(workout.finishedAt)), desc(workout.startedAt))
+    .limit(1)
+    .get();
 }
 
 export type GymHistoryCounts = { stations: number; workouts: number; sets: number };

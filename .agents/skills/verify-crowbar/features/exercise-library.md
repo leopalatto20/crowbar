@@ -9,6 +9,11 @@ The Exercises tab lists every non-hidden Exercise, Built-in and Custom, grouped 
 - Create Custom Exercise: Name (focused on open), Equipment type, Load type, Unilateral, Muscle group; Save, disabled while the name is blank or taken. Typing the name infers Equipment type from its first word, Load type from "assisted" or Bodyweight, and Unilateral from "single-arm"/"single-leg"; a field set by hand stops following the name.
 - Name collision (case-insensitive): an existing name shows `“<name>” already exists.` with "Use it", or `“<name>” already exists but is hidden.` with "Unhide". From the Exercises tab, "Use it" just closes the sheet; from the picker it adds that Exercise.
 - The same sheet is reachable from the exercise picker's `Create “<name>”` row (Routine editor and Ledger), prefilled with the search text. Saving adds the new Exercise to the Routine or Workout.
+- Filters (#118): a filter button opens a native menu; its icon (`line.3.horizontal.decrease.circle`) is filled while any filter is on. Facets are single-select and combine with AND.
+  - Exercises tab: a toolbar `Button` "Filter" left of "+", with an "Equipment type" submenu (Any checked by default, then each type), "Done at <Current Gym>" (absent before the first Workout) and "Custom". Sections stay; empty ones drop. Filters last while the app runs, not across `cv launch`.
+  - Picker: a `PopUpButton` "Filter" at the end of the search row, adding a "Muscle group" submenu. Done reads "Done at <Workout's Gym>" in the Ledger and "Done before" (any Gym, absent with no history) in the Routine editor. Every opening starts with no filters. The `Create “<name>”` / `Unhide` row ignores filters.
+  - Nothing matching shows `No Exercises match these filters.` with a "Clear Filters" `Button`.
+  - Done counts any confirmed set, Warm-up included, on any Station at the Gym, Retired ones included.
 - Hidden Exercises: the picker offers `Unhide “<name>”` instead of Create. Unreachable on device: no screen can hide an Exercise, so there's nothing to unhide without seeding the database.
 
 ## How to get to it (user POV)
@@ -48,6 +53,21 @@ cv wait "“Single-arm DB Row” already exists." 5 && cv shot 3-collision
 cv tap --pre-delay 0 -x 55 -y <"Use it" row centre>     # "Use it", by frame (see Gotchas)
 ```
 
+To prove filters (needs a Workout with one confirmed Bench Press set at a Gym named "Garage"; see [workout-ledger.md](workout-ledger.md)):
+
+```sh
+cv tap Exercises --element-type RadioButton
+cv tap Filter --element-type Button && cv tap "Equipment type" && cv tap Machine --element-type Button
+cv shot 1-machine-only                              # only Machine rows, filled icon
+cv tap Filter --element-type Button && cv tap Custom
+cv wait "No Exercises match these filters." 5 && cv tap "Clear Filters" --element-type Button
+cv tap Filter --element-type Button && cv tap "Done at Garage"
+cv shot 2-done                                      # only Barbell Bench Press
+# In the Ledger: Add Exercise, then the picker's filter
+cv tap Filter --element-type PopUpButton && cv tap "Done at Garage"
+cv type "Leg"                                       # Create “Leg” row stays above the empty message
+```
+
 ## Gotchas
 
 - Equipment type may be inferred from the typed name (`lib/exercise/infer.ts`), so the PopUpButton's label can change after typing. Read it from `cv tree` before tapping.
@@ -55,4 +75,6 @@ cv tap --pre-delay 0 -x 55 -y <"Use it" row centre>     # "Use it", by frame (se
 - Built-in rows are `StaticText` in the library but `Button` with label `<name>, <muscle group>` in the picker sheet. Exercises without a Muscle group are labelled `<name>`, and marked ones gain `, In Routine` or `, In Workout`.
 - Unilateral is a `CheckBox` (value 1 when on), not a PopUpButton.
 - "Use it" and "Unhide" are text buttons that only respond on their text; `cv tap "Use it"` hits the middle of the row and does nothing. Tap the text's left edge by frame.
+- The filter is a `Button` in the tab's toolbar but a `PopUpButton` in the picker; pass `--element-type`.
+- The first confirmed Working set can raise the iOS notification prompt over the Ledger; tap "Don't Allow" by frame before driving on.
 - The Exercises tab's search field and the sheet's Name field are both TextFields; always pass `--value`.

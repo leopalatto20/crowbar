@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import type { BuiltInExercise } from "./built-in-exercises";
 import type { Database } from "./database";
 import { seedBuiltInExercises } from "./exercises";
-import { createGym, deleteGym, gymHistoryCounts, listGyms, renameGym } from "./gyms";
+import { createGym, currentGym, deleteGym, gymHistoryCounts, listGyms, renameGym } from "./gyms";
 import { seedSettings } from "./settings";
 import { createTestDatabase } from "./test-database";
 import {
@@ -11,6 +11,7 @@ import {
   addWorkoutExercise,
   confirmSet,
   currentWorkout,
+  deleteWorkout,
   finishWorkout,
   getLedger,
   startWorkout,
@@ -124,5 +125,34 @@ describe("renameGym", () => {
       { id: downtown, name: "Iron Temple" },
     ]);
     expect(getLedger(db, first, "en")?.gymName).toBe("Iron Temple");
+  });
+});
+
+describe("currentGym", () => {
+  test("is the Gym of the Workout in progress, even when a finished one started later", async () => {
+    const db = await libraryDatabase();
+    const downtown = createGym(db, "Downtown Iron");
+    const garage = createGym(db, "Garage");
+    const atGarage = logWorkout(db, garage, 2_000, [
+      { exerciseId: benchPress.id, sets: 1, logged: 1 },
+    ]);
+    finishWorkout(db, atGarage, { now: 2_500 });
+    startWorkout(db, { gymId: downtown, timeZone: TIME_ZONE, now: 1_000 });
+
+    expect(currentGym(db)).toEqual({ id: downtown, name: "Downtown Iron" });
+  });
+
+  test("with no Workout in progress, is the Gym of the most recent Workout", async () => {
+    const { db, garage, inProgress } = await twoGyms();
+    deleteWorkout(db, inProgress);
+
+    expect(currentGym(db)).toEqual({ id: garage, name: "Garage" });
+  });
+
+  test("is none before the first Workout, even once a Gym exists", async () => {
+    const db = await libraryDatabase();
+    createGym(db, "Downtown Iron");
+
+    expect(currentGym(db)).toBeUndefined();
   });
 });

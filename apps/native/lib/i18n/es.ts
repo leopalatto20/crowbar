@@ -420,6 +420,17 @@ export const es: Messages = {
     inRoutine: "En la rutina",
     inWorkout: "En el entrenamiento",
   },
+  exerciseFilters: {
+    filter: "Filtrar",
+    any: "Cualquiera",
+    equipmentType: "Tipo de equipo",
+    muscleGroup: "Grupo muscular",
+    doneAt: (gym) => `Hechos en ${gym}`,
+    doneBefore: "Hechos antes",
+    custom: "Personalizados",
+    noMatches: "Ningún ejercicio coincide con estos filtros.",
+    clear: "Quitar filtros",
+  },
   customExercise: {
     title: "Nuevo ejercicio",
     editTitle: "Editar ejercicio",
