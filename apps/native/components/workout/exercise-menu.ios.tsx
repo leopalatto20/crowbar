@@ -1,4 +1,4 @@
-import { Button, Divider, Host, Menu, Text } from "@expo/ui/swift-ui";
+import { Button, Divider, Host, Menu } from "@expo/ui/swift-ui";
 import {
   accessibilityLabel,
   disabled,
@@ -9,6 +9,7 @@ import {
 } from "@expo/ui/swift-ui/modifiers";
 
 import { useI18n } from "@/lib/i18n";
+import { MenuLabelText } from "@/modules/menu-label-text";
 import { type, useColors } from "@/lib/theme";
 
 import type { ExerciseMenuProps } from "./exercise-menu.types";
@@ -36,16 +37,15 @@ export function ExerciseMenu({
     <Host matchContents={{ vertical: true }} style={{ alignSelf: "stretch" }}>
       <Menu
         label={
-          <Text
+          <MenuLabelText
+            text={name}
             modifiers={[
               font({ size: type.headline.fontSize, weight: "semibold" }),
               foregroundStyle(p.label),
               multilineTextAlignment("leading"),
               frame({ maxWidth: Infinity, alignment: "leading" }),
             ]}
-          >
-            {name}
-          </Text>
+          />
         }
         modifiers={[accessibilityLabel(t.ledger.exerciseMenu(name))]}
       >
