@@ -67,6 +67,8 @@ export const es: Messages = {
     start: "Inicio",
     duration: "Duración",
     deleteSet: "Borrar serie",
+    deleteArmed: "Borrar",
+    confirmDeleteSet: "Confirmar borrar serie",
     logWorkout: "Registrar un entrenamiento pasado",
     emptyWorkout: "Entrenamiento vacío",
     routines: "Desde una rutina",

@@ -1,6 +1,6 @@
 import { SymbolView } from "expo-symbols";
 import { useState } from "react";
-import { TextInput, View } from "react-native";
+import { AccessibilityInfo, TextInput, View } from "react-native";
 import Animated, { useReducedMotion } from "react-native-reanimated";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -50,6 +50,7 @@ import { ExerciseMenu } from "./exercise-menu";
 import { LedgerText } from "./ledger-text";
 
 const COLUMNS = { set: 34, lastHere: 1.4, field: 1, check: 40 };
+const SET_ROW_INSET = 10;
 const FIELDS: Field[] = ["load", "reps", "rir"];
 
 // Edit mode corrects a finished Workout in place: a Rest or haptics would only answer logging.
@@ -60,6 +61,8 @@ export function ExerciseCard({
   position,
   count,
   mode,
+  armedSetId,
+  onArmSet,
   onSwap,
   onHistory,
 }: {
@@ -68,6 +71,8 @@ export function ExerciseCard({
   position: number;
   count: number;
   mode: LedgerMode;
+  armedSetId: string | null;
+  onArmSet: (setId: string) => void;
   onSwap: () => void;
   onHistory: () => void;
 }) {
@@ -188,6 +193,8 @@ export function ExerciseCard({
             workingNumber={workingIndex(entry.sets, index)}
             editing={mode === "edit"}
             showsLastHere={showsLastHere}
+            armed={set.id === armedSetId}
+            onArm={() => onArmSet(set.id)}
           />
         ),
       )}
@@ -289,19 +296,23 @@ function HeaderCell({
 // field shows its ghost value from the previous Workout at the Station, which confirming commits.
 // A Bodyweight load left empty with nothing to show means bodyweight only. While `editing` a
 // finished Workout, a logged set is deleted rather than reopened: nothing there is waiting to be
-// done.
+// done. Deleting it loses history, so the first tap only arms the delete.
 function SetRow({
   set,
   format,
   workingNumber,
   editing,
   showsLastHere,
+  armed,
+  onArm,
 }: {
   set: LedgerSet;
   format: LoadFormat;
   workingNumber: number;
   editing: boolean;
   showsLastHere: boolean;
+  armed: boolean;
+  onArm: () => void;
 }) {
   const db = useDb();
   const p = useColors();
@@ -378,7 +389,7 @@ function SetRow({
         flexDirection: "row",
         alignItems: "center",
         gap: 6,
-        paddingHorizontal: 10,
+        paddingHorizontal: SET_ROW_INSET,
         paddingVertical: 5,
         backgroundColor: set.done ? p.greenTint : "transparent",
         transitionProperty: "backgroundColor",
@@ -419,7 +430,17 @@ function SetRow({
       )}
 
       {editing && set.done ? (
-        <DeleteButton onPress={() => deleteSet(db, set.id)} />
+        <DeleteButton
+          armed={armed}
+          onPress={() => {
+            if (armed) {
+              deleteSet(db, set.id);
+              return;
+            }
+            onArm();
+            AccessibilityInfo.announceForAccessibility(t.history.confirmDeleteSet);
+          }}
+        />
       ) : (
         <CheckButton
           done={set.done}
@@ -647,30 +668,54 @@ function CheckButton({
   );
 }
 
-function DeleteButton({ onPress }: { onPress: () => void }) {
+// The armed Delete grows leftward over the row instead of widening the column, so the row's
+// values stay under their headers. It stays the same pressable when armed, keeping a screen
+// reader's focus on it.
+function DeleteButton({ armed, onPress }: { armed: boolean; onPress: () => void }) {
   const p = useColors();
   const { t } = useI18n();
   return (
-    <PressableScale
-      onPress={onPress}
-      scaleTo={0.92}
-      accessibilityLabel={t.history.deleteSet}
-      style={{
-        width: COLUMNS.check,
-        height: 30,
-        borderRadius: radii.control,
-        borderCurve: "continuous",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: p.fillStrong,
-      }}
-    >
-      <SymbolView
-        name={{ ios: "minus", android: "remove" }}
-        weight="semibold"
-        size={18}
-        tintColor={p.red}
-      />
-    </PressableScale>
+    <>
+      <View style={{ width: COLUMNS.check }} />
+      <View
+        pointerEvents="box-none"
+        style={{
+          position: "absolute",
+          top: 0,
+          bottom: 0,
+          right: SET_ROW_INSET,
+          justifyContent: "center",
+        }}
+      >
+        <PressableScale
+          onPress={onPress}
+          scaleTo={0.92}
+          accessibilityLabel={armed ? t.history.confirmDeleteSet : t.history.deleteSet}
+          style={{
+            minWidth: COLUMNS.check,
+            height: 30,
+            paddingHorizontal: armed ? 12 : 0,
+            borderRadius: radii.control,
+            borderCurve: "continuous",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: armed ? p.red : p.fillStrong,
+          }}
+        >
+          {armed ? (
+            <LedgerText style={{ color: p.onAccent, ...type.cell, fontWeight: "600" }}>
+              {t.history.deleteArmed}
+            </LedgerText>
+          ) : (
+            <SymbolView
+              name={{ ios: "minus", android: "remove" }}
+              weight="semibold"
+              size={18}
+              tintColor={p.red}
+            />
+          )}
+        </PressableScale>
+      </View>
+    </>
   );
 }

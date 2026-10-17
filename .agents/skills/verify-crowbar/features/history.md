@@ -9,6 +9,7 @@ The History tab lists finished Workouts by month, newest first. Its "+" backfill
 - Prefill: "Last here" and the ghost values come from the last Workout at each Station that started before the chosen start. Moving the date earlier than every Workout clears them.
 - From a Routine: the snapshot's Exercises, Targets and set rows, as for a live start. Nothing is written back to the Routine.
 - Done: keeps only confirmed sets. A backfill with nothing confirmed leaves no `workout` row. No Rest and no haptics.
+- Delete a logged set (#115): in edit mode a done set's check becomes `Button` "Delete set" (a minus). The first tap arms it: it grows left into a red "Delete" (`Button` "Confirm delete set") and nothing is deleted. A second tap deletes the `set` row; an emptied Exercise, then a Station with nothing left, go with it. Tapping elsewhere, scrolling, or arming another set disarms it. To tap the armed button, aim at its frame (`cv tap --pre-delay 0 -x 340 -y <row>`).
 - Cancel: discards at once with nothing confirmed, else asks "Discard this Workout?" (Discard Workout / Keep logging).
 
 ## How to get to it (user POV)

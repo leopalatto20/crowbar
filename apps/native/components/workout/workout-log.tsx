@@ -47,6 +47,16 @@ export function WorkoutLog({
   const resting = ledger.exercises.some((entry) => entry.id === rest?.workoutExerciseId);
   const scrollView = useRef<ScrollView>(null);
   const cardTops = useRef(new Map<string, number>());
+  const [armedSetId, setArmedSetId] = useState<string | null>(null);
+  const armedAtTouchStart = useRef<string | null>(null);
+
+  // Any touch disarms once it ends, unless it armed a set itself. Comparing against the set armed
+  // when the touch began keeps this independent of whether the button's press or the touch end
+  // is handled first.
+  function disarmAfterTouch() {
+    const armedAtStart = armedAtTouchStart.current;
+    setArmedSetId((armed) => (armed === armedAtStart ? null : armed));
+  }
 
   function scrollToCard() {
     const top = scrollTo === undefined ? undefined : cardTops.current.get(scrollTo);
@@ -60,9 +70,17 @@ export function WorkoutLog({
   useEffect(scrollToCard, [scrollTo]);
 
   return (
-    <View style={{ flex: 1, backgroundColor: p.background }}>
+    <View
+      style={{ flex: 1, backgroundColor: p.background }}
+      onTouchStart={() => {
+        armedAtTouchStart.current = armedSetId;
+      }}
+      onTouchEnd={disarmAfterTouch}
+      onTouchCancel={disarmAfterTouch}
+    >
       <ScrollView
         ref={scrollView}
+        onScrollBeginDrag={() => setArmedSetId(null)}
         contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
@@ -114,6 +132,8 @@ export function WorkoutLog({
               position={position}
               count={ledger.exercises.length}
               mode={mode}
+              armedSetId={armedSetId}
+              onArmSet={setArmedSetId}
               onSwap={() => setPicking({ purpose: "swap", workoutExerciseId: entry.id })}
               onHistory={() =>
                 router.push({
