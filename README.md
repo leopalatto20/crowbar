@@ -26,6 +26,18 @@ bun run dev
 
 Use the Expo Go app to run the mobile application.
 
+## Installing on an iPhone
+
+To install a standalone Release build (no Metro needed) on a connected iPhone with a free Apple ID:
+
+```bash
+cd apps/native && APPLE_PERSONAL_TEAM=1 bunx expo run:ios --device --configuration Release
+```
+
+- On first install, trust the developer certificate in **Settings > General > VPN & Device Management**.
+- Free Apple ID builds expire after 7 days. Run the same command to reinstall; data is kept unless the app is deleted.
+- `APPLE_PERSONAL_TEAM=1` drops the Time Sensitive Notifications entitlement, which personal teams can't sign. Omit it with a paid developer account.
+
 ## Git Hooks and Formatting
 
 - Initialize hooks: `bun run prepare`

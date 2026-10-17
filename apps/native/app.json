@@ -26,6 +26,7 @@
       "permissions": ["android.permission.SCHEDULE_EXACT_ALARM"]
     },
     "plugins": [
+      "./plugins/with-ios-entitlements",
       "expo-router",
       [
         "expo-splash-screen",
