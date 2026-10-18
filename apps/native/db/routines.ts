@@ -194,6 +194,11 @@ export function updateRoutineExercise(db: Database, id: string, change: TargetsC
   db.update(routineExercise).set(change).where(eq(routineExercise.id, id)).run();
 }
 
+// The slot keeps its place and Targets, as a Swap written back from a finished Workout does.
+export function swapRoutineExercise(db: Database, id: string, exerciseId: string) {
+  db.update(routineExercise).set({ exerciseId }).where(eq(routineExercise.id, id)).run();
+}
+
 export function removeRoutineExercise(db: Database, id: string) {
   db.delete(routineExercise).where(eq(routineExercise.id, id)).run();
 }

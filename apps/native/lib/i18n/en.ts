@@ -392,6 +392,8 @@ export const en = {
       `${exercises} ${exercises === 1 ? "exercise" : "exercises"} · ${workingSets} working ${workingSets === 1 ? "set" : "sets"}`,
     addExercise: "Add Exercise",
     remove: "Remove",
+    swap: "Swap Exercise",
+    exerciseMenu: (exercise: string) => `${exercise}. Opens its menu`,
     removeExercise: (exercise: string) => `Remove ${exercise}`,
     rest: (duration: string) => `Rest ${duration}`,
     noWarmup: "No warm-up",
