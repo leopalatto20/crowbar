@@ -1,6 +1,6 @@
 import { SymbolView } from "expo-symbols";
 import { Suspense, useState } from "react";
-import { FlatList, Modal, Pressable, Text, TextInput, View } from "react-native";
+import { FlatList, Modal, Platform, Pressable, Text, TextInput, View } from "react-native";
 
 import { CustomExerciseSheet } from "@/components/custom-exercise-sheet";
 import { EmptyMessage } from "@/components/empty-state";
@@ -175,11 +175,15 @@ function ExercisePicker({
       <FlatList
         data={matches}
         keyExtractor={(listing) => listing.id}
-        // The search field autofocuses, so the list makes room for the keyboard and a drag puts it
-        // down, keeping the typed search.
+        // The search field autofocuses, so the keyboard is up from the start: a drag puts it down,
+        // keeping the typed search. iOS insets the list by how far the keyboard overlaps the sheet,
+        // which on iPad is less than its height; Android has no such inset, so it pads instead.
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        contentContainerStyle={{ paddingBottom: 40 + keyboardHeight }}
+        automaticallyAdjustKeyboardInsets
+        contentContainerStyle={{
+          paddingBottom: 40 + (Platform.OS === "android" ? keyboardHeight : 0),
+        }}
         ListHeaderComponent={
           name && !exactMatch ? (
             <Row onPress={() => setCreating(name)}>
