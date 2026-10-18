@@ -11,7 +11,7 @@ A Routine is a gym-agnostic plan of Exercises with Targets (warm-ups, sets × re
 - Swap and Remove from the name: tapping a card's name (PopUpButton `<exercise>. Opens its menu`) opens "Swap Exercise" and a red "Remove". Swap opens the picker titled "Swap Exercise"; the pick changes only `routine_exercise.exercise_id`, keeping the row's id, position and Targets, and no panel opens.
 - Start: tap a row to open its Workout in the Ledger at the last-used Gym (the Gym prompt first if none exists; the "A Workout is in progress" alert if one is running). The Ledger is titled with the Routine name and each Exercise shows a `Target 3 × 5–7 · RIR 1–2 · rest 3:00` line; the Rest after a Working set lasts the slot's rest Target.
 - Last run: a row whose Routine has a finished Workout shows `Last: today · <Gym>` (then `yesterday`, `3 days ago`, weeks, months, years).
-- List actions: long-press a row for Edit, Duplicate (`<name> copy`), Delete; swipe left for Edit; toolbar "Edit"/"Done" toggles drag-to-reorder.
+- List actions: long-press a row for Edit, Duplicate (`<name> copy`), Delete (no swipe actions, ADR 0005); toolbar "Edit"/"Done" toggles drag-to-reorder.
 
 ## How to get to it (user POV)
 
@@ -64,6 +64,5 @@ Proof: the Ledger title is the Routine name, the bench card shows two "W" rows t
 - The name field saves on every keystroke; fast input loses characters, which is why `cv type` is paced. Check the field's value in `cv tree` after typing.
 - After naming, the TextField's value is the name, not "Routine name"; target it with `--value "<current name>"`.
 - Long-press menus need a press-and-hold: `axe touch -x 201 -y <row centre> --down --up --delay 1.0 --udid <udid>`, not `tap`. The menu's "Edit" shares its label with the toolbar "Edit", so tap it by frame; "Duplicate" and "Delete" are unique. Delete asks no confirmation.
-- Swiping a row left (`axe swipe`, see SKILL.md) reveals an "Edit" button that also clashes with the toolbar's; tap it by frame.
 - After a drag, `cv tree` can report every card's name menu at the first card's frame. Open a lower card's menu by tapping its name's on-screen position with `axe tap -x <x> -y <y>`.
 - `Workout` is both the tab (RadioButton) and the editor's back button (Button).

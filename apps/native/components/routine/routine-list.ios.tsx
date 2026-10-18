@@ -6,7 +6,6 @@ import {
   List,
   Section,
   Spacer,
-  SwipeActions,
   Text,
   VStack,
 } from "@expo/ui/swift-ui";
@@ -23,7 +22,7 @@ import {
 
 import { useI18n } from "@/lib/i18n";
 import { formatLastRun, move } from "@/lib/routine/model";
-import { type, useColors } from "@/lib/theme";
+import { type } from "@/lib/theme";
 
 import type { RoutineListProps } from "./routine-list.types";
 
@@ -38,7 +37,6 @@ export function RoutineList({
   onDelete,
   onReorder,
 }: RoutineListProps) {
-  const p = useColors();
   const i18n = useI18n();
   const { t } = i18n;
   const ids = routines.map((routine) => routine.id);
@@ -69,7 +67,9 @@ export function RoutineList({
                 // In Edit mode a tap would start a Workout mid-reorder.
                 const row = (
                   <HStack
+                    key={routine.id}
                     modifiers={[
+                      deleteDisabled(),
                       contentShape(shapes.rectangle()),
                       ...(editing ? [] : [onTapGesture(() => onStart(routine.id))]),
                     ]}
@@ -90,44 +90,32 @@ export function RoutineList({
                     <Spacer />
                   </HStack>
                 );
+                // List.ForEach always offers swipe-to-delete; Delete lives in the menu instead.
+                // Edit mode is for ordering, so the menu sits it out: SwiftUI never calls onMove
+                // for a row carrying a contextMenu, nor for one wrapped in a Group.
+                if (editing) return row;
                 return (
-                  // Edit mode is for ordering, so Delete and the long-press menu sit it out:
-                  // SwiftUI never calls onMove for a row carrying a contextMenu.
-                  <SwipeActions key={routine.id} modifiers={[deleteDisabled()]}>
-                    {editing ? (
-                      row
-                    ) : (
-                      <ContextMenu>
-                        <ContextMenu.Trigger>{row}</ContextMenu.Trigger>
-                        <ContextMenu.Items>
-                          <Button
-                            label={t.workoutTab.edit}
-                            systemImage="pencil"
-                            onPress={() => onEdit(routine.id)}
-                          />
-                          <Button
-                            label={t.workoutTab.duplicate}
-                            systemImage="plus.square.on.square"
-                            onPress={() => onDuplicate(routine)}
-                          />
-                          <Button
-                            label={t.workoutTab.delete}
-                            systemImage="trash"
-                            role="destructive"
-                            onPress={() => onDelete(routine)}
-                          />
-                        </ContextMenu.Items>
-                      </ContextMenu>
-                    )}
-                    <SwipeActions.Actions edge="trailing">
+                  <ContextMenu key={routine.id} modifiers={[deleteDisabled()]}>
+                    <ContextMenu.Trigger>{row}</ContextMenu.Trigger>
+                    <ContextMenu.Items>
                       <Button
                         label={t.workoutTab.edit}
                         systemImage="pencil"
                         onPress={() => onEdit(routine.id)}
-                        modifiers={[tint(p.blue)]}
                       />
-                    </SwipeActions.Actions>
-                  </SwipeActions>
+                      <Button
+                        label={t.workoutTab.duplicate}
+                        systemImage="plus.square.on.square"
+                        onPress={() => onDuplicate(routine)}
+                      />
+                      <Button
+                        label={t.workoutTab.delete}
+                        systemImage="trash"
+                        role="destructive"
+                        onPress={() => onDelete(routine)}
+                      />
+                    </ContextMenu.Items>
+                  </ContextMenu>
                 );
               })}
             </List.ForEach>

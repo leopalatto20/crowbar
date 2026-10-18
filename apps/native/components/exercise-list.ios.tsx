@@ -7,16 +7,13 @@ import {
   List,
   Section,
   Spacer,
-  SwipeActions,
   Text,
 } from "@expo/ui/swift-ui";
 import {
   contentShape,
-  deleteDisabled,
   onTapGesture,
   scrollDismissesKeyboard,
   shapes,
-  tint,
 } from "@expo/ui/swift-ui/modifiers";
 
 import type { ExerciseListing } from "@/db/exercises";
@@ -25,8 +22,8 @@ import { useColors } from "@/lib/theme";
 
 import type { ExerciseActions, ExerciseListProps } from "./exercise-list.types";
 
-// Hide and Unhide wait behind the swipe; the long-press menu holds every action. Room for the
-// keyboard a header search bar brings up comes from the Host's default keyboard safe area.
+// The long-press menu holds every action. Room for the keyboard a header search bar brings up
+// comes from the Host's default keyboard safe area.
 export function ExerciseList({ sections, onOpenHidden, ...actions }: ExerciseListProps) {
   const p = useColors();
   const { t } = useI18n();
@@ -61,48 +58,31 @@ function ExerciseRow({
   onToggleHidden,
   onDelete,
 }: ExerciseActions & { listing: ExerciseListing }) {
-  const p = useColors();
   const { t } = useI18n();
   const hideLabel = listing.hidden ? t.exercises.unhide : t.exercises.hide;
   const hideImage = listing.hidden ? "eye" : "eye.slash";
   return (
-    <SwipeActions modifiers={[deleteDisabled()]}>
-      <ContextMenu>
-        <ContextMenu.Trigger>
-          <HStack
-            modifiers={[contentShape(shapes.rectangle()), onTapGesture(() => onOpen(listing))]}
-          >
-            <Text>{listing.name}</Text>
-            <Spacer />
-          </HStack>
-        </ContextMenu.Trigger>
-        <ContextMenu.Items>
-          {!listing.builtIn && (
-            <Button label={t.exercises.edit} systemImage="pencil" onPress={() => onEdit(listing)} />
-          )}
+    <ContextMenu>
+      <ContextMenu.Trigger>
+        <HStack modifiers={[contentShape(shapes.rectangle()), onTapGesture(() => onOpen(listing))]}>
+          <Text>{listing.name}</Text>
+          <Spacer />
+        </HStack>
+      </ContextMenu.Trigger>
+      <ContextMenu.Items>
+        {!listing.builtIn && (
+          <Button label={t.exercises.edit} systemImage="pencil" onPress={() => onEdit(listing)} />
+        )}
+        <Button label={hideLabel} systemImage={hideImage} onPress={() => onToggleHidden(listing)} />
+        {!listing.builtIn && (
           <Button
-            label={hideLabel}
-            systemImage={hideImage}
-            onPress={() => onToggleHidden(listing)}
+            label={t.exercises.delete}
+            systemImage="trash"
+            role="destructive"
+            onPress={() => onDelete(listing)}
           />
-          {!listing.builtIn && (
-            <Button
-              label={t.exercises.delete}
-              systemImage="trash"
-              role="destructive"
-              onPress={() => onDelete(listing)}
-            />
-          )}
-        </ContextMenu.Items>
-      </ContextMenu>
-      <SwipeActions.Actions edge="trailing">
-        <Button
-          label={hideLabel}
-          systemImage={hideImage}
-          onPress={() => onToggleHidden(listing)}
-          modifiers={[tint(p.orange)]}
-        />
-      </SwipeActions.Actions>
-    </SwipeActions>
+        )}
+      </ContextMenu.Items>
+    </ContextMenu>
   );
 }

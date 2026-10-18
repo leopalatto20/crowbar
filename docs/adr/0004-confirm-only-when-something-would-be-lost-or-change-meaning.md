@@ -2,7 +2,7 @@
 
 Crowbar asks for confirmation before an action only when the action would lose something the lifter entered and can't get back in the app (logged sets, a Station's label or notes, a Routine's design), or would change what logged sets mean (a unit relabel, a merged history). It checks whether that is true at that moment and acts at once when it isn't, so deleting an empty Routine, a Gym never trained at, or a Station with no sets, label or notes takes one tap. Where a confirm does show, it is counted: it says how many sets, Workouts, Stations or Exercises go with the action, read when it opens. Small deletes repeated in a row, like trimming logged sets in edit mode, use an inline two-tap arm in the row instead of a modal (the trash turns into a red Delete, and a second tap deletes it), so getting through several doesn't mean several dialogs ("Arm before deleting a logged set in edit mode", #115). Decided in "Which destructive actions need a confirmation" (#108).
 
-Not every prompt is a confirm. "Discard and start new" offers a choice between Resume and Discard, so it always shows. Removing a Routine slot takes a swipe and then a tap on Remove, and that counts as the confirmation.
+Not every prompt is a confirm. "Discard and start new" offers a choice between Resume and Discard, so it always shows. Removing a Routine slot takes a swipe and then a tap on Remove, and that counts as the confirmation (the one swipe ADR 0005 keeps).
 
 ## Considered Options
 
