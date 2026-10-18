@@ -14,6 +14,7 @@ import {
   contentShape,
   deleteDisabled,
   onTapGesture,
+  scrollDismissesKeyboard,
   shapes,
   tint,
 } from "@expo/ui/swift-ui/modifiers";
@@ -24,13 +25,14 @@ import { useColors } from "@/lib/theme";
 
 import type { ExerciseActions, ExerciseListProps } from "./exercise-list.types";
 
-// Hide and Unhide wait behind the swipe; the long-press menu holds every action.
+// Hide and Unhide wait behind the swipe; the long-press menu holds every action. The Host keeps
+// its keyboard safe area, so the list shrinks above the keyboard a header search bar brings up.
 export function ExerciseList({ sections, onOpenHidden, ...actions }: ExerciseListProps) {
   const p = useColors();
   const { t } = useI18n();
   return (
     <Host style={{ flex: 1 }}>
-      <List>
+      <List modifiers={[scrollDismissesKeyboard("interactively")]}>
         {sections.map(({ key, title, listings }) => (
           <Section key={key} title={title}>
             {listings.map((listing) => (

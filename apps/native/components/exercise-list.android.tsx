@@ -6,7 +6,12 @@ import {
   ListItem,
   Text,
 } from "@expo/ui/jetpack-compose";
-import { clickable, combinedClickable, padding } from "@expo/ui/jetpack-compose/modifiers";
+import {
+  clickable,
+  combinedClickable,
+  imePadding,
+  padding,
+} from "@expo/ui/jetpack-compose/modifiers";
 import { useState } from "react";
 
 import type { ExerciseListing } from "@/db/exercises";
@@ -15,13 +20,14 @@ import { useColors } from "@/lib/theme";
 
 import type { ExerciseActions, ExerciseListProps } from "./exercise-list.types";
 
-// A long press opens the row's menu: Compose has no swipe actions to put Hide behind.
+// A long press opens the row's menu: Compose has no swipe actions to put Hide behind. The Host
+// only sizes its viewport around the keyboard, so the list pads itself to stay above it.
 export function ExerciseList({ sections, onOpenHidden, ...actions }: ExerciseListProps) {
   const p = useColors();
   const { t } = useI18n();
   return (
     <Host style={{ flex: 1 }}>
-      <LazyColumn>
+      <LazyColumn modifiers={[imePadding()]}>
         {sections.flatMap(({ key, title, listings }) => [
           <Text
             key={key}
