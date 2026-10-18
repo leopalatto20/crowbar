@@ -32,7 +32,7 @@ export function ExerciseList({ sections, onOpenHidden, ...actions }: ExerciseLis
   const { t } = useI18n();
   return (
     <Host style={{ flex: 1 }}>
-      <List modifiers={[scrollDismissesKeyboard("interactively")]}>
+      <List modifiers={[scrollDismissesKeyboard("immediately")]}>
         {sections.map(({ key, title, listings }) => (
           <Section key={key} title={title}>
             {listings.map((listing) => (
