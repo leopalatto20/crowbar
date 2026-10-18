@@ -9,14 +9,16 @@ type EmptyAction = { label: string; onPress: () => void };
 
 // A ScrollView even with nothing to scroll, so the large title collapses like any native list.
 // It makes room for the keyboard, so a search with no matches stays centred in view.
-// It only scrolls when the message overflows, or while the keyboard is up so a drag dismisses it:
-// otherwise the screen bounces with nothing in it, as the system insets alone make it scrollable.
+// It only scrolls when the message overflows the ScrollView, or while the keyboard is up so a drag
+// dismisses it: otherwise the screen bounces with nothing in it, as the system insets alone make it
+// scrollable. The insets aren't known here, so overflow is measured against the full frame.
 export function EmptyState({ message, action }: { message: string; action?: EmptyAction }) {
   const p = useColors();
   const keyboardHeight = useKeyboardHeight();
   const [viewportHeight, setViewportHeight] = useState(0);
   const [messageHeight, setMessageHeight] = useState(0);
-  const overflows = messageHeight + spacing.xxl * 2 > viewportHeight;
+  const padding = spacing.xxl;
+  const overflows = viewportHeight > 0 && messageHeight + padding * 2 > viewportHeight;
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
@@ -29,8 +31,8 @@ export function EmptyState({ message, action }: { message: string; action?: Empt
         flexGrow: 1,
         alignItems: "center",
         justifyContent: "center",
-        padding: spacing.xxl,
-        paddingBottom: spacing.xxl + keyboardHeight,
+        padding,
+        paddingBottom: padding + keyboardHeight,
       }}
     >
       <View onLayout={(event) => setMessageHeight(event.nativeEvent.layout.height)}>
