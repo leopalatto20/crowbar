@@ -19,8 +19,9 @@ export function afterKeyboardHides(action: () => void) {
 // wrapping that ScrollView in a KeyboardAvoidingView stops the large title collapsing with it.
 // iOS also reports frame changes while the keyboard stays up, such as the predictions bar
 // toggling; Android only reports the keyboard once it's up, so there the change isn't animated.
+// It starts from the keyboard already up, as when a search with no matches swaps the list out.
 export function useKeyboardHeight() {
-  const [height, setHeight] = useState(0);
+  const [height, setHeight] = useState(() => Keyboard.metrics()?.height ?? 0);
   useEffect(() => {
     const follow = (event: KeyboardEvent, next: number) => {
       if (event.duration > 0) {

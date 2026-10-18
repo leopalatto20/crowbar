@@ -15,7 +15,7 @@ export function EmptyState({ message, action }: { message: string; action?: Empt
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
       keyboardShouldPersistTaps="handled"
-      keyboardDismissMode="interactive"
+      keyboardDismissMode="on-drag"
       style={{ backgroundColor: p.background }}
       contentContainerStyle={{
         flexGrow: 1,
