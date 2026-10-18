@@ -20,8 +20,8 @@ import { useColors } from "@/lib/theme";
 
 import type { ExerciseActions, ExerciseListProps } from "./exercise-list.types";
 
-// A long press opens the row's menu: Compose has no swipe actions to put Hide behind. The Host
-// doesn't pad its content for the keyboard, so the list does it to stay scrollable above it.
+// A long press opens the row's menu, which holds every action. The Host doesn't pad its content
+// for the keyboard, so the list does it to stay scrollable above it.
 export function ExerciseList({ sections, onOpenHidden, ...actions }: ExerciseListProps) {
   const p = useColors();
   const { t } = useI18n();
