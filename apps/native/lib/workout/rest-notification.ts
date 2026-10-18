@@ -2,14 +2,13 @@ import { applicationId } from "expo-application";
 import { startActivityAsync } from "expo-intent-launcher";
 import * as Notifications from "expo-notifications";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { AppState, Platform } from "react-native";
 
 import { useDb } from "@/db/context";
 import type { Database } from "@/db/database";
 import { getSettings, markNotificationsAsked } from "@/db/settings";
 import { useI18n } from "@/lib/i18n";
-import { useSettings } from "@/lib/settings";
 import { useRest } from "@/lib/workout/use-workout";
 
 // One fixed identifier: scheduling under it replaces the Rest before, so the OS never holds two.
@@ -35,16 +34,65 @@ async function clearRestNotification() {
   await Notifications.dismissNotificationAsync(REST_NOTIFICATION_ID);
 }
 
-// Marked before the prompt shows, so even a kill mid-prompt never leads to asking twice. Resolves
-// whether notifications are allowed, for the exact alarms asked at the same moment.
+export type NotificationStatus = "granted" | "denied" | "undetermined";
+
+// iOS knows whether it has asked, even after a kill mid-prompt. Android reports denied before it
+// has ever asked, so there Crowbar's own flag decides.
+function wasAsked(permissions: Notifications.NotificationPermissionsStatus, db: Database) {
+  return Platform.OS === "ios"
+    ? permissions.status !== Notifications.PermissionStatus.UNDETERMINED
+    : getSettings(db).notificationsAsked;
+}
+
+function statusOf(
+  permissions: Notifications.NotificationPermissionsStatus,
+  db: Database,
+): NotificationStatus {
+  if (permissions.granted) return "granted";
+  return wasAsked(permissions, db) ? "denied" : "undetermined";
+}
+
+// Asking happens at a first Rest or from Settings, while the exact alarms prompt and the scheduled
+// Rest live under the tabs, so the outcome reaches them here rather than through either screen.
+let permissions = { askingExactAlarms: false, asks: 0 };
+const permissionListeners = new Set<() => void>();
+
+function updatePermissions(change: Partial<typeof permissions>) {
+  permissions = { ...permissions, ...change };
+  for (const listener of permissionListeners) listener();
+}
+
+function subscribeToPermissions(listener: () => void) {
+  permissionListeners.add(listener);
+  return () => permissionListeners.delete(listener);
+}
+
+function usePermissions() {
+  return useSyncExternalStore(subscribeToPermissions, () => permissions);
+}
+
+// Marked before the prompt shows, so even a kill mid-prompt never leads to asking twice on Android.
 async function askForNotificationsOnce(db: Database) {
-  if (getSettings(db).notificationsAsked) return false;
+  const current = await Notifications.getPermissionsAsync();
+  if (wasAsked(current, db)) return;
   markNotificationsAsked(db);
-  if ((await Notifications.getPermissionsAsync()).granted) return true;
-  const { granted } = await Notifications.requestPermissionsAsync({
-    ios: { allowAlert: true, allowSound: true },
-  });
-  return granted;
+  const granted =
+    current.granted ||
+    (
+      await Notifications.requestPermissionsAsync({
+        ios: { allowAlert: true, allowSound: true },
+      })
+    ).granted;
+  const askingExactAlarms =
+    granted &&
+    Platform.OS === "android" &&
+    Platform.Version >= EXACT_ALARMS_DENIED_BY_DEFAULT_SINCE;
+  updatePermissions({ askingExactAlarms, asks: permissions.asks + 1 });
+}
+
+// Queued with the Rest's own sync, so a Rest started meanwhile never asks a second time.
+export function askForNotifications(db: Database) {
+  enqueue(() => askForNotificationsOnce(db));
 }
 
 // Lives under the tabs, which stay mounted for the whole launch, so the OS notification follows
@@ -55,7 +103,7 @@ export function useRestNotification() {
   const { t } = useI18n();
   const [mountedAt] = useState(Date.now);
   const [foregrounded, setForegrounded] = useState(0);
-  const [askingExactAlarms, setAskingExactAlarms] = useState(false);
+  const { askingExactAlarms, asks } = usePermissions();
 
   useEffect(() => {
     if (Platform.OS !== "android") return;
@@ -87,11 +135,7 @@ export function useRestNotification() {
     enqueue(async () => {
       await clearRestNotification();
       if (endsAt === undefined || workoutExerciseId === undefined || !title) return;
-      if (startedThisLaunch && (await askForNotificationsOnce(db))) {
-        if (Platform.OS === "android" && Platform.Version >= EXACT_ALARMS_DENIED_BY_DEFAULT_SINCE) {
-          setAskingExactAlarms(true);
-        }
-      }
+      if (startedThisLaunch) await askForNotificationsOnce(db);
       // An ended Rest is already in front of the lifter as the card's "Rest over".
       if (endsAt <= Date.now()) return;
       if (!(await Notifications.getPermissionsAsync()).granted) return;
@@ -110,13 +154,14 @@ export function useRestNotification() {
         },
       });
     });
-  }, [db, endsAt, workoutExerciseId, title, startedThisLaunch, foregrounded]);
+    // An answer from Settings reschedules a Rest already running.
+  }, [db, endsAt, workoutExerciseId, title, startedThisLaunch, foregrounded, asks]);
 
   return {
     askingExactAlarms,
     // Declining keeps inexact delivery: Android still alerts, just possibly a little late.
     answerExactAlarms(allow: boolean) {
-      setAskingExactAlarms(false);
+      updatePermissions({ askingExactAlarms: false });
       if (allow) {
         void startActivityAsync("android.settings.REQUEST_SCHEDULE_EXACT_ALARM", {
           data: `package:${applicationId}`,
@@ -133,25 +178,25 @@ export function restWorkoutExerciseOf(response: Notifications.NotificationRespon
   return typeof data?.workoutExerciseId === "string" ? data.workoutExerciseId : null;
 }
 
-// Read on focus, which follows the prompt at a first Rest, and on every return to the app, which
-// follows a change in system settings. Not asked yet comes from Crowbar's own flag, as Android
-// reports denied before it has ever asked.
+// Read on focus, which follows the prompt at a first Rest, after an answer from Settings, and on
+// every return to the app, which follows a change in system settings.
 export function useNotificationStatus() {
-  const { notificationsAsked } = useSettings();
-  const [granted, setGranted] = useState<boolean | null>(null);
+  const db = useDb();
+  const { asks } = usePermissions();
+  const [status, setStatus] = useState<NotificationStatus | null>(null);
   useFocusEffect(
     useCallback(() => {
       const read = () =>
-        void Notifications.getPermissionsAsync().then((permissions) =>
-          setGranted(permissions.granted),
+        void Notifications.getPermissionsAsync().then((current) =>
+          setStatus(statusOf(current, db)),
         );
       read();
       const subscription = AppState.addEventListener("change", (state) => {
         if (state === "active") read();
       });
       return () => subscription.remove();
-    }, []),
+      // A Settings answer lands with no focus or foreground change, so asks re-runs the read.
+    }, [db, asks]),
   );
-  if (granted === null) return null;
-  return granted ? "granted" : notificationsAsked ? "denied" : "undetermined";
+  return status;
 }

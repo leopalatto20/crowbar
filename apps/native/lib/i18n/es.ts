@@ -90,8 +90,8 @@ export const es: Messages = {
     notificationStatus: {
       granted: "Activadas",
       denied: "Desactivadas",
-      undetermined: "Sin configurar",
     },
+    turnOnNotifications: "Activar",
     data: "Datos",
     exportBackup: "Exportar copia de seguridad",
     exportFailedTitle: "No se pudo exportar la copia de seguridad",

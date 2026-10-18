@@ -90,8 +90,8 @@ export const en = {
     notificationStatus: {
       granted: "On",
       denied: "Off",
-      undetermined: "Not set",
     },
+    turnOnNotifications: "Turn on",
     data: "Data",
     exportBackup: "Export backup",
     exportFailedTitle: "Couldn’t export a backup",

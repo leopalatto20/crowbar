@@ -27,7 +27,7 @@ import { useI18n } from "@/lib/i18n";
 import { ageOf } from "@/lib/i18n/locale";
 import { useSettings } from "@/lib/settings";
 import { useColors } from "@/lib/theme";
-import { useNotificationStatus } from "@/lib/workout/rest-notification";
+import { askForNotifications, useNotificationStatus } from "@/lib/workout/rest-notification";
 import { EFFORTS, UNITS, formatClock } from "@/lib/workout/model";
 
 export default function SettingsTab() {
@@ -45,8 +45,6 @@ export default function SettingsTab() {
     undoRestoreReplacedAt,
   } = useSettings();
   const notificationStatus = useNotificationStatus();
-  // Once asked, only system settings can turn notifications back on; Crowbar never asks again.
-  const denied = notificationStatus === "denied";
   const [exporting, setExporting] = useState(false);
   const [exportFailed, setExportFailed] = useState(false);
   const [picking, setPicking] = useState(false);
@@ -161,15 +159,37 @@ export default function SettingsTab() {
                 ))}
               </Picker>
             </Row>
-            {notificationStatus && (
+            {notificationStatus === "undetermined" && (
               <ListItem
-                onPress={denied ? () => void Linking.openSettings() : undefined}
+                onPress={() => askForNotifications(db)}
+                trailing={
+                  <Text textStyle={{ color: p.blue }}>{t.settings.turnOnNotifications}</Text>
+                }
+              >
+                <Text>{t.settings.notifications}</Text>
+              </ListItem>
+            )}
+            {notificationStatus === "granted" && (
+              <ListItem
+                trailing={
+                  <Text textStyle={{ color: p.secondary }}>
+                    {t.settings.notificationStatus.granted}
+                  </Text>
+                }
+              >
+                <Text>{t.settings.notifications}</Text>
+              </ListItem>
+            )}
+            {/* Once asked, only system settings can turn notifications back on; Crowbar never asks again. */}
+            {notificationStatus === "denied" && (
+              <ListItem
+                onPress={() => void Linking.openSettings()}
                 trailing={
                   <Row alignment="center" spacing={6}>
                     <Text textStyle={{ color: p.secondary }}>
-                      {t.settings.notificationStatus[notificationStatus]}
+                      {t.settings.notificationStatus.denied}
                     </Text>
-                    {denied && Platform.OS === "ios" && (
+                    {Platform.OS === "ios" && (
                       <Icon name="chevron.right" size={13} color={p.tertiary} />
                     )}
                   </Row>
