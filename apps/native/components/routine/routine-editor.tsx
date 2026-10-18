@@ -16,6 +16,7 @@ import {
   removeRoutineExercise,
   renameRoutine,
   reorderRoutineExercises,
+  swapRoutineExercise,
   updateRoutineExercise,
 } from "@/db/routines";
 import { haptics } from "@/lib/haptics";
@@ -38,6 +39,8 @@ export function RoutineEditor({ id }: { id: string }) {
   return routine ? <Editor routine={routine} /> : null;
 }
 
+type Picking = { purpose: "add" } | { purpose: "swap"; routineExerciseId: string };
+
 // Every edit writes straight to SQLite, so nothing is lost if the app is killed mid-edit.
 function Editor({ routine }: { routine: RoutineDetail }) {
   const db = useDb();
@@ -46,7 +49,7 @@ function Editor({ routine }: { routine: RoutineDetail }) {
   // Kept locally so the field never lags behind the keyboard waiting on a re-read.
   const [name, setName] = useState(routine.name);
   const [open, setOpen] = useState<{ id: string; pill: TargetPill } | null>(null);
-  const [picking, setPicking] = useState(false);
+  const [picking, setPicking] = useState<Picking | null>(null);
   const workingSets = routine.exercises.reduce((n, e) => n + (e.sets ?? 0), 0);
 
   function rename(next: string) {
@@ -103,6 +106,7 @@ function Editor({ routine }: { routine: RoutineDetail }) {
                   onPick={(from, patch, advances) => pick(entry.id, from, patch, advances)}
                   onClose={() => setOpen(null)}
                   onChange={(patch) => updateRoutineExercise(db, entry.id, patch)}
+                  onSwap={() => setPicking({ purpose: "swap", routineExerciseId: entry.id })}
                   onRemove={() => removeRoutineExercise(db, entry.id)}
                 />
               );
@@ -111,7 +115,7 @@ function Editor({ routine }: { routine: RoutineDetail }) {
         </LayoutAnimationConfig>
 
         <PressableScale
-          onPress={() => setPicking(true)}
+          onPress={() => setPicking({ purpose: "add" })}
           style={{
             height: 50,
             borderRadius: radii.card,
@@ -131,15 +135,19 @@ function Editor({ routine }: { routine: RoutineDetail }) {
       </ScrollView>
 
       <ExercisePickerSheet
-        title={t.exercisePicker.title}
-        visible={picking}
+        title={picking?.purpose === "swap" ? t.routine.swap : t.exercisePicker.title}
+        visible={picking !== null}
         marked={{
           ids: routine.exercises.map((e) => e.exercise.id),
           label: t.exercisePicker.inRoutine,
         }}
         doneAt="anyGym"
-        onClose={() => setPicking(false)}
+        onClose={() => setPicking(null)}
         onPick={(exercise) => {
+          if (picking?.purpose === "swap") {
+            swapRoutineExercise(db, picking.routineExerciseId, exercise.id);
+            return;
+          }
           const added = addRoutineExercise(db, routine.id, exercise.id);
           // A new Exercise opens on its first pill so its Target can be set right away.
           setOpen({ id: added, pill: PILLS[0] });

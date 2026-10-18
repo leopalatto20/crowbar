@@ -21,6 +21,7 @@ import { useEffort } from "@/lib/workout/effort";
 import { type Effort, formatEffortRange, formatRange } from "@/lib/workout/model";
 
 import { RestPicker } from "./rest-picker";
+import { RoutineExerciseMenu } from "./routine-exercise-menu";
 import { type ChipSection, ChipSections, PanelHeader } from "./target-panel";
 
 // Sets and reps share one pill, so the row reads like the Ledger's "Target 3 × 5–7" line.
@@ -109,6 +110,7 @@ export function RoutineExerciseCard({
   onPick,
   onClose,
   onChange,
+  onSwap,
   onRemove,
 }: {
   entry: RoutineExercise;
@@ -118,6 +120,7 @@ export function RoutineExerciseCard({
   onPick: (pill: TargetPill, patch: TargetsChange, advances: boolean) => void;
   onClose: () => void;
   onChange: (patch: TargetsChange) => void;
+  onSwap: () => void;
   onRemove: () => void;
 }) {
   const p = useColors();
@@ -169,9 +172,7 @@ export function RoutineExerciseCard({
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
           <View style={{ flex: 1, gap: 3 }}>
-            <Text numberOfLines={1} style={{ color: p.label, ...type.callout, fontWeight: "600" }}>
-              {entry.exercise.name}
-            </Text>
+            <RoutineExerciseMenu name={entry.exercise.name} onSwap={onSwap} onRemove={onRemove} />
             <RestPicker
               seconds={entry.restSeconds}
               onChange={(restSeconds) => onChange({ restSeconds })}

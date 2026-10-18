@@ -393,6 +393,8 @@ export const es: Messages = {
       `${exercises} ${exercises === 1 ? "ejercicio" : "ejercicios"} · ${workingSets} ${workingSets === 1 ? "serie efectiva" : "series efectivas"}`,
     addExercise: "Añadir ejercicio",
     remove: "Quitar",
+    swap: "Cambiar ejercicio",
+    exerciseMenu: (exercise) => `${exercise}. Abre su menú`,
     removeExercise: (exercise) => `Quitar ${exercise}`,
     rest: (duration) => `Descanso ${duration}`,
     noWarmup: "Sin calentamiento",

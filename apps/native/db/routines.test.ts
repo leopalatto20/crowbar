@@ -16,6 +16,7 @@ import {
   reorderRoutineExercises,
   reorderRoutines,
   routineExerciseCount,
+  swapRoutineExercise,
   updateRoutineExercise,
 } from "./routines";
 import { createGym } from "./gyms";
@@ -212,6 +213,36 @@ describe("removeRoutineExercise", () => {
     removeRoutineExercise(db, pull);
 
     expect(exerciseIds(db, upper)).toEqual(["barbell-bench-press", "dumbbell-lateral-raise"]);
+  });
+});
+
+describe("swapRoutineExercise", () => {
+  test("puts another Exercise in the slot, keeping its place and Targets", async () => {
+    const db = await libraryDatabase();
+    const upper = createRoutine(db, "Upper A");
+    const bench = addRoutineExercise(db, upper, "barbell-bench-press");
+    addRoutineExercise(db, upper, "pull-up");
+    updateRoutineExercise(db, bench, {
+      warmups: 2,
+      sets: 4,
+      repMin: 5,
+      repMax: 7,
+      restSeconds: 180,
+    });
+
+    swapRoutineExercise(db, bench, "dumbbell-lateral-raise");
+
+    expect(exerciseIds(db, upper)).toEqual(["dumbbell-lateral-raise", "pull-up"]);
+    expect(getRoutine(db, upper, "en")?.exercises[0]).toEqual(
+      expect.objectContaining({
+        id: bench,
+        warmups: 2,
+        sets: 4,
+        repMin: 5,
+        repMax: 7,
+        restSeconds: 180,
+      }),
+    );
   });
 });
 
