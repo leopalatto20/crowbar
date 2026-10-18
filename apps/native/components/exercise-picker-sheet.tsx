@@ -17,6 +17,7 @@ import { NO_FILTERS, anyFilterOn } from "@/lib/exercise/model";
 import { type DoneAt, useDoneFilter, useExerciseLibrary } from "@/lib/exercise/use-exercises";
 import { haptics } from "@/lib/haptics";
 import { useI18n } from "@/lib/i18n";
+import { useKeyboardHeight } from "@/lib/keyboard";
 import { radii, spacing, type, useColors } from "@/lib/theme";
 
 // The one Exercise picker, shared by the Ledger, the Routine editor and the library. When no
@@ -87,6 +88,7 @@ function ExercisePicker({
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState(NO_FILTERS);
   const [creating, setCreating] = useState<string | null>(null);
+  const keyboardHeight = useKeyboardHeight();
   const name = query.trim();
   const exactMatch = exerciseNamed(library, query);
   const found = searchExercises(library, query);
@@ -173,8 +175,11 @@ function ExercisePicker({
       <FlatList
         data={matches}
         keyExtractor={(listing) => listing.id}
+        // The search field autofocuses, so the list makes room for the keyboard and a drag puts it
+        // down, keeping the typed search.
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: 40 }}
+        keyboardDismissMode="on-drag"
+        contentContainerStyle={{ paddingBottom: 40 + keyboardHeight }}
         ListHeaderComponent={
           name && !exactMatch ? (
             <Row onPress={() => setCreating(name)}>
