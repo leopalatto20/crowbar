@@ -1,6 +1,6 @@
 import { SymbolView } from "expo-symbols";
 import { Suspense, useState } from "react";
-import { FlatList, Modal, Pressable, Text, TextInput, View } from "react-native";
+import { FlatList, Modal, Platform, Pressable, Text, TextInput, View } from "react-native";
 
 import { CustomExerciseSheet } from "@/components/custom-exercise-sheet";
 import { EmptyMessage } from "@/components/empty-state";
@@ -17,6 +17,7 @@ import { NO_FILTERS, anyFilterOn } from "@/lib/exercise/model";
 import { type DoneAt, useDoneFilter, useExerciseLibrary } from "@/lib/exercise/use-exercises";
 import { haptics } from "@/lib/haptics";
 import { useI18n } from "@/lib/i18n";
+import { useKeyboardHeight } from "@/lib/keyboard";
 import { radii, spacing, type, useColors } from "@/lib/theme";
 
 // The one Exercise picker, shared by the Ledger, the Routine editor and the library. When no
@@ -87,6 +88,7 @@ function ExercisePicker({
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState(NO_FILTERS);
   const [creating, setCreating] = useState<string | null>(null);
+  const keyboardHeight = useKeyboardHeight();
   const name = query.trim();
   const exactMatch = exerciseNamed(library, query);
   const found = searchExercises(library, query);
@@ -173,8 +175,15 @@ function ExercisePicker({
       <FlatList
         data={matches}
         keyExtractor={(listing) => listing.id}
+        // The search field autofocuses, so the keyboard is up from the start: a drag puts it down,
+        // keeping the typed search. iOS insets the list by how far the keyboard overlaps the sheet,
+        // which on iPad is less than its height; Android has no such inset, so it pads instead.
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: 40 }}
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets
+        contentContainerStyle={{
+          paddingBottom: 40 + (Platform.OS === "android" ? keyboardHeight : 0),
+        }}
         ListHeaderComponent={
           name && !exactMatch ? (
             <Row onPress={() => setCreating(name)}>
