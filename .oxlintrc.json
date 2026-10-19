@@ -7,5 +7,6 @@
   "rules": {},
   "env": {
     "builtin": true
-  }
+  },
+  "ignorePatterns": [".claude/skills/impeccable/**", ".claude/agents/impeccable-*.md"]
 }

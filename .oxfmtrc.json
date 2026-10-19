@@ -1,3 +1,7 @@
 {
-  "ignorePatterns": ["apps/native/db/migrations/**"]
+  "ignorePatterns": [
+    "apps/native/db/migrations/**",
+    ".claude/skills/impeccable/**",
+    ".claude/agents/impeccable-*.md"
+  ]
 }
