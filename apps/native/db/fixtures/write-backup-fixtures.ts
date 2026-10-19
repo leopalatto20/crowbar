@@ -105,6 +105,9 @@ const DATA: Record<string, string[]> = {
      VALUES (1, '0190a000-0000-7000-8000-000000000042', 1767856200000, 1767856380000)`,
   ],
   "0010_notifications_asked": [`UPDATE settings SET notifications_asked = 1`],
+  "0011_list_menus_used": [
+    `UPDATE settings SET routine_menu_used = 1, exercise_menu_used = 1, gym_menu_used = 1`,
+  ],
 };
 
 export function backupFixturePath(tag: string) {

@@ -12,6 +12,7 @@ A Routine is a gym-agnostic plan of Exercises with Targets (warm-ups, sets × re
 - Start: tap a row to open its Workout in the Ledger at the last-used Gym (the Gym prompt first if none exists; the "A Workout is in progress" alert if one is running). The Ledger is titled with the Routine name and each Exercise shows a `Target 3 × 5–7 · RIR 1–2 · rest 3:00` line; the Rest after a Working set lasts the slot's rest Target.
 - Last run: a row whose Routine has a finished Workout shows `Last: today · <Gym>` (then `yesterday`, `3 days ago`, weeks, months, years).
 - List actions: long-press a row for Edit, Duplicate (`<name> copy`), Delete (no swipe actions, ADR 0005); toolbar "Edit"/"Done" toggles drag-to-reorder.
+- Menu hint: the Routines section footer reads "Touch and hold a Routine to edit, duplicate or delete it." until the first action picked from that menu sets `settings.routine_menu_used = 1`; hidden in Edit mode and with no Routines. Verified on iOS.
 
 ## How to get to it (user POV)
 

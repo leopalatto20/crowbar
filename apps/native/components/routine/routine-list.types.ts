@@ -1,6 +1,7 @@
+import type { MenuHintProps } from "@/components/menu-hint.types";
 import type { RoutineListing } from "@/db/routines";
 
-export type RoutineListProps = {
+export type RoutineListProps = MenuHintProps & {
   // Names already fall back to "New Routine" when blank.
   routines: RoutineListing[];
   editing: boolean;

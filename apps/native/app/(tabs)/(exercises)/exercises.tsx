@@ -108,6 +108,8 @@ function ExerciseLibrary({
       {toolbar}
       <ExerciseLibraryList
         listings={exercises}
+        // A search or filter is looking for one Exercise, not learning the list.
+        withMenuHint={!query && !anyFilterOn(applied)}
         onOpenHidden={anyHidden ? () => router.push("/hidden-exercises") : undefined}
       />
     </>

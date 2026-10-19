@@ -25,6 +25,8 @@ export function RoutineList(props: RoutineListProps) {
 
 function RoutineMenuList({
   routines,
+  showMenuHint,
+  onMenuUse,
   onStartEmptyWorkout,
   onStart,
   onCreate,
@@ -60,12 +62,22 @@ function RoutineMenuList({
             <RoutineRow
               key={routine.id}
               routine={routine}
+              onMenuUse={onMenuUse}
               onStart={onStart}
               onEdit={onEdit}
               onDuplicate={onDuplicate}
               onDelete={onDelete}
             />
           ))
+        )}
+        {showMenuHint && routines.length > 0 && (
+          <Text
+            color={p.secondary}
+            style={{ typography: "bodySmall" }}
+            modifiers={[padding(16, 8, 16, 16)]}
+          >
+            {t.workoutTab.menuHint}
+          </Text>
         )}
       </LazyColumn>
     </Host>
@@ -74,12 +86,14 @@ function RoutineMenuList({
 
 function RoutineRow({
   routine,
+  onMenuUse,
   onStart,
   onEdit,
   onDuplicate,
   onDelete,
 }: {
   routine: RoutineListing;
+  onMenuUse: () => void;
   onStart: (id: string) => void;
   onEdit: (id: string) => void;
   onDuplicate: (routine: RoutineListing) => void;
@@ -93,6 +107,7 @@ function RoutineRow({
     <DropdownMenuItem
       onClick={() => {
         setMenu(false);
+        onMenuUse();
         action();
       }}
     >

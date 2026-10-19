@@ -14,7 +14,8 @@ The Exercises tab lists every non-hidden Exercise, Built-in and Custom, grouped 
   - Picker: a `PopUpButton` "Filter" at the end of the search row, adding a "Muscle group" submenu. Done reads "Done at <Workout's Gym>" in the Ledger and "Done before" (any Gym, absent with no history) in the Routine editor. Every opening starts with no filters. The `Create “<name>”` / `Unhide` row ignores filters.
   - Nothing matching shows `No Exercises match these filters.` with a "Clear Filters" `Button`.
   - Done counts any confirmed set, Warm-up included, on any Station at the Gym, Retired ones included.
-- Hidden Exercises: the picker offers `Unhide “<name>”` instead of Create. Unreachable on device: no screen can hide an Exercise, so there's nothing to unhide without seeding the database.
+- Hidden Exercises: the picker offers `Unhide “<name>”` instead of Create. To reach it, long-press an Exercise on the Exercises tab and pick "Hide".
+- Menu hint: atop the Exercises tab list, "Touch and hold an Exercise to hide it, or to edit or delete a Custom one." until the first pick from a row menu (there or in Hidden Exercises) sets `settings.exercise_menu_used = 1`. Hidden while searching or filtering, and never shown in Hidden Exercises or the picker. Verified on iOS.
 
 ## How to get to it (user POV)
 

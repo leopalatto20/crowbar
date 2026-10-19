@@ -4,6 +4,7 @@ import {
   getSettings,
   markExported,
   markNotificationsAsked,
+  markMenuUsed,
   seedSettings,
   updateSettings,
 } from "./settings";
@@ -70,6 +71,19 @@ describe("notification permission", () => {
     expect(getSettings(db).notificationsAsked).toBe(false);
     markNotificationsAsked(db);
     expect(getSettings(db).notificationsAsked).toBe(true);
+  });
+});
+
+describe("markMenuUsed", () => {
+  test("retires only that list's menu hint, for good", async () => {
+    const db = await createTestDatabase();
+    seedSettings(db, "US");
+    markMenuUsed(db, "gym");
+    expect(getSettings(db)).toMatchObject({
+      routineMenuUsed: false,
+      exerciseMenuUsed: false,
+      gymMenuUsed: true,
+    });
   });
 });
 

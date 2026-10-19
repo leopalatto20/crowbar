@@ -25,6 +25,7 @@ const EXPECTED_WORKOUTS: Record<string, number> = {
   "0008_station_retired": 3,
   "0009_rest": 3,
   "0010_notifications_asked": 3,
+  "0011_list_menus_used": 3,
 };
 
 let directory: string;
