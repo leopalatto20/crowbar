@@ -34,6 +34,10 @@ export const settings = sqliteTable(
     notificationsAsked: integer("notifications_asked", { mode: "boolean" })
       .notNull()
       .default(false),
+    // Once the lifter has acted from a list's long-press menu, the hint pointing at it goes.
+    routineMenuUsed: integer("routine_menu_used", { mode: "boolean" }).notNull().default(false),
+    exerciseMenuUsed: integer("exercise_menu_used", { mode: "boolean" }).notNull().default(false),
+    gymMenuUsed: integer("gym_menu_used", { mode: "boolean" }).notNull().default(false),
     lastExportedAt: integer("last_exported_at"),
     undoRestorePath: text("undo_restore_path"),
     undoRestoreReplacedAt: integer("undo_restore_replaced_at"),

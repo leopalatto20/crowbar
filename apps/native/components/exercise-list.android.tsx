@@ -22,12 +22,28 @@ import type { ExerciseActions, ExerciseListProps } from "./exercise-list.types";
 
 // A long press opens the row's menu, which holds every action. The Host doesn't pad its content
 // for the keyboard, so the list does it to stay scrollable above it.
-export function ExerciseList({ sections, onOpenHidden, ...actions }: ExerciseListProps) {
+export function ExerciseList({
+  sections,
+  onOpenHidden,
+  showMenuHint,
+  onMenuUse,
+  ...actions
+}: ExerciseListProps) {
   const p = useColors();
   const { t } = useI18n();
   return (
     <Host style={{ flex: 1 }}>
       <LazyColumn modifiers={[imePadding()]}>
+        {/* On top rather than below the last Muscle group, where a long list would bury it. */}
+        {showMenuHint && (
+          <Text
+            color={p.secondary}
+            style={{ typography: "bodySmall" }}
+            modifiers={[padding(16, 8, 16, 0)]}
+          >
+            {t.exercises.menuHint}
+          </Text>
+        )}
         {sections.flatMap(({ key, title, listings }) => [
           <Text
             key={key}
@@ -38,7 +54,7 @@ export function ExerciseList({ sections, onOpenHidden, ...actions }: ExerciseLis
             {title}
           </Text>,
           ...listings.map((listing) => (
-            <ExerciseRow key={listing.id} listing={listing} {...actions} />
+            <ExerciseRow key={listing.id} listing={listing} onMenuUse={onMenuUse} {...actions} />
           )),
         ])}
         {onOpenHidden && (
@@ -55,17 +71,19 @@ export function ExerciseList({ sections, onOpenHidden, ...actions }: ExerciseLis
 
 function ExerciseRow({
   listing,
+  onMenuUse,
   onOpen,
   onEdit,
   onToggleHidden,
   onDelete,
-}: ExerciseActions & { listing: ExerciseListing }) {
+}: ExerciseActions & { listing: ExerciseListing; onMenuUse: () => void }) {
   const { t } = useI18n();
   const [menu, setMenu] = useState(false);
   const item = (label: string, action: () => void) => (
     <DropdownMenuItem
       onClick={() => {
         setMenu(false);
+        onMenuUse();
         action();
       }}
     >

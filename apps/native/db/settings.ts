@@ -26,6 +26,15 @@ export function markNotificationsAsked(db: Database) {
   db.update(settings).set({ notificationsAsked: true }).where(eq(settings.id, SETTINGS_ID)).run();
 }
 
+export type MenuList = "routine" | "exercise" | "gym";
+
+export function markMenuUsed(db: Database, list: MenuList) {
+  db.update(settings)
+    .set({ [`${list}MenuUsed`]: true })
+    .where(eq(settings.id, SETTINGS_ID))
+    .run();
+}
+
 export function markExported(db: Database, at: number) {
   db.update(settings).set({ lastExportedAt: at }).where(eq(settings.id, SETTINGS_ID)).run();
 }

@@ -1,3 +1,4 @@
+import type { MenuHintProps } from "@/components/menu-hint.types";
 import type { ExerciseListing } from "@/db/exercises";
 
 export type ExerciseSection = { key: string; title: string; listings: ExerciseListing[] };
@@ -11,8 +12,9 @@ export type ExerciseActions = {
   onDelete: (listing: ExerciseListing) => void;
 };
 
-export type ExerciseListProps = ExerciseActions & {
-  sections: ExerciseSection[];
-  // The row at the bottom that leads to the Hidden Exercises; left out while none are hidden.
-  onOpenHidden?: () => void;
-};
+export type ExerciseListProps = MenuHintProps &
+  ExerciseActions & {
+    sections: ExerciseSection[];
+    // The row at the bottom that leads to the Hidden Exercises; left out while none are hidden.
+    onOpenHidden?: () => void;
+  };

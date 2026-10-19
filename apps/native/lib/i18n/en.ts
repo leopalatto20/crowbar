@@ -37,6 +37,7 @@ export const en = {
     cancel: "Cancel",
     copyName: (name: string) => `${name} copy`,
     lastRun: (ago: string, gym: string) => `Last: ${ago} · ${gym}`,
+    menuHint: "Touch and hold a Routine to edit, duplicate or delete it.",
   },
   exercises: {
     search: "Search",
@@ -45,6 +46,7 @@ export const en = {
     newExercise: "New Exercise",
     hiddenExercises: "Hidden Exercises",
     noHiddenExercises: "No Hidden Exercises.",
+    menuHint: "Touch and hold an Exercise to hide it, or to edit or delete a Custom one.",
     edit: "Edit",
     hide: "Hide",
     unhide: "Unhide",
@@ -105,6 +107,7 @@ export const en = {
     rename: "Rename",
     delete: "Delete",
     renameTitle: "Rename Gym",
+    menuHint: "Touch and hold a Gym to rename or delete it.",
     save: "Save",
     deleteTitle: (gym: string) => `Delete “${gym}”?`,
     deleteMessage: ({ stations, workouts, sets }: GymHistoryCounts) =>

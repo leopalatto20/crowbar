@@ -11,6 +11,7 @@ Every Workout is logged at one Gym, and progress splits by Gym. A new Workout st
 - Relabel confirm: when a logged Exercise would land on a Station in another unit (its default Station at the new Gym, or a new one in the default weight unit), picking the Gym asks `Move this Workout to <Gym>?` ("Logged numbers stay as they are, so these will read in another unit:" then one `<Exercise>: kg → lb` line each), Cancel / Move. Cancel leaves the Workout where it was and the picker open. With every unit matching, the Gym changes at once. The live Ledger asks the same way.
 - New Gym…: the alert "New Gym" (placeholder "Gym name", Cancel/Add) creates the Gym and switches the Workout to it.
 - Settings, "Gyms": pushes the Gyms list (back button "Settings"). Tapping a row opens "Rename Gym", with the field prefilled with the current name (Cancel/Save). Long-press shows Rename/Delete; rows have no swipe actions.
+- Menu hint: a footer under the Gyms reads "Touch and hold a Gym to rename or delete it." until the first pick from that menu sets `settings.gym_menu_used = 1`; a tap-to-rename leaves it. Verified on iOS.
 - Delete: the alert `Delete “<Gym>”?` with `Deletes <n> Station(s) and <n> set(s) across <n> Workout(s).` counts only logged sets. "Delete" removes the Gym, its Stations, its Workouts (including one in progress there) and their sets.
 
 ## How to get to it (user POV)

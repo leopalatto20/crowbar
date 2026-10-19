@@ -29,6 +29,8 @@ import type { RoutineListProps } from "./routine-list.types";
 export function RoutineList({
   routines,
   editing,
+  showMenuHint,
+  onMenuUse,
   onStartEmptyWorkout,
   onStart,
   onCreate,
@@ -40,6 +42,10 @@ export function RoutineList({
   const i18n = useI18n();
   const { t } = i18n;
   const ids = routines.map((routine) => routine.id);
+  const fromMenu = (action: () => void) => () => {
+    onMenuUse();
+    action();
+  };
 
   return (
     <Host style={{ flex: 1 }}>
@@ -51,7 +57,15 @@ export function RoutineList({
             onPress={onStartEmptyWorkout}
           />
         </Section>
-        <Section title={t.workoutTab.routines}>
+        <Section
+          title={t.workoutTab.routines}
+          footer={
+            // Edit mode drops the menu, so the hint would point at nothing.
+            showMenuHint && !editing && routines.length > 0 ? (
+              <Text>{t.workoutTab.menuHint}</Text>
+            ) : undefined
+          }
+        >
           {routines.length === 0 ? (
             <Button
               label={t.workoutTab.createFirstRoutine}
@@ -101,18 +115,18 @@ export function RoutineList({
                       <Button
                         label={t.workoutTab.edit}
                         systemImage="pencil"
-                        onPress={() => onEdit(routine.id)}
+                        onPress={fromMenu(() => onEdit(routine.id))}
                       />
                       <Button
                         label={t.workoutTab.duplicate}
                         systemImage="plus.square.on.square"
-                        onPress={() => onDuplicate(routine)}
+                        onPress={fromMenu(() => onDuplicate(routine))}
                       />
                       <Button
                         label={t.workoutTab.delete}
                         systemImage="trash"
                         role="destructive"
-                        onPress={() => onDelete(routine)}
+                        onPress={fromMenu(() => onDelete(routine))}
                       />
                     </ContextMenu.Items>
                   </ContextMenu>

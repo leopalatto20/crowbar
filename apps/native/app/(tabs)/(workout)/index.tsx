@@ -18,6 +18,7 @@ import { currentWorkout, discardAndStartWorkout, startWorkout } from "@/db/worko
 import { useLastGym } from "@/lib/gym/use-last-gym";
 import { useI18n } from "@/lib/i18n";
 import { useRoutines } from "@/lib/routine/use-routine";
+import { useMenuHint } from "@/lib/settings";
 import { currentTimeZone } from "@/lib/workout/time";
 
 export default function WorkoutTab() {
@@ -41,6 +42,7 @@ function Routines() {
     ...routine,
     name: routine.name || t.routine.untitled,
   }));
+  const menuHint = useMenuHint("routine");
   const [editing, setEditing] = useState(false);
   const [replacingWith, setReplacingWith] = useState<PendingStart | null>(null);
   // Counted when the confirm opens, so it states exactly what the delete will take.
@@ -113,6 +115,7 @@ function Routines() {
       <RoutineList
         routines={routines}
         editing={editing}
+        {...menuHint}
         onStartEmptyWorkout={() => requestStart({})}
         onStart={(routineId) => requestStart({ routineId })}
         onCreate={create}

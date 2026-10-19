@@ -37,6 +37,7 @@ export const es: Messages = {
     cancel: "Cancelar",
     copyName: (name) => `${name} (copia)`,
     lastRun: (ago, gym) => `Último: ${ago} · ${gym}`,
+    menuHint: "Mantén presionada una rutina para editarla, duplicarla o eliminarla.",
   },
   exercises: {
     search: "Buscar",
@@ -45,6 +46,8 @@ export const es: Messages = {
     newExercise: "Nuevo ejercicio",
     hiddenExercises: "Ejercicios ocultos",
     noHiddenExercises: "No hay ejercicios ocultos.",
+    menuHint:
+      "Mantén presionado un ejercicio para ocultarlo, o para editarlo o eliminarlo si es personalizado.",
     edit: "Editar",
     hide: "Ocultar",
     unhide: "Mostrar",
@@ -105,6 +108,7 @@ export const es: Messages = {
     rename: "Renombrar",
     delete: "Eliminar",
     renameTitle: "Renombrar gimnasio",
+    menuHint: "Mantén presionado un gimnasio para renombrarlo o eliminarlo.",
     save: "Guardar",
     deleteTitle: (gym) => `¿Eliminar «${gym}»?`,
     deleteMessage: ({ stations, workouts, sets }) =>

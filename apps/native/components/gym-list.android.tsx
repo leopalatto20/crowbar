@@ -6,22 +6,40 @@ import {
   ListItem,
   Text,
 } from "@expo/ui/jetpack-compose";
-import { combinedClickable } from "@expo/ui/jetpack-compose/modifiers";
+import { combinedClickable, padding } from "@expo/ui/jetpack-compose/modifiers";
 import { useState } from "react";
 
 import type { Gym } from "@/db/gyms";
 import { useI18n } from "@/lib/i18n";
+import { useColors } from "@/lib/theme";
 
 import type { GymListProps } from "./gym-list.types";
 
 // A tap renames; Delete waits behind the long-press menu and then a confirm.
-export function GymList({ gyms, onRename, onDelete }: GymListProps) {
+export function GymList({ gyms, showMenuHint, onMenuUse, onRename, onDelete }: GymListProps) {
+  const p = useColors();
+  const { t } = useI18n();
   return (
     <Host style={{ flex: 1 }}>
       <LazyColumn>
         {gyms.map((gym) => (
-          <GymRow key={gym.id} gym={gym} onRename={onRename} onDelete={onDelete} />
+          <GymRow
+            key={gym.id}
+            gym={gym}
+            onMenuUse={onMenuUse}
+            onRename={onRename}
+            onDelete={onDelete}
+          />
         ))}
+        {showMenuHint && gyms.length > 0 && (
+          <Text
+            color={p.secondary}
+            style={{ typography: "bodySmall" }}
+            modifiers={[padding(16, 8, 16, 16)]}
+          >
+            {t.gyms.menuHint}
+          </Text>
+        )}
       </LazyColumn>
     </Host>
   );
@@ -29,10 +47,12 @@ export function GymList({ gyms, onRename, onDelete }: GymListProps) {
 
 function GymRow({
   gym,
+  onMenuUse,
   onRename,
   onDelete,
 }: {
   gym: Gym;
+  onMenuUse: () => void;
   onRename: (gym: Gym) => void;
   onDelete: (gym: Gym) => void;
 }) {
@@ -42,6 +62,7 @@ function GymRow({
     <DropdownMenuItem
       onClick={() => {
         setMenu(false);
+        onMenuUse();
         action();
       }}
     >

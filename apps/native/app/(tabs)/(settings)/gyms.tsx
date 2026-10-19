@@ -15,6 +15,7 @@ import {
 } from "@/db/gyms";
 import { useGyms } from "@/lib/gym/use-gyms";
 import { useI18n } from "@/lib/i18n";
+import { useMenuHint } from "@/lib/settings";
 
 export default function GymsScreen() {
   const db = useDb();
@@ -56,6 +57,7 @@ function Gyms() {
   const db = useDb();
   const { t } = useI18n();
   const gyms = useGyms();
+  const menuHint = useMenuHint("gym");
   const [renaming, setRenaming] = useState<Gym | null>(null);
   // Counted when the confirm opens, so it states exactly what the delete will take.
   const [deleting, setDeleting] = useState<{ gym: Gym; counts: GymHistoryCounts } | null>(null);
@@ -69,7 +71,7 @@ function Gyms() {
 
   return (
     <>
-      <GymList gyms={gyms} onRename={setRenaming} onDelete={requestDelete} />
+      <GymList gyms={gyms} {...menuHint} onRename={setRenaming} onDelete={requestDelete} />
       <NamePrompt
         // Remounted per Gym, so the field starts at that Gym's name.
         key={renaming?.id}
