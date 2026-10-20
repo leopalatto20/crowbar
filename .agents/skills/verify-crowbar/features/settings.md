@@ -12,6 +12,11 @@ Below them, "Notifications" (a Button labelled `Notifications, <state>`) appears
 
 A "Training" section holds the "Gyms" row, which pushes the Gyms list; see [gyms.md](gyms.md).
 
+A "Data" section holds text buttons:
+
+- "Export backup" writes a SQLite copy named `Crowbar backup <yyyy-mm-dd>` and opens the share sheet. Only a finished share (Copy, Save to Files) sets `settings.last_exported_at`, after which a `Last exported <ago>` footer shows. Dismissing the sheet writes nothing.
+- "Restore from backup…" opens the file picker; it is refused with "Workout in progress" while a Workout runs, asks "Replace all your data?" (Restore / Cancel), and shows "Can’t restore this file" for a bad file. After a restore, `Undo restore (replaced <date>)` asks "Undo restore?". Not driven live: the picker needs a backup saved to Files first.
+
 - Effort scale: RIR / RPE. Changes the Routine editor's effort pill and panel, the Ledger's effort column header and its Target line.
 - Default weight unit: kg / lb / Stack level (stored as `level`, shown as "LVL" in the Ledger). Seeded from the device region on first launch (US gives lb). It applies only to Stations created afterwards: an Exercise already logged at a Gym keeps that Station's unit.
 
@@ -50,6 +55,8 @@ Proof: the row reads "Notifications, On" (or "Off") and `notifications_asked` is
 ## Gotchas
 
 - The Notifications row renders only after an async permission read, so `cv wait "Turn on"` before a `shot`, or the screenshot misses it.
+- "Export backup" and "Restore from backup…" are text buttons, so `cv tap "Export backup"` hits the row centre and does nothing (see SKILL.md, Drive). Tap the text by frame: `cv tap --pre-delay 0 -x 56 -y <row centre>`. The share sheet sits outside the accessibility tree; tap "Copy" by frame from a `shot`.
+- On a fresh install the first confirmed Working set already asked for notifications (see [workout-ledger.md](workout-ledger.md)), so "Turn on" only shows if no Rest ran yet.
 - PopUpButtons are labelled with their current value, so the selector changes after each pick ("RIR" becomes "RPE").
 - The weight unit default depends on the simulator's region (US gives lb); take a baseline query instead of assuming kg.
 - Effort scale shows up elsewhere: the Routine editor's `Effort (RIR)` panel title and the Ledger's effort column follow it.

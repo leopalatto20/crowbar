@@ -25,7 +25,7 @@ The user's own setup is `bun run dev` (Metro on :8081) and the `iPhone 17 Pro` s
 
 If :8082 is held by anything the helper didn't start, `up` refuses rather than sharing it.
 
-The app runs as a **development build** (`com.anonymous.crowbar`), never in Expo Go: Expo Go ships its own pinned native modules, which differ from the project's. The build comes from `expo run:ios`, which writes the gitignored `apps/native/ios/` and Xcode DerivedData. Both are shared with the user's own `bun run ios`, which is harmless because they're regenerated output.
+The app runs as a **development build** (`com.anonymous.crowbar`), never in Expo Go: Expo Go ships its own pinned native modules, which differ from the project's. The build comes from `expo run:ios --device generic`, which only builds: given a real simulator, `run:ios` would also install, launch, and open the simulator UI (DeviceHub since Xcode 27), and point the app at :8081. The helper installs and launches the `.app` itself. The build writes the gitignored `apps/native/ios/` and Xcode DerivedData, shared with the user's own `bun run ios`, which is harmless because they're regenerated output.
 
 ## Launch
 
@@ -39,7 +39,7 @@ cv launch        # kill and relaunch the app, keeping its data
 - The first `up` builds the native app: several minutes, logged to `~/.cache/crowbar-verify/build.log`. Later runs reuse the cached `.app` until `apps/native/package.json`, `app.json` or `bun.lock` changes, then rebuild automatically.
 - **Ready** means `up` printed `ready: crowbar-verify (...)`. It waits for the tab bar, which renders only after the database opens and settings load.
 - Metro runs in watch mode, so JS edits hot-reload into the running app. Native changes (new native packages, `app.json` plugins) need `cv up` to pick up the rebuild.
-- `expo run:ios` only runs prebuild when `apps/native/ios/` is missing, so a new config plugin (one that adds Info.plist keys or a target) never reaches an existing `ios/`. Run `bunx expo prebuild -p ios` in `apps/native` first, then `cv up --rebuild`.
+- `expo run:ios` only runs prebuild when `apps/native/ios/` is missing, so a new config plugin (one that adds Info.plist keys or a target) never reaches an existing `ios/`. Run `bunx expo prebuild -p ios` in `apps/native` first, then `cv up --rebuild`. If the user installs on their own iPhone with a personal team, prebuild with `APPLE_PERSONAL_TEAM=1` (see the root README) so their device build keeps signing; the simulator runs either variant.
 
 ## Doctor
 
@@ -48,7 +48,7 @@ Run `cv doctor` first, and again whenever anything looks off. It's read-only and
 - the sim is booted
 - Metro is ours and answering on :8082
 - the build matches the native dependencies
-- the app is installed and loads JS from `localhost:8082`
+- the app is installed and loads JS from `localhost:8082`, read from the app's own preferences file, which wins over a simulator-wide default. A dev-client link aimed at :8081 saves its port there, after which the app shows "No script URL provided". `cv up` rewrites it.
 - the database exists
 - the keyboard is pinned (a sim created before pinning existed fails here until the next `up`)
 - the Metro log has no `ERROR` lines
