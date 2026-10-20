@@ -118,21 +118,21 @@ current_run() {
 # Expo Go is never used: it ships its own pinned native modules (Expo Go 57.0.9 vs the project's
 # @expo/ui 57.0.23), so only a development build runs the native code the app actually ships with.
 ensure_build() {
-  local u="$1" want; want="$(native_fingerprint)"
+  local want; want="$(native_fingerprint)"
   if [ -d "$STATE/crowbar.app" ] && [ "$(cat "$STATE/native-fingerprint" 2>/dev/null)" = "$want" ] && [ "${REBUILD:-0}" != 1 ]; then
     return
   fi
   echo "building the development build (several minutes; log: $STATE/build.log)"
-  (cd "$APP_DIR" && bunx expo run:ios --no-bundler --device "$u") >"$STATE/build.log" 2>&1 ||
+  # Build only. Given a device, run:ios also installs and launches, which opens the simulator UI
+  # (DeviceHub since Xcode 27, Simulator.app before) and points the app at :8081. The helper
+  # installs and launches the build itself, headless and aimed at its own Metro.
+  rm -rf "$STATE/build-output"
+  (cd "$APP_DIR" && bunx expo run:ios --no-bundler --device generic --output "$STATE/build-output") >"$STATE/build.log" 2>&1 ||
     die "build failed; see $STATE/build.log"
-  local built
-  built="$(xcrun simctl get_app_container "$u" "$BUNDLE_ID" app)" || die "build finished but $BUNDLE_ID is not installed"
-  rm -rf "$STATE/crowbar.app" && cp -R "$built" "$STATE/crowbar.app"
+  local built; built="$(find "$STATE/build-output" -maxdepth 1 -name '*.app' | head -1)"
+  [ -n "$built" ] || die "build finished but produced no .app; see $STATE/build.log"
+  rm -rf "$STATE/crowbar.app" && mv "$built" "$STATE/crowbar.app" && rm -rf "$STATE/build-output"
   echo "$want" >"$STATE/native-fingerprint"
-  # run:ios finishes by opening a dev-client URL aimed at :8081, which leaves a system prompt up.
-  if tree_of "$u" | cut -f2 | grep -qF 'Open in “crowbar”?'; then
-    axe tap --label Cancel --udid "$u" >/dev/null
-  fi
 }
 
 install_app() {
@@ -140,7 +140,15 @@ install_app() {
   xcrun simctl terminate "$u" "$BUNDLE_ID" 2>/dev/null || true
   xcrun simctl install "$u" "$STATE/crowbar.app"
   # Debug builds read their packager location from this default, so the app loads our Metro.
-  xcrun simctl spawn "$u" defaults write "$BUNDLE_ID" RCT_jsLocation "localhost:$PORT"
+  xcrun simctl spawn "$u" defaults write "$(app_prefs "$u")" RCT_jsLocation "localhost:$PORT"
+}
+
+# The app's own preferences file. A default written by bundle id lands in the simulator-wide
+# domain, which loses to this file: a dev-client link once saved :8081 here and every later
+# launch went looking for the user's Metro.
+app_prefs() {
+  local data; data="$(xcrun simctl get_app_container "$1" "$BUNDLE_ID" data)" || die "app not installed"
+  echo "$data/Library/Preferences/$BUNDLE_ID.plist"
 }
 
 # Usage: wait_for_label <udid> <timeout> <label>... ; returns once any of the labels is on screen.
@@ -202,7 +210,7 @@ cmd_up() {
     echo "metro running on :$PORT (pid $(metro_pid))"
   fi
 
-  ensure_build "$u"
+  ensure_build
   if [ "$fresh" = 1 ] || ! xcrun simctl get_app_container "$u" "$BUNDLE_ID" app >/dev/null 2>&1; then
     xcrun simctl uninstall "$u" "$BUNDLE_ID" 2>/dev/null || true
     install_app "$u"
@@ -240,7 +248,7 @@ cmd_doctor() {
   # simctl can only see installed apps on a booted simulator.
   if [ -z "$u" ] || [ "${state:-}" != Booted ]; then echo "skip app checks until the simulator is booted"
   elif xcrun simctl get_app_container "$u" "$BUNDLE_ID" app >/dev/null 2>&1; then
-    local loc; loc="$(xcrun simctl spawn "$u" defaults read "$BUNDLE_ID" RCT_jsLocation 2>/dev/null || true)"
+    local loc; loc="$(xcrun simctl spawn "$u" defaults read "$(app_prefs "$u")" RCT_jsLocation 2>/dev/null || true)"
     [ "$loc" = "localhost:$PORT" ] && echo "ok   app installed, loads JS from $loc" || { echo "FAIL app loads JS from '${loc:-default :8081}'"; ok=0; }
     if [ -f "$(db_path "$u")" ]; then echo "ok   database at $(db_path "$u")"; else echo "info database not created yet (app never launched)"; fi
   else echo "FAIL $BUNDLE_ID not installed on $SIM_NAME"; ok=0; fi

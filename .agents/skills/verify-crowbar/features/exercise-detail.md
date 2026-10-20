@@ -1,10 +1,12 @@
 # Exercise detail
 
-One Exercise's progress at one Station: the Station switcher, the progress chart, Rep records, and set history, newest Workout first. Everything is read from the logged sets, so the database never changes here; the proof is the screen matching the sets in SQLite.
+One Exercise's progress at one Station: the Station switcher, the progress chart, Rep records, and set history, newest Workout first. The chart, records and history are read from the logged sets, so their proof is the screen matching the sets in SQLite. The "More" menu writes: its Station and Exercise actions change `station` and `exercise` rows.
 
 ## Sub-features
 
-- Station switcher: the Gym (and label) of the shown Station, opening a list of every Station of the Exercise at every Gym; "Loads in <unit>" under it.
+- Station switcher: a PopUpButton `Station: <Gym>[ · <label>]. Opens the Station list`, listing every Station of the Exercise at every Gym (a retired one reads `<station> (Retired)`); "Loads in <unit>" under it.
+- "More" menu, Station group (headed by the Station name): "Rename Station" (prompt with a "Label" field, Save writes `station.label`), "Add machine notes" / "Edit machine notes", "Change Unit", "Retire Station" / "Return to Service", "Merge Into" (asks `Merge into “<station>”?` unless the source has no sets and no label), "Delete Station" (asks `Delete “<station>”?` unless nothing is at stake). Exercise group (headed by the Exercise name): "Hide" / "Unhide", plus "Edit" and "Delete" on Custom Exercises.
+- Empty states: "No sets logged yet." and "No Working sets at this Station yet." (only Warm-ups logged there).
 - Change Unit (#117): "More", "Change Unit", then a unit (checkmark on the current one). With logged sets it asks "Change this Station to <unit>?" ("Logged numbers stay as they are, so <n> sets will read in <unit>.", "Cancel" / "Change"); Cancel keeps `station.unit`. With no logged sets (a Station made by machine notes alone) it applies at once, and re-picking the current unit does nothing. "Loads in <unit>" follows.
 - Progress chart (#48): one point per Workout at the Station, oldest on the left, the Working-set count under each point.
   - Title and value by Load type and unit: External in kg/lb "Volume (kg)" with `1,515 kg`; Stack level "Level × reps" with a bare number and no y-axis labels; Bodyweight and Assisted "Working-set reps" with `23 reps` (`23 reps/side` when Unilateral).
