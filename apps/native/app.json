@@ -27,6 +27,7 @@
     },
     "plugins": [
       "./plugins/with-ios-entitlements",
+      "./plugins/with-ios-scene-lifecycle",
       "expo-router",
       [
         "expo-splash-screen",
