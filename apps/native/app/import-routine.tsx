@@ -81,9 +81,17 @@ function ImportRoutine() {
       </View>
       <View style={{ gap: spacing.sm }}>
         {preview.exercises.map((entry, index) => (
-          <Text key={index} style={{ color: p.label, ...type.body }}>
-            {entry.name}
-          </Text>
+          <View
+            key={index}
+            style={{ flexDirection: "row", justifyContent: "space-between", gap: spacing.md }}
+          >
+            <Text style={{ flexShrink: 1, color: p.label, ...type.body }}>{entry.name}</Text>
+            {entry.match && (
+              <Text style={{ color: p.secondary, ...type.body }}>
+                {t.importRoutine.match[entry.match]}
+              </Text>
+            )}
+          </View>
         ))}
       </View>
       <View style={{ gap: spacing.sm }}>

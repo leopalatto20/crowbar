@@ -2,7 +2,6 @@ import { Stack, useRouter } from "expo-router";
 import { Suspense, useState } from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { NoticeDialog } from "@/components/notice-dialog";
 import { RoutineList } from "@/components/routine/routine-list";
 import { WorkoutInProgressAlert } from "@/components/workout-in-progress-alert";
 import { useDb } from "@/db/context";
@@ -48,7 +47,6 @@ function Routines() {
   const menuHint = useMenuHint("routine");
   const [editing, setEditing] = useState(false);
   const [replacingWith, setReplacingWith] = useState<PendingStart | null>(null);
-  const [unshareable, setUnshareable] = useState(false);
   // Counted when the confirm opens, so it states exactly what the delete will take.
   const [deleting, setDeleting] = useState<{ routine: RoutineListing; exercises: number } | null>(
     null,
@@ -97,9 +95,7 @@ function Routines() {
 
   // `routine.name` already falls back to "New Routine", which names the file of an unnamed one.
   function share(routine: RoutineListing) {
-    const shared = shareRoutine(db, routine.id);
-    if (shared.shareable) void shareRoutineFile(routine.name, shared.content);
-    else setUnshareable(true);
+    void shareRoutineFile(routine.name, shareRoutine(db, routine.id));
   }
 
   // An empty Routine holds no design to lose, so it goes at once.
@@ -150,13 +146,6 @@ function Routines() {
           if (deleting) remove(deleting.routine.id);
         }}
         onDismiss={() => setDeleting(null)}
-      />
-      <NoticeDialog
-        visible={unshareable}
-        title={t.workoutTab.customExerciseShareTitle}
-        message={t.workoutTab.customExerciseShareMessage}
-        dismissLabel={t.workoutTab.dismiss}
-        onDismiss={() => setUnshareable(false)}
       />
       <WorkoutInProgressAlert
         visible={replacingWith !== null}

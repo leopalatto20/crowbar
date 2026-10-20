@@ -55,7 +55,7 @@ export function listExercises(db: Database, language: Language): ExerciseListing
 }
 
 // Lifters rarely type accents mid-Workout, so "extension" has to find "Extensión".
-function foldCaseAndAccents(text: string) {
+export function foldCaseAndAccents(text: string) {
   return text
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -86,7 +86,10 @@ export function filterExercises(
 
 // Unlike search, an exact match keeps accents and finds Hidden Exercises and names in other
 // languages: it decides whether a name is free for a new Exercise.
-export function exerciseNamed(exercises: ExerciseListing[], name: string) {
+export function exerciseNamed<T extends Pick<ExerciseListing, "names">>(
+  exercises: T[],
+  name: string,
+) {
   const wanted = name.trim().toLowerCase();
   return exercises.find((listing) => listing.names.some((taken) => taken.toLowerCase() === wanted));
 }

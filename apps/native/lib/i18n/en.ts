@@ -39,12 +39,9 @@ export const en = {
     copyName: (name: string) => `${name} copy`,
     lastRun: (ago: string, gym: string) => `Last: ${ago} · ${gym}`,
     menuHint: "Touch and hold a Routine to edit, share, duplicate or delete it.",
-    customExerciseShareTitle: "Can’t share this Routine yet",
-    customExerciseShareMessage:
-      "It uses a Custom Exercise. For now, only Routines made of Built-in Exercises can be shared.",
-    dismiss: "OK",
   },
   importRoutine: {
+    match: { reused: "Reused", new: "New" },
     exercises: (count: number) => `${count} ${count === 1 ? "Exercise" : "Exercises"}`,
     import: "Import",
     cancel: "Cancel",
