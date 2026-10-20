@@ -31,6 +31,7 @@ function RoutineMenuList({
   onStart,
   onCreate,
   onEdit,
+  onShare,
   onDuplicate,
   onDelete,
 }: RoutineListProps) {
@@ -65,6 +66,7 @@ function RoutineMenuList({
               onMenuUse={onMenuUse}
               onStart={onStart}
               onEdit={onEdit}
+              onShare={onShare}
               onDuplicate={onDuplicate}
               onDelete={onDelete}
             />
@@ -89,6 +91,7 @@ function RoutineRow({
   onMenuUse,
   onStart,
   onEdit,
+  onShare,
   onDuplicate,
   onDelete,
 }: {
@@ -96,6 +99,7 @@ function RoutineRow({
   onMenuUse: () => void;
   onStart: (id: string) => void;
   onEdit: (id: string) => void;
+  onShare: (routine: RoutineListing) => void;
   onDuplicate: (routine: RoutineListing) => void;
   onDelete: (routine: RoutineListing) => void;
 }) {
@@ -139,6 +143,7 @@ function RoutineRow({
       </DropdownMenu.Trigger>
       <DropdownMenu.Items>
         {item(t.workoutTab.edit, () => onEdit(routine.id))}
+        {item(t.workoutTab.share, () => onShare(routine))}
         {item(t.workoutTab.duplicate, () => onDuplicate(routine))}
         {item(t.workoutTab.delete, () => onDelete(routine))}
       </DropdownMenu.Items>

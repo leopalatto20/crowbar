@@ -2,6 +2,7 @@ import { Stack, useRouter } from "expo-router";
 import { Suspense, useState } from "react";
 
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { NoticeDialog } from "@/components/notice-dialog";
 import { RoutineList } from "@/components/routine/routine-list";
 import { WorkoutInProgressAlert } from "@/components/workout-in-progress-alert";
 import { useDb } from "@/db/context";
@@ -14,9 +15,11 @@ import {
   reorderRoutines,
   routineExerciseCount,
 } from "@/db/routines";
+import { shareRoutine } from "@/db/shared-routines";
 import { currentWorkout, discardAndStartWorkout, startWorkout } from "@/db/workouts";
 import { useLastGym } from "@/lib/gym/use-last-gym";
 import { useI18n } from "@/lib/i18n";
+import { shareRoutineFile } from "@/lib/routine/share-routine";
 import { useRoutines } from "@/lib/routine/use-routine";
 import { useMenuHint } from "@/lib/settings";
 import { currentTimeZone } from "@/lib/workout/time";
@@ -45,6 +48,7 @@ function Routines() {
   const menuHint = useMenuHint("routine");
   const [editing, setEditing] = useState(false);
   const [replacingWith, setReplacingWith] = useState<PendingStart | null>(null);
+  const [unshareable, setUnshareable] = useState(false);
   // Counted when the confirm opens, so it states exactly what the delete will take.
   const [deleting, setDeleting] = useState<{ routine: RoutineListing; exercises: number } | null>(
     null,
@@ -91,6 +95,13 @@ function Routines() {
     deleteRoutine(db, id);
   }
 
+  // `routine.name` already falls back to "New Routine", which names the file of an unnamed one.
+  function share(routine: RoutineListing) {
+    const shared = shareRoutine(db, routine.id);
+    if (shared.shareable) void shareRoutineFile(routine.name, shared.content);
+    else setUnshareable(true);
+  }
+
   // An empty Routine holds no design to lose, so it goes at once.
   function requestRemove(routine: RoutineListing) {
     const exercises = routineExerciseCount(db, routine.id);
@@ -120,6 +131,7 @@ function Routines() {
         onStart={(routineId) => requestStart({ routineId })}
         onCreate={create}
         onEdit={edit}
+        onShare={share}
         onDuplicate={(routine) =>
           duplicateRoutine(db, routine.id, t.workoutTab.copyName(routine.name))
         }
@@ -138,6 +150,13 @@ function Routines() {
           if (deleting) remove(deleting.routine.id);
         }}
         onDismiss={() => setDeleting(null)}
+      />
+      <NoticeDialog
+        visible={unshareable}
+        title={t.workoutTab.customExerciseShareTitle}
+        message={t.workoutTab.customExerciseShareMessage}
+        dismissLabel={t.workoutTab.dismiss}
+        onDismiss={() => setUnshareable(false)}
       />
       <WorkoutInProgressAlert
         visible={replacingWith !== null}

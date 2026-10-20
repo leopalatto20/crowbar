@@ -12,6 +12,27 @@
       "bundleIdentifier": "com.anonymous.crowbar",
       "entitlements": {
         "com.apple.developer.usernotifications.time-sensitive": true
+      },
+      "infoPlist": {
+        "CFBundleDocumentTypes": [
+          {
+            "CFBundleTypeName": "Crowbar Routine",
+            "LSHandlerRank": "Owner",
+            "LSItemContentTypes": ["com.anonymous.crowbar.routine"]
+          }
+        ],
+        "UTExportedTypeDeclarations": [
+          {
+            "UTTypeIdentifier": "com.anonymous.crowbar.routine",
+            "UTTypeDescription": "Crowbar Routine",
+            "UTTypeConformsTo": ["public.data", "public.content"],
+            "UTTypeTagSpecification": {
+              "public.filename-extension": ["crowbar-routine"],
+              "public.mime-type": ["application/vnd.crowbar.routine"]
+            }
+          }
+        ],
+        "LSSupportsOpeningDocumentsInPlace": false
       }
     },
     "android": {
@@ -23,7 +44,35 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.crowbar",
-      "permissions": ["android.permission.SCHEDULE_EXACT_ALARM"]
+      "permissions": ["android.permission.SCHEDULE_EXACT_ALARM"],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "category": ["DEFAULT"],
+          "data": [
+            { "scheme": "content", "mimeType": "application/vnd.crowbar.routine" },
+            { "scheme": "file", "mimeType": "application/vnd.crowbar.routine" }
+          ]
+        },
+        {
+          "action": "VIEW",
+          "category": ["DEFAULT"],
+          "data": [
+            {
+              "scheme": "content",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.crowbar-routine"
+            },
+            {
+              "scheme": "file",
+              "host": "*",
+              "mimeType": "*/*",
+              "pathPattern": ".*\\\\.crowbar-routine"
+            }
+          ]
+        }
+      ]
     },
     "plugins": [
       "./plugins/with-ios-entitlements",
