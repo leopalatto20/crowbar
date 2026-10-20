@@ -39,12 +39,9 @@ export const es: Messages = {
     copyName: (name) => `${name} (copia)`,
     lastRun: (ago, gym) => `Último: ${ago} · ${gym}`,
     menuHint: "Mantén presionada una rutina para editarla, compartirla, duplicarla o eliminarla.",
-    customExerciseShareTitle: "Aún no se puede compartir esta rutina",
-    customExerciseShareMessage:
-      "Usa un ejercicio personalizado. Por ahora, solo se pueden compartir rutinas con ejercicios integrados.",
-    dismiss: "Aceptar",
   },
   importRoutine: {
+    match: { reused: "Reutilizado", new: "Nuevo" },
     exercises: (count) => `${count} ${count === 1 ? "ejercicio" : "ejercicios"}`,
     import: "Importar",
     cancel: "Cancelar",

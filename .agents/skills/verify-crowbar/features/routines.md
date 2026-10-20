@@ -12,8 +12,8 @@ A Routine is a gym-agnostic plan of Exercises with Targets (warm-ups, sets × re
 - Start: tap a row to open its Workout in the Ledger at the last-used Gym (the Gym prompt first if none exists; the "A Workout is in progress" alert if one is running). The Ledger is titled with the Routine name and each Exercise shows a `Target 3 × 5–7 · RIR 1–2 · rest 3:00` line; the Rest after a Working set lasts the slot's rest Target.
 - Last run: a row whose Routine has a finished Workout shows `Last: today · <Gym>` (then `yesterday`, `3 days ago`, weeks, months, years).
 - List actions: long-press a row for Edit, Share, Duplicate (`<name> copy`), Delete (no swipe actions, ADR 0005); toolbar "Edit"/"Done" toggles drag-to-reorder. Delete removes an empty Routine at once, else asks `Delete “<name>”?` (`Deletes its list of <n> Exercise(s) with their Targets. Past Workouts stay in History.`, Cancel / Delete).
-- Share (#142): writes `<name>.crowbar-routine` (JSON: `format`, `version`, `name`, and per slot `exercise.builtIn` plus warmups, sets, repMin/repMax, rirMin/rirMax, restSeconds; nothing else) to the app's `Library/Caches/shared-routines/` and opens the system share sheet ("<name> · Crowbar Routine · <n> bytes", with Crowbar among the apps). A Routine using a Custom Exercise writes no file and shows "Can’t share this Routine yet" ("It uses a Custom Exercise. …", OK).
-- Import: opening a `.crowbar-routine` in Crowbar presents a sheet with the name, `<n> Exercises`, each Exercise name in the receiver's language, then "Import" and "Cancel". Cancel writes nothing. Import adds a new Routine at the end of the order (same name allowed) in one transaction, then opens it in the editor. A Workout in progress stays as it was, its bar still showing. A newer or damaged file shows "Can’t open this Routine" with OK (from source; not driven live).
+- Share (#142, #143): writes `<name>.crowbar-routine` (JSON: `format`, `version` 2, `name`, and per slot either `exercise.builtIn` (slug) or `exercise.custom` (name, equipmentType, loadType, unilateral, muscleGroup; never the id), plus warmups, sets, repMin/repMax, rirMin/rirMax, restSeconds; nothing else) to the app's `Library/Caches/shared-routines/` and opens the system share sheet ("<name> · Crowbar Routine · <n> bytes", with Crowbar among the apps).
+- Import: opening a `.crowbar-routine` in Crowbar presents a sheet with the name, `<n> Exercises`, each Exercise name in the receiver's language, each Custom Exercise from the file followed by "Reused" or "New" and shown under its final name (a new one colliding with an existing name gets " (2)", " (3)", ...), then "Import" and "Cancel". Cancel writes nothing. A Custom Exercise is reused when an Exercise's name matches ignoring case and accents (either language, or that name plus a " (n)" suffix) with the same Load type and Unilateral; otherwise Import creates it. Verified on iOS: round trip into the sharer's own library shows "Reused" and creates nothing; after changing the Custom Exercise's Load type, reopening the file shows "<name> (2) · New", and a second import shows it "Reused". Import adds a new Routine at the end of the order (same name allowed) in one transaction, then opens it in the editor. A Workout in progress stays as it was, its bar still showing. A newer or damaged file shows "Can’t open this Routine" with OK (from source; not driven live).
 - Menu hint: the Routines section footer reads "Touch and hold a Routine to edit, share, duplicate or delete it." until the first action picked from that menu sets `settings.routine_menu_used = 1`; hidden in Edit mode and with no Routines. Verified on iOS.
 
 ## How to get to it (user POV)
@@ -68,6 +68,14 @@ cv tap --pre-delay 0 -x 68 -y 651          # "crowbar" in the share sheet's app 
 cv wait Import 10 && cv shot preview
 cv tap Import --element-type Button        # lands in the editor on the new Routine
 cv save-db "select r.name, r.position, re.position as slot, re.exercise_id, re.warmups, re.sets, re.rep_min, re.rep_max, re.rir_min, re.rir_max, re.rest_seconds from routine r join routine_exercise re on re.routine_id = r.id order by r.position, re.position"
+```
+
+To reopen a file already written (the share sheet would write a fresh one), deep-link to the sheet with the file URL encoded twice (once as a file URL, once as a query value):
+
+```sh
+F="$(xcrun simctl get_app_container <udid> com.anonymous.crowbar data)/Library/Caches/shared-routines/Push Day.crowbar-routine"
+xcrun simctl openurl <udid> "crowbar:///import-routine?file=$(python3 -c 'import sys,urllib.parse as u;print(u.quote("file://"+u.quote(sys.argv[1]),safe=""))' "$F")"
+cv save-db "select name, load_type, unilateral, hidden from exercise where built_in = 0 order by name"
 ```
 
 Proof: the copied file holds only the fields above, the preview lists the Exercises in order, and the new Routine's rows repeat the original's Targets at the next position. Cancel instead of Import leaves `count(*) from routine` unchanged.
