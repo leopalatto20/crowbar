@@ -33,7 +33,7 @@ An Exercise that ships with Crowbar; it can be hidden but never edited.
 _Avoid_: Default exercise, stock exercise
 
 **Custom Exercise**:
-An Exercise created by the lifter; it can be renamed, hidden, or deleted along with its history.
+An Exercise created by the lifter, or added by importing a Shared Routine; it can be renamed, hidden, or deleted along with its history.
 _Avoid_: User exercise, personal exercise
 
 **Hidden Exercise**:
@@ -103,6 +103,10 @@ _Avoid_: Tonnage, workload
 **Rep record**:
 The most reps done at a given load, or the heaviest load done for a given rep count, on one Station.
 _Avoid_: PR, personal best, max
+
+**Shared Routine**:
+A file holding one Routine's Exercises and Targets and nothing else of the sharer's data; importing one always adds a new Routine.
+_Avoid_: Export, template, Routine backup
 
 **Backup**:
 A file holding a complete copy of the lifter's data; restoring one replaces everything currently in Crowbar.
