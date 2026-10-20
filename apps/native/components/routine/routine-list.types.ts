@@ -9,6 +9,7 @@ export type RoutineListProps = MenuHintProps & {
   onStart: (id: string) => void;
   onCreate: () => void;
   onEdit: (id: string) => void;
+  onShare: (routine: RoutineListing) => void;
   onDuplicate: (routine: RoutineListing) => void;
   onDelete: (routine: RoutineListing) => void;
   onReorder: (ids: string[]) => void;

@@ -35,6 +35,7 @@ export function RoutineList({
   onStart,
   onCreate,
   onEdit,
+  onShare,
   onDuplicate,
   onDelete,
   onReorder,
@@ -116,6 +117,11 @@ export function RoutineList({
                         label={t.workoutTab.edit}
                         systemImage="pencil"
                         onPress={fromMenu(() => onEdit(routine.id))}
+                      />
+                      <Button
+                        label={t.workoutTab.share}
+                        systemImage="square.and.arrow.up"
+                        onPress={fromMenu(() => onShare(routine))}
                       />
                       <Button
                         label={t.workoutTab.duplicate}

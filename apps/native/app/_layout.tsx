@@ -49,6 +49,15 @@ export default function RootLayout() {
               }}
             />
             <Stack.Screen
+              name="import-routine"
+              options={{
+                presentation: "formSheet",
+                headerShown: false,
+                sheetAllowedDetents: "fitToContents",
+                sheetGrabberVisible: true,
+              }}
+            />
+            <Stack.Screen
               name="gym-picker"
               options={{
                 presentation: "formSheet",

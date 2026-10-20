@@ -29,6 +29,7 @@ export const es: Messages = {
     newRoutine: "Nueva rutina",
     edit: "Editar",
     done: "Listo",
+    share: "Compartir",
     duplicate: "Duplicar",
     delete: "Eliminar",
     deleteTitle: (routine) => `¿Eliminar «${routine}»?`,
@@ -37,7 +38,22 @@ export const es: Messages = {
     cancel: "Cancelar",
     copyName: (name) => `${name} (copia)`,
     lastRun: (ago, gym) => `Último: ${ago} · ${gym}`,
-    menuHint: "Mantén presionada una rutina para editarla, duplicarla o eliminarla.",
+    menuHint: "Mantén presionada una rutina para editarla, compartirla, duplicarla o eliminarla.",
+    customExerciseShareTitle: "Aún no se puede compartir esta rutina",
+    customExerciseShareMessage:
+      "Usa un ejercicio personalizado. Por ahora, solo se pueden compartir rutinas con ejercicios integrados.",
+    dismiss: "Aceptar",
+  },
+  importRoutine: {
+    exercises: (count) => `${count} ${count === 1 ? "ejercicio" : "ejercicios"}`,
+    import: "Importar",
+    cancel: "Cancelar",
+    rejectedTitle: "No se puede abrir esta rutina",
+    rejected: {
+      newer: "Actualiza Crowbar para abrir esta rutina.",
+      damaged: "Este archivo no es una rutina de Crowbar, o se dañó en el camino.",
+    },
+    dismiss: "Aceptar",
   },
   exercises: {
     search: "Buscar",
