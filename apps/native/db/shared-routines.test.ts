@@ -611,7 +611,7 @@ describe("a rejected Shared Routine", () => {
       "damaged",
     ],
     [
-      "has no rest",
+      "has a rest of zero seconds",
       (content) => edited(content, (doc) => (doc.exercises[0]!.restSeconds = 0)),
       "damaged",
     ],
