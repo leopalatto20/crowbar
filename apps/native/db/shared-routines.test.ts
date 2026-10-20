@@ -551,6 +551,22 @@ describe("a rejected Shared Routine", () => {
       "damaged",
     ],
     [
+      "has a Custom Exercise with an unknown Equipment type",
+      (content) =>
+        edited(content, (doc) => {
+          doc.exercises[0]!.exercise = { custom: { ...ringDips, equipmentType: "sled" } };
+        }),
+      "damaged",
+    ],
+    [
+      "has a Custom Exercise with an unknown Muscle group",
+      (content) =>
+        edited(content, (doc) => {
+          doc.exercises[0]!.exercise = { custom: { ...ringDips, muscleGroup: "neck" } };
+        }),
+      "damaged",
+    ],
+    [
       "has a Custom Exercise without a name",
       (content) =>
         edited(content, (doc) => {
@@ -558,7 +574,14 @@ describe("a rejected Shared Routine", () => {
         }),
       "damaged",
     ],
+    [
+      "has a version that isn't a whole number",
+      (content) => edited(content, (doc) => (doc.version = 1.5)),
+      "damaged",
+    ],
+    ["has no Routine name", (content) => edited(content, (doc) => delete doc.name), "damaged"],
     ["isn't JSON", () => "Upper A: bench, pull-ups", "damaged"],
+    ["is empty, like a file that couldn't be read", () => "", "damaged"],
     ["is JSON of another kind", () => JSON.stringify({ name: "Upper A" }), "damaged"],
     [
       "has a slot without an Exercise",
@@ -572,6 +595,11 @@ describe("a rejected Shared Routine", () => {
       "damaged",
     ],
     [
+      "has half a rep range",
+      (content) => edited(content, (doc) => (doc.exercises[0]!.repMax = null)),
+      "damaged",
+    ],
+    [
       "has half a RIR range",
       (content) => edited(content, (doc) => (doc.exercises[0]!.rirMax = null)),
       "damaged",
@@ -580,6 +608,11 @@ describe("a rejected Shared Routine", () => {
     [
       "has negative warm-ups",
       (content) => edited(content, (doc) => (doc.exercises[0]!.warmups = -1)),
+      "damaged",
+    ],
+    [
+      "has a rest of zero seconds",
+      (content) => edited(content, (doc) => (doc.exercises[0]!.restSeconds = 0)),
       "damaged",
     ],
     [
