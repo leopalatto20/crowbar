@@ -371,6 +371,33 @@ describe("importing a Custom Exercise", () => {
     });
   });
 
+  test("suffixes a new one whose name differs from an existing one only in accents", async () => {
+    const receiver = await libraryDatabase();
+    createCustomExercise(receiver, { ...ringDips, name: "Extensión", loadType: "bodyweight" });
+
+    importSharedRoutine(receiver, await sharedWith({ ...ringDips, name: "Extension" }));
+
+    expect(customExercisesOf(receiver).map((found) => found.name)).toEqual([
+      "Extensión",
+      "Extension (2)",
+    ]);
+  });
+
+  test("takes only the definition from the file", async () => {
+    const receiver = await libraryDatabase();
+    const content = edited(await sharedWith(ringDips), (doc) =>
+      Object.assign((doc.exercises[0]!.exercise as { custom: object }).custom, {
+        hidden: true,
+        nameEs: "Fondos en anillas",
+      }),
+    );
+
+    importSharedRoutine(receiver, content);
+
+    expect(customExercisesOf(receiver)).toEqual([{ ...ringDips, hidden: false }]);
+    expect(listExercises(receiver, "es").find((found) => found.name === "Ring Dips")).toBeDefined();
+  });
+
   test("reuses a Hidden Exercise and leaves it hidden", async () => {
     const receiver = await libraryDatabase();
     const kept = createCustomExercise(receiver, ringDips);
@@ -502,6 +529,11 @@ function snapshot(db: Database) {
 describe("a rejected Shared Routine", () => {
   const cases: [string, (content: string) => string, "newer" | "damaged"][] = [
     ["is from a newer format", (content) => edited(content, (doc) => (doc.version = 3)), "newer"],
+    [
+      "has no version before 1",
+      (content) => edited(content, (doc) => (doc.version = 0)),
+      "damaged",
+    ],
     [
       "uses a Built-in Exercise this app doesn't know",
       (content) =>

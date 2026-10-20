@@ -115,20 +115,14 @@ export function importSharedRoutine(db: Database, content: string) {
       .run();
     reading.slots.forEach(({ exercise: found, targets }, position) => {
       tx.insert(routineExercise)
-        .values({
-          ...targets,
-          id: newId(tx),
-          routineId: id,
-          exerciseId: found.id,
-          position,
-        })
+        .values({ ...targets, id: newId(tx), routineId: id, exerciseId: found.id, position })
         .run();
     });
   });
   return id;
 }
 
-type Known = {
+type ExerciseCandidate = {
   id: string;
   name: string;
   nameEs: string | null;
@@ -144,7 +138,7 @@ type Reading =
   | {
       valid: true;
       name: string;
-      slots: { targets: Targets; exercise: Known; match: SharedExerciseMatch }[];
+      slots: { targets: Targets; exercise: ExerciseCandidate; match: SharedExerciseMatch }[];
       created: NewExercise[];
     }
   | { valid: false; problem: SharedRoutineProblem };
@@ -172,7 +166,10 @@ function readSharedRoutine(db: Database, content: string): Reading {
   if (slugs.some((slug) => !builtIns.has(slug))) return { valid: false, problem: "newer" };
 
   const created: NewExercise[] = [];
-  function resolve(reference: SharedExercise): { exercise: Known; match: SharedExerciseMatch } {
+  function resolve(reference: SharedExercise): {
+    exercise: ExerciseCandidate;
+    match: SharedExerciseMatch;
+  } {
     if ("builtIn" in reference) return { exercise: builtIns.get(reference.builtIn)!, match: null };
     const reused = matchingExercise(pool, reference.custom);
     if (reused)
@@ -180,14 +177,19 @@ function readSharedRoutine(db: Database, content: string): Reading {
         exercise: reused,
         match: created.some((found) => found.id === reused.id) ? "new" : "reused",
       };
+    // Picked field by field: anything else in the file, such as a hidden flag, isn't the definition.
+    const { equipmentType, loadType, unilateral, muscleGroup } = reference.custom;
     const fresh: NewExercise = {
-      ...reference.custom,
       id: newId(db),
       name: unusedName(pool, reference.custom.name),
+      equipmentType,
+      loadType,
+      unilateral,
+      muscleGroup,
       builtIn: false,
     };
     created.push(fresh);
-    const known: Known = { ...fresh, nameEs: null, names: [fresh.name] };
+    const known: ExerciseCandidate = { ...fresh, nameEs: null, names: [fresh.name] };
     pool.push(known);
     return { exercise: known, match: "new" };
   }
@@ -198,7 +200,7 @@ function readSharedRoutine(db: Database, content: string): Reading {
   return { valid: true, name: shared.name, slots, created };
 }
 
-function knownExercises(db: Database): Known[] {
+function knownExercises(db: Database): ExerciseCandidate[] {
   return db
     .select({
       id: exercise.id,
@@ -220,7 +222,7 @@ function knownExercises(db: Database): Known[] {
 // Load type and Unilateral decide how logged load and reps read, so a name alone isn't a match.
 // A suffixed name still matches, so importing a file again reuses what the first import created.
 // An exact name wins over one that differs only in case, accents or suffix.
-function matchingExercise(pool: Known[], wanted: CustomDefinition) {
+function matchingExercise(pool: ExerciseCandidate[], wanted: CustomDefinition) {
   const folded = foldCaseAndAccents(wanted.name);
   const candidates = pool.filter(
     (found) =>
@@ -232,16 +234,22 @@ function matchingExercise(pool: Known[], wanted: CustomDefinition) {
 }
 
 function isNameOrSuffixed(name: string, wanted: string) {
-  return (
-    name === wanted || (name.startsWith(wanted) && /^ \(\d+\)$/.test(name.slice(wanted.length)))
-  );
+  return name === wanted || (name.startsWith(wanted) && SUFFIX.test(name.slice(wanted.length)));
 }
 
-// The same uniqueness rule as a Custom Exercise created by hand.
-function unusedName(pool: Known[], name: string) {
+const SUFFIX = /^ \(\d+\)$/;
+
+function suffixed(name: string, suffix: number) {
+  return suffix === 1 ? name : `${name} (${suffix})`;
+}
+
+// Stricter than the rule for a Custom Exercise created by hand, which keeps accents: a name that
+// would match on a later import has to be suffixed now, or that import would reuse the wrong one.
+function unusedName(pool: ExerciseCandidate[], name: string) {
+  const taken = new Set(pool.flatMap((found) => found.names.map(foldCaseAndAccents)));
   for (let suffix = 1; ; suffix++) {
-    const candidate = suffix === 1 ? name : `${name} (${suffix})`;
-    if (!exerciseNamed(pool, candidate)) return candidate;
+    const candidate = suffixed(name, suffix);
+    if (!taken.has(foldCaseAndAccents(candidate))) return candidate;
   }
 }
 
@@ -251,7 +259,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 // Mirrors the routine_exercise CHECK constraints, so a file that passes always inserts.
 function asSharedRoutine(value: Record<string, unknown>): SharedRoutine | null {
-  if (typeof value.name !== "string") return null;
+  if ((value.version as number) < 1 || typeof value.name !== "string") return null;
   if (!Array.isArray(value.exercises) || !value.exercises.every(isSharedSlot)) return null;
   return value as SharedRoutine;
 }
