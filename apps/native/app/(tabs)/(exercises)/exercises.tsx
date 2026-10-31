@@ -1,5 +1,5 @@
 import { Stack, useRouter } from "expo-router";
-import { Suspense, useState } from "react";
+import { Suspense, useDeferredValue, useState } from "react";
 
 import { CustomExerciseSheet } from "@/components/custom-exercise-sheet";
 import { EmptyState } from "@/components/empty-state";
@@ -22,6 +22,9 @@ export default function ExercisesTab() {
   // The tab's root screen lives as long as the app, so filters last the run but not a relaunch.
   const [filters, setFilters] = useState(NO_FILTERS);
   const [creating, setCreating] = useState(false);
+  // Filtering and sectioning the whole library is the costly part, so the search bar's text keeps
+  // up with each keystroke while the list catches up behind it.
+  const deferredSearch = useDeferredValue(search);
   return (
     <>
       <Stack.Screen
@@ -39,7 +42,7 @@ export default function ExercisesTab() {
       {/* Here rather than the app-wide boundary, so the first read blanks only this tab. */}
       <Suspense fallback={null}>
         <ExerciseLibrary
-          search={search}
+          search={deferredSearch}
           filters={filters}
           onChangeFilters={setFilters}
           onCreate={() => setCreating(true)}
