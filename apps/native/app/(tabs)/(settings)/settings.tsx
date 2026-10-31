@@ -148,9 +148,12 @@ export default function SettingsTab() {
               onValueChange={(value) => updateSettings(db, { restTimerEnabled: value })}
             />
             <Row alignment="center">
-              <Text>{t.settings.defaultRest}</Text>
+              <Text textStyle={restTimerEnabled ? undefined : { color: p.tertiary }}>
+                {t.settings.defaultRest}
+              </Text>
               <Spacer flexible />
               <Picker
+                enabled={restTimerEnabled}
                 selectedValue={defaultRestSeconds}
                 onValueChange={(value) => updateSettings(db, { defaultRestSeconds: value })}
               >
